@@ -349,15 +349,14 @@ var App = (function () {
     var root = document.getElementById("overlayRoot");
     var sh = root.querySelector(".sheet");
     if (!sh) { root.innerHTML = ""; return; }
+    var wasForm = sh.dataset.form === "1";
     sh.classList.remove("on");
     var bd = root.querySelector(".backdrop");
     if (bd) bd.classList.remove("on");
     setTimeout(function () { if (root.querySelector(".sheet") === sh) root.innerHTML = ""; }, 200);
     if (VIEW.slot) go("#/b/" + VIEW.no + "/" + VIEW.core + "/" + VIEW.loc);
-    if (typeof onSheetClosed === "function") onSheetClosed();
-    onSheetClosed = null;
+    else if (LOADED && wasForm) render();   // 폼에서 저장·삭제 후 목록을 즉시 반영
   }
-  var onSheetClosed = null;
 
   function openLightbox(src, cap) {
     var lb = document.createElement("div");
