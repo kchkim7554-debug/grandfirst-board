@@ -915,7 +915,7 @@ var App = (function () {
         rows += '<button class="row" data-act="slot" data-slot="' + s + '">' +
           '<span class="row-slot">' + s + "번" + (it.order > 1 ? " " + it.order + "번째" : "") + "</span>" +
           '<span class="row-main"><span class="row-title">' + esc(n.title) + "</span>" +
-          '<span class="row-sub">' + esc(statusText(n)) + "</span></span>" +
+          '<span class="row-sub">게시 ' + dotDate(n.postedAt) + (n.permanent ? " · 상시" : " · 기한 " + dotDate(n.deadline)) + "</span></span>" +
           statusPill(n) + "</button>";
       });
     });
