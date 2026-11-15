@@ -1040,7 +1040,7 @@ var App = (function () {
               : '<span class="pill active">게시 중</span>';
         return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
           '<span class="row-main">' +
-          '<span style="display:flex;gap:4px;flex-wrap:wrap">' + pill + (fl === "posted" ? statusPill(n) : "") + testTag(n) + "</span>" +
+          '<span style="display:flex;gap:4px;flex-wrap:wrap">' + (fl === "posted" ? statusPill(n) : pill) + testTag(n) + "</span>" +
           '<span class="row-title">' + esc(n.title) + "</span>" +
           '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
           '<span class="row-sub">' + esc(statusText(n)) + "</span></span>" +
