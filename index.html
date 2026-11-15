@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12395e">
-<meta name="description" content="제일풍경채 그랑퍼스트 1단지 게시물 기한관리 — 경비원 조회용 대시보드">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 부착·탈착 체크와 기한관리">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2312395e'/%3E%3Cpath d='M7 6h7l3 3v9H7z' fill='%23fff'/%3E%3C/svg%3E">
-<title>게시물 기한관리 · 제일풍경채 그랑퍼스트 1단지</title>
+<title>💓💓게시판 관리💓💓 · 풍경채 그랑퍼스트</title>
 <style>
 :root{
   --bg:#eef1f5;
@@ -34,7 +35,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Helvetica Neue",Arial,sans-serif;
   font-size:1rem;line-height:1.45;
   -webkit-font-smoothing:antialiased;
-  padding-bottom:calc(74px + env(safe-area-inset-bottom));
+  padding-bottom:calc(80px + env(safe-area-inset-bottom));
 }
 button{font-family:inherit;color:inherit;}
 h1,h2,h3,p{margin:0;}
@@ -44,20 +45,25 @@ a{color:var(--blue);text-decoration:none;}
 .topbar{
   position:sticky;top:0;z-index:40;
   background:linear-gradient(160deg,var(--navy) 0%,var(--navy-2) 100%);
-  color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 12px;
+  color:#fff;padding:calc(9px + env(safe-area-inset-top)) 12px 10px;
   box-shadow:0 2px 10px rgba(12,32,54,.18);
 }
-.topbar-in{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto;}
-.logo{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-.logo svg{width:20px;height:20px;fill:#fff;}
+.topbar-in{display:flex;align-items:center;gap:8px;max-width:760px;margin:0 auto;}
+.logo{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:.95rem;}
 .rb{flex:1 1 auto;min-width:0;}
-.rb-title{font-size:1.02rem;font-weight:700;letter-spacing:-.2px;}
-.rb-sub{font-size:.7rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rb-title{font-size:1rem;font-weight:800;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rb-sub{font-size:.68rem;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.who{
+  flex:0 0 auto;max-width:9.4em;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);
+  color:#fff;border-radius:999px;padding:5px 9px;font-size:.66rem;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.who.admin{background:#ffd75e;border-color:#ffd75e;color:#3c2a00;}
 .fsbtn{
   flex:0 0 auto;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);
-  color:#fff;border-radius:10px;padding:6px 9px;font-size:.78rem;font-weight:600;
+  color:#fff;border-radius:10px;padding:6px 8px;font-size:.76rem;font-weight:600;
 }
-.fsbtn:active{background:rgba(255,255,255,.24);}
+.fsbtn:active,.who:active{background:rgba(255,255,255,.26);}
 
 /* ---------- layout ---------- */
 main{max-width:760px;margin:0 auto;padding:12px 12px 8px;}
@@ -83,8 +89,12 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 8px;}
 .btn.primary{background:#fff;color:#12395e;flex:1 1 auto;}
 .btn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);}
 .btn.soft{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-line);}
+.btn.line{background:var(--card);color:var(--ink-2);border:1px solid var(--line);}
+.btn.danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red-line);}
+.btn.solid{background:var(--navy);color:#fff;}
 .btn:active{transform:translateY(1px);}
 .btn svg{width:16px;height:16px;fill:currentColor;}
+.btn.wide{width:100%;}
 
 /* ---------- stats ---------- */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
@@ -202,7 +212,6 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .sw.permanent{background:var(--violet-bg);border-color:var(--violet-line);}
 .sw.empty{background:#fafbfd;border-style:dashed;border-color:#d6dee8;}
 
-/* board notice list */
 .blist{margin-top:12px;display:flex;flex-direction:column;gap:7px;}
 .blist-h{font-size:.72rem;font-weight:700;color:var(--muted);margin:14px 4px 6px;}
 
@@ -229,6 +238,7 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .pill.permanent{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-line);}
 .pill.removed{background:#eef1f5;color:var(--ink-2);border-color:#d8dfe7;}
 .pill.test{background:#fff8e1;color:#8a6100;border-color:#f0dda7;font-weight:700;}
+.pill.pending{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-line);}
 
 .sec-h{display:flex;align-items:center;gap:8px;margin:16px 4px 8px;}
 .sec-h h3{font-size:.92rem;font-weight:800;}
@@ -238,6 +248,7 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .mini-btn:active{background:#eef3f9;}
 
 .empty-box{background:var(--card);border-radius:var(--radius);padding:22px 16px;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.6;border:1px dashed var(--line);}
+.empty-box b{color:var(--ink-2);}
 
 .note{font-size:.7rem;color:var(--muted);line-height:1.6;padding:10px 6px 2px;}
 .note b{color:var(--ink-2);}
@@ -252,29 +263,132 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .facility .fbody th,.facility .fbody td{text-align:left;padding:4px 2px;border-bottom:1px solid #f0f3f7;font-weight:600;}
 .facility .fbody th{color:var(--muted);font-weight:700;font-size:.7rem;}
 
+/* ---------- task checklist (부착·탈착) ---------- */
+.task{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 11px 9px;margin-bottom:8px;box-shadow:0 1px 2px rgba(18,35,54,.05);}
+.task-h{display:flex;align-items:flex-start;gap:8px;}
+.task-t{flex:1 1 auto;min-width:0;}
+.task-date{font-size:.72rem;font-weight:800;color:var(--navy);}
+.task-title{font-size:.88rem;font-weight:800;line-height:1.3;word-break:keep-all;}
+.task-meta{font-size:.66rem;color:var(--muted);margin-top:2px;line-height:1.45;}
+.task-side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.task-row{display:grid;grid-template-columns:30px 1fr 1fr 1fr;gap:5px;align-items:flex-end;margin-top:7px;}
+.team-tag{
+  font-size:.62rem;font-weight:800;color:var(--navy);background:#eef3f9;border-radius:6px;
+  padding:5px 0;text-align:center;
+}
+.chk{
+  border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 3px 5px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;min-height:46px;justify-content:center;
+  min-width:0;
+}
+.chk .box{font-size:1rem;line-height:1;}
+.chk .zn{font-size:.6rem;font-weight:700;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.chk .nm{font-size:.56rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.chk.off:active{background:#f2f6fb;}
+.chk.off .box{color:#9db0c6;}
+.chk.on{background:var(--green-bg);border-color:var(--green-line);}
+.chk.on .box{color:var(--green);}
+.chk.on .zn,.chk.on .nm{color:var(--green);}
+.chk.na{background:#f6f8fa;border-style:dashed;opacity:.65;}
+.chk.na .box{color:#c3ccd6;}
+.chk.undone .box{color:var(--orange);}
+.task-foot{display:flex;gap:6px;margin-top:8px;}
+
+/* ---------- forms ---------- */
+.fld{margin-bottom:11px;}
+.fld > label{display:block;font-size:.72rem;font-weight:800;color:var(--ink-2);margin:0 2px 5px;}
+.fld .req{color:var(--red);}
+.f-in,.f-sel,.f-ta{
+  width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font-size:.88rem;
+  font-family:inherit;background:#fff;color:var(--ink);min-height:44px;
+}
+.f-ta{min-height:66px;resize:vertical;line-height:1.5;}
+.f-in:focus,.f-sel:focus,.f-ta:focus{outline:2px solid var(--blue-line);border-color:var(--blue);}
+.f-hint{font-size:.66rem;color:var(--muted);margin-top:4px;line-height:1.5;}
+.f-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.f-chip{
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font-size:.78rem;
+  font-weight:700;color:var(--ink-2);min-height:38px;
+}
+.f-chip.on{background:var(--navy);border-color:var(--navy);color:#fff;}
+.f-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
+.f-grid .f-chip{padding:8px 0;font-size:.72rem;border-radius:8px;}
+.f-row{display:flex;gap:8px;}
+.f-row > *{flex:1 1 0;min-width:0;}
+.photo-box{display:flex;gap:10px;align-items:flex-start;}
+.photo-prev{
+  width:74px;height:96px;border-radius:9px;border:1px solid var(--line);background:#f4f6f9;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;
+  font-size:.6rem;color:var(--muted);text-align:center;line-height:1.3;padding:0;
+}
+.photo-prev img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-ctl{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.form-actions{display:flex;gap:8px;margin-top:14px;}
+.form-actions .btn{flex:1 1 0;}
+
+/* ---------- who / admin login ---------- */
+.pick{display:grid;gap:6px;}
+.pick-row{display:grid;grid-template-columns:34px 1fr 1fr 1fr;gap:5px;}
+.pick-head{font-size:.62rem;font-weight:800;color:var(--muted);text-align:center;}
+.pick-btn{
+  border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 3px;font-size:.76rem;
+  font-weight:700;color:var(--ink-2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.pick-btn.on{background:var(--navy);border-color:var(--navy);color:#fff;}
+.pin-row{display:flex;gap:6px;justify-content:center;margin:8px 0 4px;}
+.pin-dot{
+  width:44px;height:52px;border:1px solid var(--line);border-radius:11px;background:#fff;
+  font-size:1.3rem;font-weight:800;text-align:center;letter-spacing:2px;color:var(--ink);
+}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px;}
+.key{
+  border:1px solid var(--line);background:#fff;border-radius:11px;min-height:48px;font-size:1.05rem;
+  font-weight:800;color:var(--ink);
+}
+.key:active{background:#eef3f9;}
+.key.wide{grid-column:span 2;}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none;}
+.toolbar::-webkit-scrollbar{display:none;}
+.warnbox{
+  background:var(--amber-bg);border:1px solid var(--amber-line);color:#6b4c00;border-radius:12px;
+  padding:11px 12px;font-size:.74rem;line-height:1.6;margin-bottom:10px;
+}
+.warnbox b{color:#4d3700;}
+.sync{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:#c3ccd6;display:inline-block;}
+.dot.on{background:#2fa46f;box-shadow:0 0 0 3px rgba(47,164,111,.16);}
+.dot.off{background:#c9573f;}
+
 /* ---------- tab bar ---------- */
 .tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:50;
   background:rgba(255,255,255,.97);backdrop-filter:blur(8px);
   border-top:1px solid var(--line);
-  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
   box-shadow:0 -2px 12px rgba(18,35,54,.07);
 }
-.tabbar-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.tabbar-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
 .tab{
-  border:0;background:transparent;border-radius:11px;padding:6px 2px;display:flex;flex-direction:column;
-  align-items:center;gap:3px;color:var(--muted);font-size:.66rem;font-weight:700;min-height:52px;justify-content:center;
+  border:0;background:transparent;border-radius:11px;padding:6px 1px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;color:var(--muted);font-size:.62rem;font-weight:700;min-height:52px;justify-content:center;
+  position:relative;
 }
-.tab svg{width:21px;height:21px;fill:currentColor;opacity:.85;}
+.tab svg{width:20px;height:20px;fill:currentColor;opacity:.85;}
 .tab.on{color:var(--navy);background:#eaf0f7;}
 .tab.on svg{opacity:1;}
+.tab .tb-badge{
+  position:absolute;top:2px;right:calc(50% - 22px);min-width:17px;height:17px;border-radius:999px;
+  background:#cf3a2b;color:#fff;font-size:.6rem;font-weight:800;line-height:17px;padding:0 4px;
+}
 
 /* ---------- sheet ---------- */
 .backdrop{position:fixed;inset:0;background:rgba(9,20,33,.5);z-index:60;opacity:0;transition:opacity .18s;}
 .backdrop.on{opacity:1;}
 .sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--card);
-  border-radius:18px 18px 0 0;max-height:84vh;display:flex;flex-direction:column;
+  border-radius:18px 18px 0 0;max-height:90vh;display:flex;flex-direction:column;
   transform:translateY(100%);transition:transform .22s ease;
   padding-bottom:env(safe-area-inset-bottom);
   box-shadow:0 -6px 24px rgba(12,31,51,.22);
@@ -288,7 +402,7 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .sheet-body{padding:12px 14px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
 .notice{display:flex;gap:10px;padding:12px 0;border-bottom:1px dashed var(--line);}
-.notice:last-child{border-bottom :0;}
+.notice:last-child{border-bottom:0;}
 .notice-order{
   flex:0 0 auto;font-size:.66rem;font-weight:800;color:var(--navy);background:#eaf0f7;
   border-radius:8px;padding:4px 7px;height:fit-content;white-space:nowrap;
@@ -297,7 +411,7 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .notice-title{font-size:.95rem;font-weight:800;line-height:1.35;word-break:keep-all;}
 .notice-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;}
 .notice-date{font-size:.72rem;color:var(--ink-2);}
-.notice-memo{font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.5;}
+.notice-memo{font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.5;white-space:pre-wrap;}
 .thumb{
   flex:0 0 auto;width:64px;height:86px;border-radius:8px;overflow:hidden;border:1px solid var(--line);
   background:#f4f6f9;padding:0;display:flex;align-items:center;justify-content:center;
@@ -313,7 +427,7 @@ html.fs-lg .slot-title{font-size:.62rem;}
 
 /* toast */
 .toast{
-  position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,16px);
+  position:fixed;left:50%;bottom:calc(94px + env(safe-area-inset-bottom));transform:translate(-50%,16px);
   background:rgba(18,32,48,.94);color:#fff;font-size:.8rem;font-weight:600;padding:10px 16px;border-radius:999px;
   z-index:90;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88vw;text-align:center;
 }
@@ -324,24 +438,27 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .copyfallback textarea{width:100%;height:220px;font-size:.75rem;line-height:1.5;border:1px solid var(--line);border-radius:10px;padding:8px;font-family:inherit;resize:vertical;}
 .copyfallback .cf-h{font-size:.85rem;font-weight:800;margin-bottom:8px;}
 .copyfallback .cf-n{font-size:.7rem;color:var(--muted);margin-top:8px;line-height:1.5;}
+
+.loadingbox{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 16px;color:var(--muted);font-size:.82rem;}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid #dde4ec;border-top-color:var(--navy);animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="topbar-in">
-    <div class="logo" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M4 3h10a2 2 0 0 1 2 2v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v2h6V6H6zm0 4v2h6v-2H6zm0 4v2h6v-2H6zm11-8h3v14a1 1 0 0 1-1 1h-2V6z"/></svg>
-    </div>
+    <div class="logo" aria-hidden="true">💓</div>
     <div class="rb">
-      <div class="rb-title">게시물 기한관리</div>
-      <div class="rb-sub" id="rbSub">제일풍경채 그랑퍼스트 1단지</div>
+      <div class="rb-title">💓💓게시판 관리💓💓</div>
+      <div class="rb-sub">풍경채 그랑퍼스트</div>
     </div>
+    <button class="who" id="whoBtn" data-act="who" aria-label="내 역할 선택">조회 중</button>
     <button class="fsbtn" data-act="font" aria-label="글자 크기 바꾸기">가<sup>+</sup></button>
   </div>
 </header>
 
-<main id="view"><div class="empty-box">불러오는 중…</div></main>
+<main id="view"><div class="loadingbox"><span class="spin"></span>실시간 게시판 데이터에 연결하는 중…</div></main>
 
 <nav class="tabbar" aria-label="주요 화면">
   <div class="tabbar-in">
@@ -349,9 +466,14 @@ html.fs-lg .slot-title{font-size:.62rem;}
       <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z"/></svg>
       <span>동별 현황</span>
     </button>
-    <button class="tab" data-act="tab" data-tab="remove">
-      <svg viewBox="0 0 24 24"><path d="M9 2h6a1 1 0 0 1 1 1v1h3a1 1 0 0 1 0 2h-1v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6H5a1 1 0 1 1 0-2h3V3a1 1 0 0 1 1-1zm1 6v10h1.5V8H10zm3.5 0v10H15V8h-1.5z"/></svg>
-      <span>탈착 목록</span>
+    <button class="tab" data-act="tab" data-tab="tasks" id="tabTasks">
+      <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+      <span>부착·탈착</span>
+      <span class="tb-badge" id="taskBadge" hidden>0</span>
+    </button>
+    <button class="tab" data-act="tab" data-tab="admin">
+      <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4.4 0 8 2.2 8 5v3H4v-3c0-2.8 3.6-5 8-5z"/></svg>
+      <span>등록·관리</span>
     </button>
     <button class="tab" data-act="tab" data-tab="archive">
       <svg viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 6h16v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9zm5 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H9z"/></svg>
@@ -363,884 +485,9 @@ html.fs-lg .slot-title{font-size:.62rem;}
 <div id="overlayRoot"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="application/json" id="data-inline">{"meta":{"complex":"제일풍경채 그랑퍼스트 1단지","title":"게시물 기한관리","version":"0.1.0","updatedAt":"2026-11-15","isTestBuild":true,"dataNote":"테스트 데이터입니다. 실제 운영 전 카일 님이 초기 데이터를 등록하면 이 파일의 notices 를 교체합니다.","facilityNote":"공동현관 홀 120개 게시판(40개 코어 × 3개 층) · 엘리베이터 44대"},"zones":[{"id":"front","name":"정문","short":"정문","buildings":[101,102,103,104,105,106,107,108],"note":"A조 1명 · B조 1명이 근무일에 부착·탈착"},{"id":"backA","name":"후문A","short":"후문A","buildings":[109,110,116,117,118,119,120,121,122],"note":"담당 3명이 부착·탈착"},{"id":"backB","name":"후문B","short":"후문B","buildings":[111,112,113,114,115,123,124],"note":"담당 3명이 부착·탈착"}],"buildings":[{"no":101,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":102,"zone":"front","type":"3line","typeLabel":"3라인","cores":[{"key":"123","name":"1·2·3라인","elevators":[{"key":"1","name":"1호기","side":"우측"},{"key":"2","name":"2호기","side":"좌측"}]}]},{"no":103,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":104,"zone":"front","type":"3line","typeLabel":"3라인","cores":[{"key":"123","name":"1·2·3라인","elevators":[{"key":"1","name":"1호기","side":"우측"},{"key":"2","name":"2호기","side":"좌측"}]}]},{"no":105,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":106,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":107,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":108,"zone":"front","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":109,"zone":"backA","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":110,"zone":"backA","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":111,"zone":"backB","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":112,"zone":"backB","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":113,"zone":"backB","type":"3line","typeLabel":"3라인","cores":[{"key":"123","name":"1·2·3라인","elevators":[{"key":"1","name":"1호기","side":"우측"},{"key":"2","name":"2호기","side":"좌측"}]}]},{"no":114,"zone":"backB","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":115,"zone":"backB","type":"3line","typeLabel":"3라인","cores":[{"key":"123","name":"1·2·3라인","elevators":[{"key":"1","name":"1호기","side":"우측"},{"key":"2","name":"2호기","side":"좌측"}]}]},{"no":116,"zone":"backA","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":117,"zone":"backA","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":118,"zone":"backA","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":119,"zone":"backA","type":"2line","typeLabel":"2라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":120,"zone":"backA","type":"2line","typeLabel":"2라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":121,"zone":"backA","type":"2line","typeLabel":"2라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":122,"zone":"backA","type":"2line","typeLabel":"2라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":123,"zone":"backB","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]},{"no":124,"zone":"backB","type":"4line","typeLabel":"4라인","cores":[{"key":"12","name":"1·2라인","elevators":[{"key":"1","name":"1호기"}]},{"key":"35","name":"3·5라인","elevators":[{"key":"1","name":"1호기"}]}]}],"boards":{"lobby":{"name":"공동현관 홀","floors":["1층","지하1층","지하2층"],"slots":["01","02","03","04","05","06","07","08","09","10","11","12"],"rows":[["01","02","03","04","05","06"],["07","08","09","10","11","12"]]},"elevator":{"name":"엘리베이터","slots":["01","02","03","04","05","06"],"layout":{"right":{"label":"우측","frames":["01","02","03"],"above":"04"},"front":{"label":"정면","sub":"거울 아래","slots":["05"]},"left":{"label":"좌측","slots":["06"]}}}},"notices":[{"id":"N01","title":"승강기 정기 점검","category":"안내문","postedAt":"2026-10-07","deadline":"2026-10-16","permanent":false,"isTest":true,"photo":"images/n01_elevator_inspection.jpg","photoNote":"PDF 16쪽 (현장 메모: 8번)","memo":"승강기 점검 안내 — 공동현관 홀 08번, 3개 층 모두","targets":[{"buildings":"all","board":"lobby","floors":["1층","지하1층","지하2층"],"slot":"08","order":1}],"removedAt":null},{"id":"N02","title":"전기차 충전기 요금 변경","category":"안내문","postedAt":"2026-08-26","deadline":"2026-10-31","permanent":false,"isTest":true,"photo":"images/n02_ev_charger.jpg","photoNote":"PDF 17쪽 위 (현장 메모: 2번)","memo":"전기차 충전요금 변경 — 공동현관 홀 02번, 3개 층 모두","targets":[{"buildings":"all","board":"lobby","floors":["1층","지하1층","지하2층"],"slot":"02","order":1}],"removedAt":null},{"id":"N03","title":"계약서 공개","category":"공고문","postedAt":"2026-09-07","deadline":"2026-10-07","permanent":false,"isTest":true,"photo":"images/n03_contract_disclosure.jpg","photoNote":"PDF 17쪽 아래 (현장 메모: 1층만 · 12번)","memo":"1층만 게시 — 공동현관 홀 12번","targets":[{"buildings":"all","board":"lobby","floors":["1층"],"slot":"12","order":1}],"removedAt":null},{"id":"N04","title":"주차장 운영규정 제정(안) 입주민 의견청취","category":"공고문","postedAt":"2026-08-27","deadline":"2026-09-30","permanent":false,"isTest":true,"photo":"images/n04_parking_rules.jpg","photoNote":"PDF 18쪽 위 (현장 메모: 4번)","memo":"PDF 8쪽 '04번 두 번째' 지시 반영 — 04번 2번째","targets":[{"buildings":"all","board":"lobby","floors":["1층","지하1층","지하2층"],"slot":"04","order":2}],"removedAt":null},{"id":"N05","title":"세대 내 소방시설 자체 점검 안내","category":"안내문","postedAt":"2026-08-27","deadline":"2026-11-30","permanent":false,"isTest":true,"photo":"images/n05_fire_safety.jpg","photoNote":"PDF 18쪽 아래 (현장 메모: 03번)","memo":"엘리베이터 내 게시판 우측 03번","targets":[{"buildings":"all","board":"elevator","elevators":"all","slot":"03","order":1}],"removedAt":null},{"id":"N06","title":"슬기로운 공동주택 생활","category":"홍보물","postedAt":"2026-09-01","deadline":null,"permanent":true,"isTest":true,"photo":"images/n06_smart_living.jpg","photoNote":"PDF 19쪽 (현장 메모: 7번)","memo":"상시 게시물 — 공동현관 홀 07번 (별도 지시 전까지 제거하지 않음)","targets":[{"buildings":"all","board":"lobby","floors":["1층","지하1층","지하2층"],"slot":"07","order":1}],"removedAt":null},{"id":"A01","title":"단지 내 수목 전지 작업 안내","category":"안내문","postedAt":"2026-10-20","deadline":"2026-11-05","permanent":false,"isTest":true,"photo":null,"photoNote":null,"memo":"보관함 예시 (탈착 완료)","targets":[{"buildings":"all","board":"lobby","floors":["1층","지하1층","지하2층"],"slot":"05","order":1}],"removedAt":"2026-11-05"},{"id":"A02","title":"관리비 부과 내역 열람 안내","category":"공고문","postedAt":"2026-10-15","deadline":"2026-11-10","permanent":false,"isTest":true,"photo":null,"photoNote":null,"memo":"보관함 예시 (탈착 완료)","targets":[{"buildings":"all","board":"elevator","elevators":"all","slot":"05","order":1}],"removedAt":"2026-11-12"},{"id":"A03","title":"소방시설 작동기능 점검 결과 안내","category":"안내문","postedAt":"2026-10-28","deadline":"2026-11-12","permanent":false,"isTest":true,"photo":null,"photoNote":null,"memo":"보관함 예시 (탈착 완료)","targets":[{"buildings":"all","board":"lobby","floors":["1층"],"slot":"09","order":1}],"removedAt":"2026-11-12"}]}</script>
-<script>
-"use strict";
-/* =========================================================
-   제일풍경채 그랑퍼스트 1단지 — 게시물 기한관리 (조회 전용)
-   ========================================================= */
-var App = (function () {
-  var DATA = null;
-  var INDEX = {};     // "동|코어|위치|번호" → [{notice, order}]
-  var PLACE = {};     // 게시물ID → [placement]
-  var BSTAT = {};     // 동 → {ids:Set, urgent:Set, sheets:n}
-  var TODAY = "";
-  var ZONE = "all";
-  var FONT_LG = false;
-  var VIEW = { name: "home", no: null, core: null, loc: null, slot: null };
-
-  var STATUS_RANK = { overdue: 0, today: 1, tomorrow: 2, soon: 3, permanent: 4, active: 5 };
-  var STATUS_LABEL = {
-    overdue: "기한 경과", today: "오늘 탈착", tomorrow: "내일 탈착",
-    soon: "기한 임박", active: "게시 중", permanent: "상시", removed: "탈착 완료"
-  };
-
-  /* ---------- basics ---------- */
-  function pad2(v) { return String(v).padStart(2, "0"); }
-  function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
-    });
-  }
-  function ymd(d) {
-    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
-  }
-  function todayStr() { return ymd(new Date()); }
-  function toUTC(s) {
-    var y = +s.slice(0, 4), m = +s.slice(5, 7), d = +s.slice(8, 10);
-    return Date.UTC(y, m - 1, d);
-  }
-  function diffDays(from, to) {
-    if (!from || !to) return null;
-    return Math.round((toUTC(to) - toUTC(from)) / 86400000);
-  }
-  function dotDate(s) { return s ? s.replace(/-/g, ".") : ""; }
-  function korDate(s) {
-    if (!s) return "";
-    return +s.slice(0, 4) + "년 " + (+s.slice(5, 7)) + "월 " + (+s.slice(8, 10)) + "일";
-  }
-  var WEEK = ["일", "월", "화", "수", "목", "금", "토"];
-  function weekday(s) {
-    var d = new Date(toUTC(s));
-    return WEEK[d.getUTCDay()];
-  }
-  function num(n) { return (n || 0).toLocaleString("ko-KR"); }
-
-  /* ---------- status ---------- */
-  function statusOf(n) {
-    if (n.removedAt) return { key: "removed", label: STATUS_LABEL.removed, days: null };
-    if (n.permanent || !n.deadline) return { key: "permanent", label: STATUS_LABEL.permanent, days: null };
-    var d = diffDays(TODAY, n.deadline);
-    if (d < 0) return { key: "overdue", label: STATUS_LABEL.overdue, days: -d };
-    if (d === 0) return { key: "today", label: STATUS_LABEL.today, days: 0 };
-    if (d === 1) return { key: "tomorrow", label: STATUS_LABEL.tomorrow, days: 1 };
-    if (d <= 7) return { key: "soon", label: STATUS_LABEL.soon, days: d };
-    return { key: "active", label: STATUS_LABEL.active, days: d };
-  }
-  function statusText(st, n) {
-    if (st.key === "permanent") return "상시 (별도 지시 전까지 유지)";
-    if (st.key === "overdue") return "기한 " + dotDate(n.deadline) + " · " + st.days + "일 경과";
-    if (st.key === "today") return "기한 " + dotDate(n.deadline) + " · 오늘 탈착";
-    if (st.key === "tomorrow") return "기한 " + dotDate(n.deadline) + " · 내일 탈착";
-    return "기한 " + dotDate(n.deadline) + " · D-" + st.days;
-  }
-  function worstStatus(list) {
-    var best = null;
-    list.forEach(function (it) {
-      var k = statusOf(it.notice).key;
-      if (k === "removed") return;
-      if (best === null || STATUS_RANK[k] < STATUS_RANK[best]) best = k;
-    });
-    return best || "empty";
-  }
-
-  /* ---------- index ---------- */
-  function floorKey(f) { return f === "1층" ? "f1" : f === "지하1층" ? "fb1" : "fb2"; }
-  function locLabel(locKey) {
-    return ({ f1: "1층", fb1: "지하1층", fb2: "지하2층" })[locKey] || locKey;
-  }
-  function boardKey(no, core, loc, slot) { return no + "|" + core + "|" + loc + "|" + pad2(slot); }
-
-  function buildIndex() {
-    INDEX = Object.create(null);
-    PLACE = Object.create(null);
-    var byNo = {};
-    DATA.buildings.forEach(function (b) { byNo[b.no] = b; });
-
-    DATA.notices.forEach(function (n) {
-      PLACE[n.id] = PLACE[n.id] || [];
-      if (n.removedAt) return;
-      (n.targets || []).forEach(function (t) {
-        var nos = (t.buildings === "all") ? DATA.buildings.map(function (b) { return b.no; }) : t.buildings;
-        nos.forEach(function (no) {
-          var b = byNo[Number(no)];
-          if (!b) return;
-          b.cores.forEach(function (core) {
-            var locs = [];
-            if (t.board === "lobby") {
-              var floors = (t.floors && t.floors.length) ? t.floors : DATA.boards.lobby.floors;
-              floors.forEach(function (f) { locs.push({ key: floorKey(f), label: f, kind: "lobby", elevator: null }); });
-            } else {
-              core.elevators.forEach(function (e) {
-                if (t.elevators && t.elevators !== "all" && (t.elevators || []).indexOf(e.key) < 0) return;
-                locs.push({ key: "e" + e.key, label: "엘리베이터 " + e.name, kind: "elevator", elevator: e });
-              });
-            }
-            locs.forEach(function (loc) {
-              var slot = pad2(t.slot);
-              var key = boardKey(b.no, core.key, loc.key, slot);
-              (INDEX[key] = INDEX[key] || []).push({ notice: n, order: t.order || 1 });
-              PLACE[n.id].push({
-                building: b.no, coreKey: core.key, coreName: core.name,
-                locKey: loc.key, locLabel: loc.label, kind: loc.kind, elevator: loc.elevator,
-                slot: slot, order: t.order || 1, key: key
-              });
-            });
-          });
-        });
-      });
-    });
-
-    Object.keys(INDEX).forEach(function (k) {
-      INDEX[k].sort(function (a, b) { return a.order - b.order; });
-    });
-
-    BSTAT = {};
-    DATA.buildings.forEach(function (b) { BSTAT[b.no] = { ids: {}, urgent: {}, sheets: 0 }; });
-    DATA.notices.forEach(function (n) {
-      if (n.removedAt) return;
-      var st = statusOf(n).key;
-      var urgent = (st === "overdue" || st === "today" || st === "tomorrow");
-      (PLACE[n.id] || []).forEach(function (p) {
-        var s = BSTAT[p.building];
-        if (!s) return;
-        s.ids[n.id] = true;
-        s.sheets++;
-        if (urgent) s.urgent[n.id] = true;
-      });
-    });
-  }
-
-  function buildingByNo(no) {
-    for (var i = 0; i < DATA.buildings.length; i++) if (DATA.buildings[i].no === Number(no)) return DATA.buildings[i];
-    return null;
-  }
-  function zoneById(id) {
-    for (var i = 0; i < DATA.zones.length; i++) if (DATA.zones[i].id === id) return DATA.zones[i];
-    return null;
-  }
-  function slotItems(no, coreKey, locKey, slot) {
-    return INDEX[boardKey(no, coreKey, locKey, slot)] || [];
-  }
-  function placementsOf(id) { return PLACE[id] || []; }
-
-  /* ---------- summary ---------- */
-  function summary() {
-    var c = { overdue: 0, today: 0, tomorrow: 0, soon: 0, active: 0, permanent: 0, removed: 0 };
-    var sh = { overdue: 0, today: 0, tomorrow: 0, soon: 0, active: 0, permanent: 0, removed: 0 };
-    var total = 0, sheets = 0;
-    DATA.notices.forEach(function (n) {
-      var st = statusOf(n).key;
-      c[st] = (c[st] || 0) + 1;
-      var k = st === "removed" ? 0 : (PLACE[n.id] || []).length;
-      sh[st] = (sh[st] || 0) + k;
-      if (st !== "removed") { total++; sheets += k; }
-    });
-    c.removed = c.removed || 0;
-    return { counts: c, sheets: sh, active: total, sheetsTotal: sheets, action: c.overdue + c.today };
-  }
-
-  /* ---------- text helpers ---------- */
-  function floorsText(floors) {
-    return floors.map(function (f) { return f.replace("지하", "지하"); }).join("·");
-  }
-  function buildingListText(list) {
-    if (!list || !list.length) return "";
-    if (list.length <= 3) return list.map(function (n) { return n + "동"; }).join("·");
-    return list.slice(0, 3).map(function (n) { return n + "동"; }).join("·") + " 외 " + (list.length - 3) + "개동";
-  }
-  function slotPos(board, slot) {
-    slot = pad2(slot);
-    if (board === "elevator") {
-      if (slot === "05") return "정면(거울 아래)";
-      if (slot === "06") return "좌측";
-      if (slot === "04") return "우측 액자 위";
-      return "우측 액자";
-    }
-    return "";
-  }
-  function orderText(o) { return (!o || o === 1) ? "" : " (" + o + "번째)"; }
-
-  function targetText(t) {
-    var b = (t.buildings === "all")
-      ? "전체 " + DATA.buildings.length + "개동"
-      : buildingListText(t.buildings);
-    if (t.board === "lobby") {
-      var floors = (t.floors && t.floors.length) ? t.floors : DATA.boards.lobby.floors;
-      return b + " · 공동현관 " + floorsText(floors) + " " + pad2(t.slot) + "번" + orderText(t.order);
-    }
-    var e = (t.elevators && t.elevators !== "all") ? (t.elevators.length + "개 호기") : "엘리베이터 전체";
-    return b + " · " + e + " · " + slotPos("elevator", t.slot) + " " + pad2(t.slot) + "번" + orderText(t.order);
-  }
-  function placementSummary(n) {
-    var ps = placementsOf(n.id);
-    if (n.removedAt && !ps.length) {
-      // 탈착 완료 기록은 대상(targets)으로 요약
-      return (n.targets || []).map(targetText).join(" / ");
-    }
-    return (n.targets || []).map(targetText).join(" / ");
-  }
-
-  /* ---------- copy text ---------- */
-  function noticeLine(n, idx) {
-    var st = statusOf(n);
-    var when = st.key === "permanent"
-      ? "상시"
-      : "기한 " + dotDate(n.deadline) + (st.key === "overdue" ? " (" + st.days + "일 경과)" : "");
-    var ps = placementsOf(n.id);
-    var cnt = ps.length ? " · " + num(ps.length) + "장" : "";
-    return (idx ? (idx + ". ") : "- ") + n.title + " — " + when + cnt + "\n   " + placementSummary(n);
-  }
-  function copyText(kind) {
-    var s = summary();
-    var lines = [];
-    var d = TODAY;
-    lines.push("[" + DATA.meta.complex + "] 게시물 탈착 안내");
-    lines.push(korDate(d) + " (" + weekday(d) + ") 기준");
-    lines.push("아래 위치의 게시물을 확인 후 탈착해 주세요.");
-    lines.push("");
-
-    function section(title, list) {
-      lines.push("■ " + title + " " + list.length + "건");
-      if (!list.length) { lines.push("- 없음"); }
-      list.forEach(function (n, i) { lines.push(noticeLine(n, i + 1)); });
-      lines.push("");
-    }
-    var byStatus = { overdue: [], today: [], tomorrow: [], soon: [] };
-    DATA.notices.forEach(function (n) {
-      if (n.removedAt) return;
-      var k = statusOf(n).key;
-      if (byStatus[k]) byStatus[k].push(n);
-    });
-    byStatus.overdue.sort(sortByDeadline);
-    byStatus.today.sort(sortByDeadline);
-    byStatus.tomorrow.sort(sortByDeadline);
-    byStatus.soon.sort(sortByDeadline);
-
-    if (kind === "today") {
-      section("기한 경과(미탈착)", byStatus.overdue);
-      section("오늘 탈착", byStatus.today);
-      section("내일 탈착 예정", byStatus.tomorrow);
-    } else {
-      section("기한 경과(미탈착)", byStatus.overdue);
-      section("오늘 탈착", byStatus.today);
-      section("내일 탈착 예정", byStatus.tomorrow);
-      section("7일 이내 탈착 예정", byStatus.soon);
-      var rest = DATA.notices.filter(function (n) {
-        if (n.removedAt) return false;
-        var k = statusOf(n).key;
-        return k === "active" || k === "permanent";
-      });
-      rest.sort(function (a, b) {
-        if (statusOf(a).key === "permanent" && statusOf(b).key !== "permanent") return 1;
-        if (statusOf(b).key === "permanent" && statusOf(a).key !== "permanent") return -1;
-        return (a.deadline || "9999") < (b.deadline || "9999") ? -1 : 1;
-      });
-      lines.push("■ 게시 중 " + rest.length + "건");
-      if (!rest.length) lines.push("- 없음");
-      rest.forEach(function (n, i) { lines.push(noticeLine(n, i + 1)); });
-      lines.push("");
-    }
-    lines.push("※ 현재 게시 중 " + s.active + "건 · 게시판 " + num(s.sheetsTotal) + "장");
-    lines.push("※ 상시 게시물은 별도 지시 전까지 제거하지 않습니다.");
-    if (DATA.meta.isTestBuild) lines.push("※ 테스트 데이터입니다 (실제 게시물 아님).");
-    return lines.join("\n");
-  }
-  function sortByDeadline(a, b) {
-    return (a.deadline || "9999-12-31") < (b.deadline || "9999-12-31") ? -1 : 1;
-  }
-
-  /* ================= rendering ================= */
-  function statusPill(n) {
-    var st = statusOf(n);
-    var extra = "";
-    if (st.key === "overdue") extra = " " + st.days + "일";
-    else if (st.key === "soon") extra = " D-" + st.days;
-    return '<span class="pill ' + st.key + '">' + esc(st.label + extra) + "</span>";
-  }
-  function testTag(n) { return n.isTest ? '<span class="pill test">테스트</span>' : ""; }
-
-  function renderStats(s) {
-    return '' +
-      '<div class="stats">' +
-      '<div class="stat danger"><span class="stat-num">' + s.counts.overdue + '</span><span class="stat-label">기한 경과</span></div>' +
-      '<div class="stat warn"><span class="stat-num">' + s.counts.today + '</span><span class="stat-label">오늘 탈착</span></div>' +
-      '<div class="stat info"><span class="stat-num">' + s.counts.tomorrow + '</span><span class="stat-label">내일 탈착</span></div>' +
-      '<div class="stat ok"><span class="stat-num">' + s.active + '</span><span class="stat-label">게시 중</span></div>' +
-      '</div>';
-  }
-
-  function renderHero(s) {
-    var cls, title, sub;
-    if (s.counts.overdue > 0) {
-      cls = "danger";
-      title = "오늘 탈착 대상 " + (s.counts.overdue + s.counts.today) + "건";
-      sub = "기한이 지난 게시물이 " + s.counts.overdue + "건 그대로 붙어 있습니다." +
-        (s.counts.today ? " 오늘 기한 도래 " + s.counts.today + "건." : "") +
-        " 근무 중 바로 탈착해 주세요.";
-    } else if (s.counts.today > 0) {
-      cls = "warn";
-      title = "오늘 탈착 대상 " + s.counts.today + "건";
-      sub = "오늘 기한이 끝나는 게시물입니다. 퇴근 전 탈착 확인해 주세요.";
-    } else {
-      cls = "ok";
-      title = "오늘 탈착 대상 없음";
-      sub = "기한이 지났거나 오늘 끝나는 게시물이 없습니다.";
-    }
-    var tomorrow = s.counts.tomorrow > 0 ? " 내일 탈착 예정 " + s.counts.tomorrow + "건." : "";
-    return '' +
-      '<section class="hero ' + cls + '">' +
-      '<div class="hero-kicker">' + korDate(TODAY) + " (" + weekday(TODAY) + ") 기준 · 총 " + num(s.sheetsTotal) + "장 게시 중</div>" +
-      '<div class="hero-title">' + esc(title) + '</div>' +
-      '<div class="hero-sub">' + esc(sub + tomorrow) + '</div>' +
-      '<div class="hero-actions">' +
-      '<button class="btn primary" data-act="copy" data-kind="today">' +
-      '<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>' +
-      '오늘 탈착 목록 복사</button>' +
-      '<button class="btn ghost" data-act="tab" data-tab="remove">목록 보기</button>' +
-      '</div></section>';
-  }
-
-  function renderZones() {
-    var counts = {};
-    DATA.buildings.forEach(function (b) { counts[b.zone] = (counts[b.zone] || 0) + 1; });
-    var h = '<div class="chips chip-zone" role="tablist" aria-label="담당 구역">';
-    h += '<button class="chip ' + (ZONE === "all" ? "on" : "") + '" data-act="zone" data-zone="all">전체<span class="n">' + DATA.buildings.length + "</span></button>";
-    DATA.zones.forEach(function (z) {
-      h += '<button class="chip ' + (ZONE === z.id ? "on" : "") + '" data-act="zone" data-zone="' + z.id + '">' +
-        z.name + '<span class="n">' + (counts[z.id] || 0) + "</span></button>";
-    });
-    return h + "</div>";
-  }
-
-  function renderBuildingGrid() {
-    var list = DATA.buildings.filter(function (b) { return ZONE === "all" || b.zone === ZONE; });
-    var h = '<div class="bgrid">';
-    list.forEach(function (b) {
-      var st = BSTAT[b.no] || { ids: {}, urgent: {}, sheets: 0 };
-      var ids = Object.keys(st.ids).length;
-      var urgent = Object.keys(st.urgent).length;
-      h += '<button class="btile' + (urgent ? " has-urgent" : "") + '" data-act="building" data-no="' + b.no + '">' +
-        (urgent ? '<span class="btile-dot">' + urgent + "</span>" : "") +
-        '<span class="btile-no">' + b.no + '<small>동</small></span>' +
-        '<span class="btile-meta">게시 ' + ids + " · " + num(st.sheets) + "장</span>" +
-        "</button>";
-    });
-    h += "</div>";
-    h += '<p class="note">동을 누르면 라인·층·엘리베이터별 게시판 그림이 열립니다. 빨간 숫자는 오늘 탈착할 게시물 수입니다.</p>';
-    return h;
-  }
-
-  function renderFacility() {
-    var rows = DATA.zones.map(function (z) {
-      var bs = DATA.buildings.filter(function (b) { return b.zone === z.id; });
-      var cores = bs.reduce(function (a, b) { return a + b.cores.length; }, 0);
-      var els = bs.reduce(function (a, b) { return a + b.cores.reduce(function (c, cc) { return c + cc.elevators.length; }, 0); }, 0);
-      return "<tr><th>" + z.name + "</th><td>" + bs.length + "개동 · " + cores + "코어 · 공동현관 " + (cores * 3) + "게시판 · 엘리베이터 " + els + "대</td></tr>";
-    }).join("");
-    return '<details class="facility"><summary>단지 시설 현황 보기</summary><div class="fbody">' +
-      '<table>' + rows + "</table>" +
-      '<p style="margin-top:8px">공동현관 홀은 01~12번(2줄 × 6칸), 엘리베이터는 01~06번입니다. 한 번호에 게시물이 여러 장 겹치면 순번(1번째·2번째)으로 구분합니다.</p>' +
-      "</div></details>";
-  }
-
-  function renderHome() {
-    var s = summary();
-    var h = "";
-    h += renderHero(s);
-    h += renderStats(s);
-    h += '<div class="sec-title"><h2>동별 게시판</h2><span class="hint">' + (ZONE === "all" ? "전체 구역" : zoneById(ZONE).name) + "</span></div>";
-    h += renderZones();
-    h += renderBuildingGrid();
-    h += renderFacility();
-    h += '<p class="note">데이터 기준 ' + DATA.meta.updatedAt + " · 조회 전용 화면입니다(경비원 8명 공용)." +
-      (DATA.meta.isTestBuild ? '<br><b>테스트 데이터</b>입니다. 실제 게시물이 아니며, 초기 데이터를 등록하면 모두 교체됩니다.' : "") + "</p>";
-    return h;
-  }
-
-  /* ---------- building view ---------- */
-  function locTokenList(core) {
-    var list = DATA.boards.lobby.floors.map(function (f) {
-      return { key: floorKey(f), label: f, kind: "lobby" };
-    });
-    list.push({ key: core.elevators[0] ? "e" + core.elevators[0].key : "e1", label: "엘리베이터", kind: "elevator" });
-    return list;
-  }
-
-  function boardOf(no, coreKey, locKey) { return { no: no, coreKey: coreKey, locKey: locKey }; }
-
-  function renderSlotCell(no, coreKey, locKey, slot) {
-    var items = slotItems(no, coreKey, locKey, slot);
-    var isElev = String(locKey).charAt(0) === "e";
-    var cls = "slot" + (isElev ? " mini" : "");
-    if (isElev && slot === "04") cls += " above";
-    if (isElev && (slot === "05" || slot === "06")) cls += " tall";
-
-    if (!items.length) {
-      return '<div class="' + cls + ' empty" aria-label="' + slot + '번 빈 게시판">' +
-        '<span class="slot-no">' + slot + '</span>' +
-        '<span class="slot-empty">' + (isElev && slot === "04" ? "여유 공간" : "빈 게시판") + "</span></div>";
-    }
-    var st = worstStatus(items);
-    var first = items[0].notice;
-    var st2 = statusOf(first);
-    var meta = st2.key === "permanent" ? "상시" : (st2.key === "overdue" ? st2.days + "일 경과" : "기한 " + dotDate(first.deadline).slice(5));
-    if (items.length > 1) meta = items.length + "장 겹침";
-    return '<button class="' + cls + ' st-' + st + '" data-act="slot" data-slot="' + slot + '">' +
-      (items.length > 1 ? '<span class="slot-badge">' + items.length + "</span>" : "") +
-      '<span class="slot-no">' + slot + "</span>" +
-      '<span class="slot-title">' + esc(first.title) + "</span>" +
-      '<span class="slot-meta">' + esc(meta) + "</span></button>";
-  }
-
-  function renderLobbyBoard(no, coreKey, locKey) {
-    var rows = DATA.boards.lobby.rows;
-    var h = '<div class="board">';
-    rows.forEach(function (row) {
-      row.forEach(function (slot) { h += renderSlotCell(no, coreKey, locKey, slot); });
-    });
-    return h + "</div>";
-  }
-
-  function renderElevBoard(no, coreKey, locKey) {
-    var L = DATA.boards.elevator.layout;
-    var right = L.right.frames.map(function (s) { return renderSlotCell(no, coreKey, locKey, s); }).join("");
-    var h = '<div class="elev">' +
-      '<div class="elev-side">' +
-      '<div class="elev-cap">우측<small>액자 3칸 · 위 공간</small></div>' +
-      renderSlotCell(no, coreKey, locKey, L.right.above) +
-      '<div class="elev-frames">' + right + "</div>" +
-      "</div>" +
-      '<div class="elev-side">' +
-      '<div class="elev-cap">정면<small>거울 아래</small></div>' +
-      renderSlotCell(no, coreKey, locKey, "05") +
-      "</div>" +
-      '<div class="elev-side">' +
-      '<div class="elev-cap">좌측<small>출입구 옆</small></div>' +
-      renderSlotCell(no, coreKey, locKey, "06") +
-      "</div>" +
-      "</div>";
-    return h;
-  }
-
-  function renderLegend() {
-    return '<div class="legend">' +
-      '<span><i class="sw empty"></i>빈 게시판</span>' +
-      '<span><i class="sw active"></i>게시 중</span>' +
-      '<span><i class="sw soon"></i>7일 이내</span>' +
-      '<span><i class="sw tomorrow"></i>내일 탈착</span>' +
-      '<span><i class="sw today"></i>오늘 탈착</span>' +
-      '<span><i class="sw overdue"></i>기한 경과</span>' +
-      '<span><i class="sw permanent"></i>상시</span>' +
-      "</div>";
-  }
-
-  function boardStats(no, coreKey, locKey) {
-    var slots = (String(locKey).charAt(0) === "e") ? DATA.boards.elevator.slots : DATA.boards.lobby.slots;
-    var total = 0, urgent = 0;
-    slots.forEach(function (s) {
-      var items = slotItems(no, coreKey, locKey, s);
-      total += items.length;
-      if (items.some(function (it) {
-        var k = statusOf(it.notice).key;
-        return k === "overdue" || k === "today" || k === "tomorrow";
-      })) urgent++;
-    });
-    return { total: total, urgent: urgent };
-  }
-
-  function renderBuilding() {
-    var b = buildingByNo(VIEW.no);
-    if (!b) { location.hash = "#/"; return ""; }
-    var core = b.cores.filter(function (c) { return c.key === VIEW.core; })[0] || b.cores[0];
-    VIEW.core = core.key;
-    var locKey = VIEW.loc || "f1";
-    var isElev = String(locKey).charAt(0) === "e";
-    var elevKey = isElev ? String(locKey).slice(1) : null;
-    var elev = isElev ? core.elevators.filter(function (e) { return e.key === elevKey; })[0] || core.elevators[0] : null;
-    if (isElev && elev && locKey !== "e" + elev.key) { locKey = "e" + elev.key; }
-    VIEW.loc = locKey;
-
-    var zone = zoneById(b.zone);
-    var h = '<div class="crumb">' +
-      '<button class="back" data-act="back" aria-label="뒤로"><svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>' +
-      '<div><div class="crumb-t">' + b.no + "동</div>" +
-      '<div class="crumb-s">' + esc(zone ? zone.name : "") + " · " + b.typeLabel + "</div></div></div>";
-
-    if (b.cores.length > 1) {
-      h += '<div class="seg"><div class="seg-label">라인(코어) 선택</div><div class="chips">';
-      b.cores.forEach(function (c) {
-        h += '<button class="chip ' + (c.key === core.key ? "on" : "") + '" data-act="core" data-core="' + c.key + '">' + esc(c.name) + "</button>";
-      });
-      h += "</div></div>";
-    }
-
-    h += '<div class="seg"><div class="seg-label">게시판 위치</div><div class="chips">';
-    DATA.boards.lobby.floors.forEach(function (f) {
-      var k = floorKey(f);
-      h += '<button class="chip ' + (k === locKey ? "on" : "") + '" data-act="loc" data-loc="' + k + '">' + f + "</button>";
-    });
-    h += '<button class="chip ' + (isElev ? "on" : "") + '" data-act="loc" data-loc="e1">엘리베이터</button>';
-    h += "</div></div>";
-
-    if (isElev && core.elevators.length > 1) {
-      h += '<div class="seg"><div class="seg-label">호기 선택</div><div class="chips">';
-      core.elevators.forEach(function (e) {
-        h += '<button class="chip ' + ("e" + e.key === locKey ? "on" : "") + '" data-act="loc" data-loc="e' + e.key + '">' +
-          esc(e.name + (e.side ? " (" + e.side + ")" : "")) + "</button>";
-      });
-      h += "</div></div>";
-    }
-
-    var bs = boardStats(b.no, core.key, locKey);
-    var title = isElev
-      ? "엘리베이터 " + (elev ? elev.name : "") + " 내 게시판"
-      : "공동현관 홀 · " + locLabel(locKey);
-    h += '<div class="card board-card">' +
-      '<div class="board-head"><div>' +
-      '<div class="board-title">' + esc(title) + "</div>" +
-      '<div class="board-sub">' + b.no + "동 " + esc(core.name) + "</div></div>" +
-      '<div class="board-sum">게시 ' + bs.total + "장<br>" + (bs.urgent ? "<b>탈착 " + bs.urgent + "칸</b>" : "탈착 0칸") + "</div>" +
-      "</div>";
-    h += isElev ? renderElevBoard(b.no, core.key, locKey) : renderLobbyBoard(b.no, core.key, locKey);
-    h += renderLegend();
-    h += "</div>";
-
-    // list of notices on this board
-    var slots = (isElev) ? DATA.boards.elevator.slots : DATA.boards.lobby.slots;
-    var rows = "";
-    slots.forEach(function (s) {
-      slotItems(b.no, core.key, locKey, s).forEach(function (it, i) {
-        var n = it.notice;
-        rows += '<button class="row" data-act="slot" data-slot="' + s + '">' +
-          '<span class="row-slot">' + s + "번" + (it.order > 1 ? " " + it.order + "번째" : "") + "</span>" +
-          '<span class="row-main"><span class="row-title">' + esc(n.title) + "</span>" +
-          '<span class="row-sub">' + esc(statusText(statusOf(n), n)) + "</span></span>" +
-          statusPill(n) + "</button>";
-      });
-    });
-    h += '<div class="blist-h">이 게시판의 게시물</div>';
-    h += rows ? '<div class="list">' + rows + "</div>" : '<div class="empty-box">이 게시판에는 게시물이 없습니다.</div>';
-    return h;
-  }
-
-  /* ---------- remove list ---------- */
-  function noticeRow(n) {
-    var st = statusOf(n);
-    var ps = placementsOf(n.id);
-    return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
-      '<span class="row-main">' +
-      "<span>" + statusPill(n) + " " + testTag(n) + "</span>" +
-      '<span class="row-title" style="margin-top:4px">' + esc(n.title) + "</span>" +
-      '<span class="row-sub">' + esc(statusText(st, n)) + "</span>" +
-      '<span class="row-sub">' + esc(placementSummary(n)) + (ps.length ? " · " + num(ps.length) + "장" : "") + "</span>" +
-      "</span>" +
-      '<span class="row-arrow">›</span></button>';
-  }
-
-  function section(title, list) {
-    if (!list.length) return "";
-    var h = '<div class="sec-h"><h3>' + title + '</h3><span class="count">' + list.length + "건</span></div>";
-    return h + '<div class="list">' + list.map(noticeRow).join("") + "</div>";
-  }
-
-  function renderRemove() {
-    var s = summary();
-    var by = { overdue: [], today: [], tomorrow: [], soon: [], active: [], permanent: [] };
-    DATA.notices.forEach(function (n) {
-      if (n.removedAt) return;
-      var k = statusOf(n).key;
-      if (by[k]) by[k].push(n);
-    });
-    Object.keys(by).forEach(function (k) { by[k].sort(sortByDeadline); });
-
-    var h = '';
-    h += '<div class="card" style="padding:12px;display:flex;gap:8px;align-items:center;margin-bottom:6px">' +
-      '<div style="flex:1"><div style="font-size:.86rem;font-weight:800">탈착 목록</div>' +
-      '<div style="font-size:.7rem;color:var(--muted);margin-top:2px">' + korDate(TODAY) + " (" + weekday(TODAY) + ") 기준 · 기한 경과 " + s.counts.overdue + "건 · 오늘 " + s.counts.today + "건 · 내일 " + s.counts.tomorrow + "건</div></div>" +
-      '<button class="btn soft" data-act="copy" data-kind="today">오늘 탈착 복사</button></div>';
-
-    var urgentCount = by.overdue.length + by.today.length + by.tomorrow.length + by.soon.length;
-    if (!urgentCount) {
-      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">오늘부터 7일 안에 탈착할 게시물이 없습니다.</div>';
-    }
-    h += section("기한 경과 (미탈착)", by.overdue);
-    h += section("오늘 탈착", by.today);
-    h += section("내일 탈착 예정", by.tomorrow);
-    h += section("7일 이내 탈착 예정", by.soon);
-    h += '<div class="sec-h"><h3>게시 중</h3><span class="count">' + (by.active.length + by.permanent.length) + '건</span><span class="spacer"></span><button class="mini-btn" data-act="copy" data-kind="all">전체 복사</button></div>';
-    h += '<div class="list">' + by.active.concat(by.permanent).map(noticeRow).join("") + "</div>";
-    return h;
-  }
-
-  /* ---------- archive ---------- */
-  function renderArchive() {
-    var removed = DATA.notices.filter(function (n) { return n.removedAt; });
-    if (!removed.length) {
-      return '<div class="empty-box">아직 탈착 완료된 게시물이 없습니다.<br>탈착 처리된 게시물이 생기면 탈착일자별로 이곳에 쌓입니다.</div>';
-    }
-    var groups = {};
-    removed.forEach(function (n) { (groups[n.removedAt] = groups[n.removedAt] || []).push(n); });
-    var dates = Object.keys(groups).sort().reverse();
-    var h = '<div class="sec-title"><h2>보관함</h2><span class="hint">탈착 완료 ' + removed.length + "건</span></div>";
-    dates.forEach(function (d) {
-      h += '<div class="sec-h"><h3>' + korDate(d) + " 탈착</h3><span class=\"count\">" + groups[d].length + "건</span></div>";
-      h += '<div class="list">' + groups[d].map(function (n) {
-        return '<div class="row">' +
-          '<span class="row-main">' +
-          '<span class="row-title">' + esc(n.title) + "</span>" +
-          '<span class="row-sub">' + esc(placementSummary(n)) + "</span>" +
-          '<span class="row-sub">게시 ' + dotDate(n.postedAt) + " · 기한 " + (n.deadline ? dotDate(n.deadline) : "상시") + "</span>" +
-          '<span style="margin-top:2px">' + testTag(n) + "</span>" +
-          "</span>" +
-          '<span class="pill removed">탈착 완료</span></div>';
-      }).join("") + "</div>";
-    });
-    h += '<p class="note">탈착일자별로 묶여 표시됩니다. 보관함은 조회만 가능합니다.</p>';
-    return h;
-  }
-
-  /* ---------- slot sheet ---------- */
-  function renderSheet(no, coreKey, locKey, slot) {
-    var b = buildingByNo(no);
-    var core = b.cores.filter(function (c) { return c.key === coreKey; })[0] || b.cores[0];
-    var isElev = String(locKey).charAt(0) === "e";
-    var elev = isElev ? core.elevators.filter(function (e) { return "e" + e.key === locKey; })[0] : null;
-    var items = slotItems(no, core.key, locKey, slot);
-    var locText = isElev
-      ? "엘리베이터 " + (elev ? elev.name : "") + " · " + slotPos("elevator", slot) + " " + slot + "번"
-      : locLabel(locKey) + " 공동현관 홀 · " + slot + "번";
-    var h = '<div class="sheet-head"><div>' +
-      '<div class="sheet-title">' + b.no + "동 " + esc(core.name) + "</div>" +
-      '<div class="sheet-sub">' + esc(locText) + " · 게시물 " + items.length + "장</div>" +
-      "</div><button class='sheet-close' data-act='close-sheet' aria-label='닫기'>×</button></div>";
-    h += '<div class="sheet-body">';
-    if (!items.length) {
-      h += '<div class="empty-box">이 번호는 비어 있습니다.</div>';
-    } else {
-      var orderCounts = {};
-      items.forEach(function (it) { orderCounts[it.order] = (orderCounts[it.order] || 0) + 1; });
-      items.forEach(function (it, idx) {
-        var n = it.notice;
-        h += '<article class="notice">' +
-          '<div class="notice-order">' + (orderCounts[it.order] > 1 ? idx + 1 : it.order) + "번째</div>" +
-          '<div class="notice-main">' +
-          '<div class="notice-title">' + esc(n.title) + "</div>" +
-          '<div class="notice-meta">' + statusPill(n) + testTag(n) + "</div>" +
-          '<div class="notice-date" style="margin-top:6px">' + esc(statusText(statusOf(n), n)) + "</div>" +
-          '<div class="notice-date" style="margin-top:2px">게시 ' + dotDate(n.postedAt) + " · " + esc(n.category || "") + "</div>" +
-          (n.memo ? '<div class="notice-memo">' + esc(n.memo) + "</div>" : "") +
-          "</div>" +
-          (n.photo
-            ? '<button class="thumb" data-act="zoom" data-src="' + esc(n.photo) + '" data-cap="' + esc(n.title) + '"><img src="' + esc(n.photo) + '" alt="' + esc(n.title) + ' 사진"></button>'
-            : '<div class="thumb noimg">사진<br>없음</div>') +
-          "</article>";
-      });
-    }
-    h += "</div>";
-    return h;
-  }
-
-  /* ---------- routing ---------- */
-  function parseHash() {
-    var raw = (location.hash || "").replace(/^#\/?/, "");
-    var p = raw.split("/").filter(Boolean);
-    if (!p.length) return { name: "home" };
-    if (p[0] === "remove") return { name: "remove" };
-    if (p[0] === "archive") return { name: "archive" };
-    if (p[0] === "b") {
-      return {
-        name: "building", no: Number(p[1]) || null, core: p[2] || null,
-        loc: p[3] || "f1", slot: p[4] || null
-      };
-    }
-    return { name: "home" };
-  }
-
-  function route() {
-    VIEW = parseHash();
-    var view = document.getElementById("view");
-    var h = "";
-    if (VIEW.name === "home") { h = renderHome(); setTab("home"); }
-    else if (VIEW.name === "remove") { h = renderRemove(); setTab("remove"); }
-    else if (VIEW.name === "archive") { h = renderArchive(); setTab("archive"); }
-    else if (VIEW.name === "building") { h = renderBuilding(); setTab("home"); }
-    view.innerHTML = h;
-    document.getElementById("rbSub").textContent = DATA.meta.complex;
-    window.scrollTo(0, 0);
-    syncSheet();
-  }
-  function setTab(name) {
-    document.querySelectorAll(".tab").forEach(function (t) {
-      t.classList.toggle("on", t.dataset.tab === name);
-    });
-  }
-  function syncSheet() {
-    var root = document.getElementById("overlayRoot");
-    var want = VIEW.name === "building" && VIEW.slot;
-    if (want) {
-      var html = renderSheet(VIEW.no, VIEW.core, VIEW.loc, VIEW.slot);
-      root.innerHTML = '<div class="backdrop" data-act="close-sheet"></div><div class="sheet" id="sheet">' +
-        '<div class="sheet-grip"></div>' + html + "</div>";
-      requestAnimationFrame(function () {
-        var bd = root.querySelector(".backdrop"), sh = root.querySelector(".sheet");
-        if (bd) bd.classList.add("on");
-        if (sh) sh.classList.add("on");
-      });
-    } else {
-      root.innerHTML = "";
-    }
-  }
-
-  function go(hash) {
-    if (location.hash === hash) route();
-    else location.hash = hash;
-  }
-
-  /* ---------- clipboard ---------- */
-  function copyTextFallback(text) {
-    var wrap = document.createElement("div");
-    wrap.className = "copyfallback";
-    wrap.innerHTML = '<div class="cf-in"><div class="cf-h">아래 내용을 길게 눌러 복사하세요</div>' +
-      '<textarea readonly></textarea><div class="cf-n">카카오톡에 붙여넣기 하시면 됩니다. 확인을 누르면 닫힙니다.</div>' +
-      '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn soft" data-act="cf-close" style="flex:1">확인</button></div></div>';
-    document.getElementById("overlayRoot").appendChild(wrap);
-    var ta = wrap.querySelector("textarea");
-    ta.value = text;
-    ta.focus(); ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-    wrap.addEventListener("click", function (e) {
-      if (e.target.closest("[data-act='cf-close']") || e.target === wrap) wrap.remove();
-    });
-  }
-  function doCopy(kind) {
-    var text = copyText(kind);
-    var done = function () { toast("복사했습니다. 카카오톡에 붙여넣기 하세요."); };
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(done).catch(function () { copyTextFallback(text); });
-    } else {
-      copyTextFallback(text);
-    }
-  }
-  var toastTimer = null;
-  function toast(msg) {
-    var t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("on");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove("on"); }, 2400);
-  }
-
-  /* ---------- interactions ---------- */
-  function bind() {
-    document.addEventListener("click", function (e) {
-      var el = e.target.closest("[data-act]");
-      if (!el) return;
-      var act = el.dataset.act;
-
-      if (act === "tab") {
-        var t = el.dataset.tab;
-        go(t === "home" ? "#/" : "#/" + t);
-      } else if (act === "zone") {
-        ZONE = el.dataset.zone;
-        route();
-      } else if (act === "building") {
-        go("#/b/" + el.dataset.no);
-      } else if (act === "core") {
-        go("#/b/" + VIEW.no + "/" + el.dataset.core + "/" + (VIEW.loc || "f1"));
-      } else if (act === "loc") {
-        go("#/b/" + VIEW.no + "/" + VIEW.core + "/" + el.dataset.loc);
-      } else if (act === "slot") {
-        go("#/b/" + VIEW.no + "/" + VIEW.core + "/" + VIEW.loc + "/" + el.dataset.slot);
-      } else if (act === "close-sheet") {
-        go("#/b/" + VIEW.no + "/" + VIEW.core + "/" + VIEW.loc);
-      } else if (act === "back") {
-        if (history.length > 1) history.back(); else go("#/");
-      } else if (act === "copy") {
-        doCopy(el.dataset.kind || "today");
-      } else if (act === "open-notice") {
-        var ps = placementsOf(el.dataset.id);
-        if (!ps.length) { toast("게시 위치 정보가 없습니다."); return; }
-        var p = ps[0];
-        go("#/b/" + p.building + "/" + p.coreKey + "/" + p.locKey + "/" + p.slot);
-      } else if (act === "zoom") {
-        openLightbox(el.dataset.src, el.dataset.cap);
-      } else if (act === "font") {
-        FONT_LG = !FONT_LG;
-        document.documentElement.classList.toggle("fs-lg", FONT_LG);
-        try { localStorage.setItem("board.fontLg", FONT_LG ? "1" : "0"); } catch (err) {}
-      }
-    });
-    window.addEventListener("hashchange", function () {
-      closeLightbox();
-      route();
-    });
-  }
-
-  function openLightbox(src, cap) {
-    var lb = document.createElement("div");
-    lb.className = "lightbox";
-    lb.innerHTML = '<button class="lb-close" aria-label="닫기">×</button><img src="' + esc(src) + '" alt=""><div class="lb-cap">' + esc(cap || "") + "</div>";
-    lb.addEventListener("click", function (e) {
-      if (e.target === lb || e.target.classList.contains("lb-close")) lb.remove();
-    });
-    document.body.appendChild(lb);
-  }
-  function closeLightbox() {
-    var lb = document.querySelector(".lightbox");
-    if (lb) lb.remove();
-  }
-
-  /* ---------- data load ---------- */
-  function readInline() {
-    try {
-      return JSON.parse(document.getElementById("data-inline").textContent);
-    } catch (e) { return null; }
-  }
-  function loadData() {
-    var inline = readInline();
-    if (location.protocol === "file:") return Promise.resolve(inline);
-    return fetch("data.json?ts=" + Date.now(), { cache: "no-store" })
-      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
-      .then(function (j) { return (j && j.buildings && j.notices) ? j : inline; })
-      .catch(function () { return inline; });
-  }
-
-  function start(data) {
-    DATA = data;
-    TODAY = todayStr();
-    try { FONT_LG = localStorage.getItem("board.fontLg") === "1"; } catch (e) {}
-    document.documentElement.classList.toggle("fs-lg", FONT_LG);
-    buildIndex();
-    bind();
-    route();
-  }
-
-  function init() {
-    loadData().then(function (d) {
-      if (!d) {
-        document.getElementById("view").innerHTML = '<div class="empty-box">데이터를 불러오지 못했습니다.<br>data.json 파일을 확인해 주세요.</div>';
-        return;
-      }
-      start(d);
-    });
-  }
-
-  /* API for tests */
-  var api = {
-    start: start, setData: start, buildIndex: buildIndex, statusOf: statusOf, summary: summary,
-    placementsOf: placementsOf, slotItems: slotItems, copyText: copyText, boardKey: boardKey,
-    indexKeys: function () { return Object.keys(INDEX); }, targetText: targetText,
-    setToday: function (d) { TODAY = d; buildIndex(); }, mv: function () { return { DATA: DATA, TODAY: TODAY }; }
-  };
-
-  if (typeof document !== "undefined" && document.getElementById("view")) {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-    else init();
-  }
-  if (typeof globalThis !== "undefined") globalThis.__boardTest = api;
-  return api;
-})();
-</script>
+<script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
