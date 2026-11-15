@@ -996,7 +996,7 @@ var App = (function () {
       h += '<div class="list">' + upcoming.map(function (n) {
         return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
           '<span class="row-main"><span class="row-title">' + esc(n.title) + "</span>" +
-          '<span class="row-sub">' + esc(targetsShort(n)) + " · " + esc(statusText(n)) + "</span></span>" +
+          '<span class="row-sub">' + esc(targetsShort(n)) + " · " + (n.permanent ? "상시" : "기한 " + dotDate(n.deadline)) + "</span></span>" +
           statusPill(n) + "</button>";
       }).join("") + "</div>";
     }
