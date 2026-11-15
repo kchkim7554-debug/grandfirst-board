@@ -629,7 +629,7 @@ var App = (function () {
     var html = '<div style="display:flex;gap:12px">' +
       '<div style="flex:1 1 auto;min-width:0">' +
       '<div style="font-size:1rem;font-weight:800;line-height:1.35;word-break:keep-all">' + esc(n.title) + "</div>" +
-      '<div class="notice-meta" style="margin-top:8px">' + flowPill + statusPill(n) + testTag(n) + "</div>" +
+      '<div class="notice-meta" style="margin-top:8px">' + flowPill + testTag(n) + "</div>" +
       '<div class="notice-date" style="margin-top:8px">' + esc(statusText(n)) + "</div>" +
       '<div class="notice-date" style="margin-top:2px">게시 ' + dotDate(n.postedAt) + " · " + esc(n.category || "안내문") + "</div>" +
       (n.memo ? '<div class="notice-memo">' + esc(n.memo) + "</div>" : "") +
@@ -675,6 +675,14 @@ var App = (function () {
     if (st.key === "overdue") extra = " " + st.days + "일";
     else if (st.key === "soon") extra = " D-" + st.days;
     return '<span class="pill ' + st.key + '">' + esc(st.label + extra) + "</span>";
+  }
+  /* 부착 전 게시물은 '게시 중' 대신 '부착 전'으로 표시 */
+  function statusPillFor(n) {
+    var fl = flowOf(n);
+    if (fl === "pending" || fl === "attaching") {
+      return '<span class="pill pending">' + (n.permanent ? "상시 · 부착 전" : "부착 전") + "</span>";
+    }
+    return statusPill(n);
   }
   function testTag(n) { return n.isTest ? '<span class="pill test">테스트</span>' : ""; }
 
@@ -1031,7 +1039,7 @@ var App = (function () {
               : '<span class="pill active">게시 중</span>';
         return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
           '<span class="row-main">' +
-          '<span style="display:flex;gap:4px;flex-wrap:wrap">' + pill + statusPill(n) + testTag(n) + "</span>" +
+          '<span style="display:flex;gap:4px;flex-wrap:wrap">' + pill + (fl === "posted" ? statusPill(n) : "") + testTag(n) + "</span>" +
           '<span class="row-title">' + esc(n.title) + "</span>" +
           '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
           '<span class="row-sub">' + esc(statusText(n)) + "</span></span>" +
