@@ -1859,7 +1859,7 @@ var App = (function () {
         }, function (err) { toast("설정을 읽지 못했습니다: " + err.message); });
         db.ref("board/notices").on("value", function (s) {
           setNotices(s.val());
-          if (!LOADED) { LOADED = true; render(); }
+          if (!LOADED) { LOADED = true; VIEW = parseHash(); route(); }
           else {
             var form = document.querySelector('.sheet[data-form="1"]');
             if (!form) render();
@@ -1882,7 +1882,7 @@ var App = (function () {
       }
       bind();
       syncWho();
-      if (LOADED) render();
+      if (LOADED) route();
     });
   }
 
