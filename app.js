@@ -750,7 +750,8 @@ var App = (function () {
       h += '<button class="btile' + (urgent ? " has-urgent" : "") + '" data-act="building" data-no="' + b.no + '">' +
         (urgent ? '<span class="btile-dot">' + urgent + "</span>" : "") +
         '<span class="btile-no">' + b.no + "<small>동</small></span>" +
-        '<span class="btile-meta">게시 ' + ids + " · " + num(st.sheets) + "장" + (st.pending ? " · 부착 " + st.pending : "") + "</span>" +
+        '<span class="btile-meta">게시 ' + ids + " · " + num(st.sheets) + "장</span>" +
+        (st.pending ? '<span class="btile-pending">부착 대기 ' + st.pending + "</span>" : "") +
         "</button>";
     });
     h += "</div>";

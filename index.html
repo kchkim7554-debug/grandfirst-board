@@ -131,7 +131,8 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 8px;}
 .btile:active{background:#f3f7fc;}
 .btile-no{font-size:1.16rem;font-weight:800;letter-spacing:-.5px;}
 .btile-no small{font-size:.62rem;font-weight:600;color:var(--muted);margin-left:1px;}
-.btile-meta{font-size:.63rem;color:var(--muted);letter-spacing:-.3px;}
+.btile-meta{font-size:.63rem;color:var(--muted);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btile-pending{font-size:.58rem;font-weight:800;color:var(--orange);letter-spacing:-.3px;}
 .btile-dot{
   position:absolute;top:-6px;right:-5px;min-width:20px;height:20px;border-radius:999px;
   background:#cf3a2b;color:#fff;font-size:.66rem;font-weight:800;line-height:20px;padding:0 5px;
@@ -488,6 +489,6 @@ html.fs-lg .slot-title{font-size:.62rem;}
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261115b"></script>
+<script src="app.js?v=20261115c"></script>
 </body>
 </html>
