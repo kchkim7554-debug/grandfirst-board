@@ -54,7 +54,7 @@ board/
 - `index.html` — 화면(스타일·탭·헤더)
 - `app.js` — 앱 로직(실시간 동기화·체크·등록·보관함)
 - `data.json` — 시설 정보(동·코어·층·게시판 번호). 게시물은 들어 있지 않습니다.
-- `notices_real.json` — 2026-11-16~17 현장 촬영 사진 19장을 판독해 정리한 실제 게시물 데이터
+- `notices_real.json` — 2026-11-16~18 현장 촬영 사진 21장(11/17 A조 신규 배포 2건 포함)을 판독해 정리한 실제 게시물 데이터
 - `seed_firebase.py` — `notices_real.json`을 Firebase `/board/notices.json`으로 PUT 하는 스크립트(설정 `config`는 보존)
 - `robots.txt` — 검색엔진 수집 차단 (index.html에도 `noindex`)
 
