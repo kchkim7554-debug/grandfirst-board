@@ -42,6 +42,24 @@ def build():
     for nid, n in src.items():
         attach = {z: {"by": g["by"], "team": g["team"], "at": attach_at[z]}
                   for z, g in ZONE_GUARD.items()}
+        board = n.get("board") or "lobby"
+        if board == "lobby":
+            floors = n.get("floors") if n.get("floors") else ALL_FLOORS
+            target = {
+                "buildings": "all",
+                "board": "lobby",
+                "floors": floors,
+                "slot": n["slot"],
+                "order": n["order"],
+            }
+        else:
+            target = {
+                "buildings": "all",
+                "board": "elevator",
+                "elevators": "all",
+                "slot": n["slot"],
+                "order": n["order"],
+            }
         out[nid] = {
             "id": nid,
             "title": n["title"],
@@ -51,13 +69,7 @@ def build():
             "permanent": bool(n["permanent"]),
             "photo": n["photo"],
             "memo": n["memo"],
-            "targets": [{
-                "buildings": "all",
-                "board": "lobby",
-                "floors": ALL_FLOORS,
-                "slot": n["slot"],
-                "order": n["order"],
-            }],
+            "targets": [target],
             "status": "posted",
             "isTest": False,
             "archivedAt": None,
