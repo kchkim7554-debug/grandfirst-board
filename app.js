@@ -262,6 +262,117 @@ var App = (function () {
   function slotItems(no, coreKey, locKey, slot) { return INDEX[boardKey(no, coreKey, locKey, slot)] || []; }
   function placementsOf(id) { return PLACE[id] || []; }
 
+  /* ---------- 겹침 순번(order) 자동 관리 ----------
+     order 1 = 맨 앞(가장 나중에 붙인 것), 숫자가 클수록 뒤(아래)로 밀린 것.
+     신규 게시물은 1번째로 들어가고, 같은 자리에 이미 붙어 있는 게시물은 한 칸씩 뒤로 밀린다.
+     같은 자리 = 같은 게시판(board) + 같은 번호(slot) + 겹치는 층(공동현관)/호기(엘리베이터) + 겹치는 동 */
+  var ELEV_KEYS_CACHE = null;
+  function allElevKeys() {
+    if (ELEV_KEYS_CACHE) return ELEV_KEYS_CACHE;
+    var keys = [];
+    (FAC && FAC.buildings ? FAC.buildings : []).forEach(function (b) {
+      (b.cores || []).forEach(function (c) {
+        (c.elevators || []).forEach(function (e) {
+          var k = String(e.key);
+          if (keys.indexOf(k) < 0) keys.push(k);
+        });
+      });
+    });
+    ELEV_KEYS_CACHE = keys.length ? keys : ["1", "2"];
+    return ELEV_KEYS_CACHE;
+  }
+  function lobbyFloorsOf(t) {
+    return (t.floors && t.floors.length) ? t.floors.slice() : FAC.boards.lobby.floors.slice();
+  }
+  function elevKeysOf(t) {
+    if (t.elevators && t.elevators !== "all") return (t.elevators || []).map(String);
+    return allElevKeys().slice();
+  }
+  function targetOverlaps(a, b) {
+    if (!a || !b) return false;
+    var ba = a.board || "lobby", bb = b.board || "lobby";
+    if (ba !== bb) return false;
+    if (!a.slot || !b.slot || pad2(a.slot) !== pad2(b.slot)) return false;
+    // 동이 하나도 겹치지 않으면 서로 다른 게시판이므로 밀지 않는다
+    var na = buildingsOfTarget(a), nb = buildingsOfTarget(b);
+    var sameBuilding = na.some(function (no) { return nb.indexOf(no) >= 0; });
+    if (!sameBuilding) return false;
+    if (ba === "lobby") {
+      var fa = lobbyFloorsOf(a), fb = lobbyFloorsOf(b);
+      return fa.some(function (f) { return fb.indexOf(f) >= 0; });
+    }
+    var ea = elevKeysOf(a), eb = elevKeysOf(b);
+    return ea.some(function (k) { return eb.indexOf(k) >= 0; });
+  }
+  function orderNum(v) {
+    var n = Number(v);
+    return (isFinite(n) && n >= 1) ? Math.floor(n) : 1;
+  }
+
+  /* 신규 게시물의 대상(newTargets)과 겹치는 활성 게시물의 order 를 +1 씩 올린다.
+     반환 { updates: {경로: 값}, pushed: [{id,title,from,to}] } — 한 번의 update()로 함께 저장한다. */
+  function pushOrdersForNew(newTargets, excludeId) {
+    var updates = {}, pushed = [];
+    NOTICES.forEach(function (n) {
+      if (n.id === excludeId || isArchived(n)) return;
+      var moved = false;
+      targetsOf(n).forEach(function (t, i) {
+        var hit = newTargets.some(function (nt) { return targetOverlaps(nt, t); });
+        if (!hit) return;
+        var from = orderNum(t.order), to = from + 1;
+        updates["board/notices/" + n.id + "/targets/" + i + "/order"] = to;
+        if (!moved) { pushed.push({ id: n.id, title: n.title, from: from, to: to }); moved = true; }
+      });
+    });
+    return { updates: updates, pushed: pushed };
+  }
+
+  /* 탈착·삭제로 자리가 비었을 때 남은 활성 게시물의 순번을 1,2,3… 으로 다시 이어 붙인다.
+     반환 { updates: {경로: 값}, changed: [{id,title,from,to}] } */
+  function compactOrders(removedTargets, excludeIds) {
+    var skip = {};
+    (excludeIds || []).forEach(function (id) { skip[id] = true; });
+    var cands = [];
+    NOTICES.forEach(function (n) {
+      if (skip[n.id] || isArchived(n)) return;
+      targetsOf(n).forEach(function (t, i) {
+        var hit = (removedTargets || []).some(function (rt) { return targetOverlaps(rt, t); });
+        if (!hit) return;
+        cands.push({ id: n.id, idx: i, order: orderNum(t.order), createdAt: n.createdAt || 0, title: n.title });
+      });
+    });
+    cands.sort(function (a, b) {
+      if (a.order !== b.order) return a.order - b.order;
+      if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;  // 같은 순번이면 최근 등록이 앞
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    var updates = {}, changed = [];
+    cands.forEach(function (c, i) {
+      var want = i + 1;
+      if (c.order === want) return;
+      updates["board/notices/" + c.id + "/targets/" + c.idx + "/order"] = want;
+      changed.push({ id: c.id, title: c.title, from: c.order, to: want });
+    });
+    return { updates: updates, changed: changed };
+  }
+
+  /* 지금 이 자리에 몇 장이 어떤 순번으로 붙어 있는지 (등록 화면 안내용) */
+  function stackedHere(t, excludeId) {
+    var out = [];
+    NOTICES.forEach(function (n) {
+      if (n.id === excludeId || isArchived(n)) return;
+      var best = null;
+      targetsOf(n).forEach(function (tt) {
+        if (!targetOverlaps(t, tt)) return;
+        var o = orderNum(tt.order);
+        if (best === null || o < best) best = o;
+      });
+      if (best !== null) out.push({ notice: n, order: best });
+    });
+    out.sort(function (a, b) { return a.order - b.order; });
+    return out;
+  }
+
   /* ---------- summary ---------- */
   function summary() {
     var s = { overdue: 0, today: 0, tomorrow: 0, soon: 0, active: 0, permanent: 0, removed: 0 };
@@ -569,6 +680,11 @@ var App = (function () {
         }
       }
       updates["board/notices/" + id + "/updatedAt"] = nowTs();
+      // 탈착 완료로 보관함에 들어가면 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
+      if (updates["board/notices/" + id + "/status"] === "archived") {
+        var comp = compactOrders(targetsOf(n), [id]);
+        Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
+      }
       fbUpdate(updates).then(function (ok) {
         if (!ok) return;
         writeLog({
@@ -910,10 +1026,11 @@ var App = (function () {
     var slots = isElev ? FAC.boards.elevator.slots : FAC.boards.lobby.slots;
     var rows = "";
     slots.forEach(function (s) {
-      slotItems(b.no, core.key, locKey, s).forEach(function (it) {
+      var its = slotItems(b.no, core.key, locKey, s);
+      its.forEach(function (it) {
         var n = it.notice;
         rows += '<button class="row" data-act="slot" data-slot="' + s + '">' +
-          '<span class="row-slot">' + s + "번" + (it.order > 1 ? " " + it.order + "번째" : "") + "</span>" +
+          '<span class="row-slot">' + s + "번" + (its.length > 1 || orderNum(it.order) > 1 ? " " + orderNum(it.order) + "번째" : "") + "</span>" +
           '<span class="row-main"><span class="row-title">' + esc(n.title) + "</span>" +
           '<span class="row-sub">게시 ' + dotDate(n.postedAt) + (n.permanent ? " · 상시" : " · 기한 " + dotDate(n.deadline)) + "</span></span>" +
           statusPill(n) + "</button>";
@@ -1138,8 +1255,9 @@ var App = (function () {
     } else {
       items.forEach(function (it, idx) {
         var n = it.notice;
+        var ord = orderNum(it.order);
         html += '<article class="notice">' +
-          '<div class="notice-order">' + (items.length > 1 ? (idx + 1) : it.order) + "번째</div>" +
+          '<div class="notice-order"' + (ord === 1 && items.length > 1 ? ' title="맨 앞"' : '') + '>' + ord + "번째</div>" +
           '<div class="notice-main">' +
           '<div class="notice-title">' + esc(n.title) + "</div>" +
           '<div class="notice-meta">' + statusPill(n) + testTag(n) + "</div>" +
@@ -1239,10 +1357,7 @@ var App = (function () {
     }
     html += "</div>";
 
-    html += '<div class="fld"><label>겹침 순번</label><div class="f-chips" id="fOrder">' +
-      [1, 2, 3].map(function (o) {
-        return '<button class="f-chip' + (formState.order === o ? " on" : "") + '" data-act="f-order" data-v="' + o + '">' + o + "번째</button>";
-      }).join("") + "</div></div>";
+    html += '<div class="fld"><label>겹침 순번</label>' + orderFieldHtml(isEdit) + "</div>";
 
     html += '<div class="fld"><label>게시 시작일</label><input type="date" class="f-in" id="fPosted" value="' + esc(formDefaults.postedAt) + '"></div>';
     html += '<div class="fld"><label>기한 <span class="req">*</span></label>' +
@@ -1314,6 +1429,36 @@ var App = (function () {
     if (scopeBody) scopeBody.innerHTML = scopeBodyHtml();
     var locBox = document.getElementById("fLoc");
     if (locBox) locBox.innerHTML = locChipsHtml();
+    var orderBox = document.getElementById("fOrderWrap");
+    if (orderBox) orderBox.outerHTML = orderFieldHtml(!!formState.id);
+  }
+
+  /* 겹침 순번 칸 — 신규는 자동(1번째), 수정은 직접 고르기 */
+  function orderFieldHtml(isEdit) {
+    var here = [];
+    try { here = stackedHere(formTarget(), formState.id); } catch (e) { here = []; }
+    var preview = here.length
+      ? '<div class="f-hint" style="margin-top:5px">지금 이 자리: ' + here.map(function (it) {
+          return esc(it.notice.title) + "(" + it.order + "번째)";
+        }).join(" · ") + "</div>"
+      : '<div class="f-hint" style="margin-top:5px">지금 이 자리에 겹쳐 있는 게시물은 없습니다.</div>';
+    if (!isEdit) {
+      var n = here.length;
+      return '<div id="fOrderWrap"><div class="f-chips" id="fOrder">' +
+        '<button class="f-chip on" data-act="f-order" data-v="1">1번째 (자동)</button></div>' +
+        '<div class="f-hint">신규는 항상 <b>맨 앞(1번째)</b>로 들어가고, 이 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다' +
+        (n ? ' (지금 ' + n + '장 → 2~' + (n + 1) + '번째로 밀림)' : "") + ".</div>" +
+        preview + "</div>";
+    }
+    var max = Math.max(3, orderNum(formState.order));
+    var chips = [];
+    for (var o = 1; o <= max; o++) {
+      chips.push('<button class="f-chip' + (orderNum(formState.order) === o ? " on" : "") +
+        '" data-act="f-order" data-v="' + o + '">' + o + "번째</button>");
+    }
+    return '<div id="fOrderWrap"><div class="f-chips" id="fOrder">' + chips.join("") + "</div>" +
+      '<div class="f-hint">1번째가 맨 앞입니다. 새로 등록할 때는 자동으로 1번째가 되고 기존 게시물이 뒤로 밀립니다.</div>' +
+      preview + "</div>";
   }
 
   function compressImage(file, cb) {
@@ -1367,6 +1512,7 @@ var App = (function () {
     var target = formTarget();
     var id = formState.id || newId();
     var existing = getNotice(id);
+    if (!existing) target.order = 1;      // 신규는 항상 맨 앞(1번째)
     var payload = {
       id: id,
       title: title,
@@ -1390,12 +1536,33 @@ var App = (function () {
     }
     var btn = document.querySelector('[data-act="f-save"]');
     if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
-    fbSet("board/notices/" + id, Object.assign({}, existing || {}, payload)).then(function (ok) {
+    // 신규 등록: 같은 자리(게시판+번호+겹치는 층/호기+겹치는 동)의 기존 활성 게시물을
+    // 한 칸씩 뒤로 밀고(1→2, 2→3) 새 게시물을 1번째로 넣는다.
+    // 순서가 어긋나지 않게 기존 게시물의 order 변경과 신규 게시물 저장을 한 번의 update()로 보낸다.
+    var save = buildNoticeUpdates(id, payload, target, existing);
+    fbUpdate(save.updates).then(function (ok) {
       if (!ok) { if (btn) { btn.disabled = false; btn.textContent = "다시 저장"; } return; }
-      writeLog({ noticeId: id, type: existing ? "edit" : "create", by: SESSION.admin || "관리자", at: nowTs(), title: title });
+      writeLog({
+        noticeId: id, type: existing ? "edit" : "create", by: SESSION.admin || "관리자", at: nowTs(), title: title,
+        place: targetShort(target), pushed: save.pushed.length
+      });
       closeSheet();
-      toast(existing ? "수정했습니다" : "등록했습니다 · 부착 체크 후 게시판에 표시됩니다");
+      if (existing) { toast("수정했습니다"); return; }
+      toast("등록했습니다 · " + targetShort(target) + " 1번째" +
+        (save.pushed.length ? " (기존 " + save.pushed.length + "건 뒤로 밀림)" : ""));
     });
+  }
+
+  /* 저장할 update 맵 — 신규면 같은 자리 기존 게시물을 밀어내고 새 게시물을 1번째로 넣는다 */
+  function buildNoticeUpdates(id, payload, target, existing) {
+    var updates = {}, pushed = [];
+    if (!existing) {
+      var shift = pushOrdersForNew([target], id);
+      updates = shift.updates;
+      pushed = shift.pushed;
+    }
+    updates["board/notices/" + id] = Object.assign({}, existing || {}, payload);
+    return { updates: updates, pushed: pushed };
   }
 
   /* ---------- settings ---------- */
@@ -1458,7 +1625,11 @@ var App = (function () {
     var n = getNotice(id);
     if (!n) return;
     if (!confirm("'" + n.title + "' 게시물을 완전히 삭제할까요?\n보관함 기록도 사라집니다.")) return;
-    fbRemove("board/notices/" + id).then(function (ok) {
+    // 삭제로 비워진 자리의 남은 게시물 순번을 1,2,3… 으로 다시 이어 붙인다
+    var comp = compactOrders(targetsOf(n), [id]);
+    var updates = comp.updates;
+    updates["board/notices/" + id] = null;
+    fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ noticeId: id, type: "delete", by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
       closeSheet();
@@ -1473,12 +1644,14 @@ var App = (function () {
     applicableZones(n).forEach(function (z) {
       if (!detach[z]) detach[z] = { by: SESSION.admin || "관리자", team: "관리", at: nowTs(), forced: true };
     });
-    fbUpdate({
-      ["board/notices/" + id + "/detach"]: detach,
-      ["board/notices/" + id + "/status"]: "archived",
-      ["board/notices/" + id + "/archivedAt"]: TODAY,
-      ["board/notices/" + id + "/updatedAt"]: nowTs()
-    }).then(function (ok) {
+    // 보관함으로 옮긴 뒤 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
+    var comp = compactOrders(targetsOf(n), [id]);
+    var updates = comp.updates;
+    updates["board/notices/" + id + "/detach"] = detach;
+    updates["board/notices/" + id + "/status"] = "archived";
+    updates["board/notices/" + id + "/archivedAt"] = TODAY;
+    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ noticeId: id, type: "force_archive", by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
       closeSheet();
@@ -1491,6 +1664,11 @@ var App = (function () {
     if (!confirm("테스트 게시물 " + tests.length + "건을 모두 삭제할까요?\n실제 게시물은 남습니다.")) return;
     var updates = {};
     tests.forEach(function (n) { updates["board/notices/" + n.id] = null; });
+    // 테스트 게시물이 덮고 있던 자리의 순번도 다시 이어 붙인다
+    var removed = [], ids = [];
+    tests.forEach(function (n) { ids.push(n.id); targetsOf(n).forEach(function (t) { removed.push(t); }); });
+    var comp = compactOrders(removed, ids);
+    Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
     fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ type: "delete_test", count: tests.length, by: SESSION.admin || "관리자", at: nowTs() });
@@ -1772,6 +1950,7 @@ var App = (function () {
         document.querySelectorAll("#fSlot .f-chip").forEach(function (b) {
           b.classList.toggle("on", b.getAttribute("data-v") === formState.slot);
         });
+        refreshFormParts();
       }
       else if (act === "f-order") {
         formState.order = Number(el.dataset.v);
@@ -1898,6 +2077,12 @@ var App = (function () {
   var api = {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,
+    /* 겹침 순번 자동화 검증용 (Node 테스트에서 사용) */
+    order: {
+      overlaps: targetOverlaps, push: pushOrdersForNew, compact: compactOrders, stacked: stackedHere,
+      build: buildNoticeUpdates,
+      load: function (notices, fac) { FAC = fac; ELEV_KEYS_CACHE = null; setNotices(notices); return NOTICES; }
+    },
     state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION }; },
     setToday: function (d) { TODAY = d; buildIndex(); render(); }
   };

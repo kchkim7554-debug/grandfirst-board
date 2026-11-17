@@ -1,0 +1,908 @@
+{
+ "R01": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-20",
+  "id": "R01",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.11.06~11.20. 점검 11.16~11.20 동별 순차(101~105 / 106~110 / 111~115 / 116~120 / 121동·외부호기) 10:00~16:00, 업체 TK엘리베이터. ※현장 배치: 공동현관 홀 3번 앞(1번째) — 사진 손글씨 3.",
+  "permanent": false,
+  "photo": "images/r01_elevator_inspection.jpg",
+  "postedAt": "2026-11-06",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "03"
+   }
+  ],
+  "title": "승강기 정기 점검",
+  "updatedAt": 1794949058026
+ },
+ "R02": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R02",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.06.09~연중(상시). 여름철 갤러리창 OPEN, 겨울철 CLOSE. ※현장 배치: 공동현관 홀 3번 두 번째(뒤) — 사진 손글씨 3.",
+  "permanent": true,
+  "photo": "images/r02_outdoor_unit_louver.jpg",
+  "postedAt": "2026-06-09",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 2,
+    "slot": "09"
+   }
+  ],
+  "title": "실외기실 갤러리창 운영 안내",
+  "updatedAt": 1794949058026
+ },
+ "R03": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-25",
+  "id": "R03",
+  "isTest": false,
+  "memo": "변경기간 2026.11.17(화)·18(수)·24(화)·25(수) 07:30~12:30, 11.26(목)부터 정상운영. 게시 시작일 표기 없음(11/16 촬영 시점 게시 확인, 촬영일로 임시 입력). 문의 커뮤니티센터 031-949-8446. ※현장 배치: 공동현관 홀 4번 1개 — 사진 손글씨 4. 카일 노트에는 '4번 1개, 영구기한'으로 적혀 있으나 문서에 변경기간이 있어 한시 게시로 두었다(확인 필요).",
+  "permanent": false,
+  "photo": "images/r03_cafeteria_hours_change.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "04"
+   }
+  ],
+  "title": "커뮤니티센터 카페테리아 운영시간 임시 변경 안내",
+  "updatedAt": 1794949058026
+ },
+ "R04": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-23",
+  "id": "R04",
+  "isTest": false,
+  "memo": "게시기간 스탬프 2026.11.23까지. 만 3·4·5세 및 병과후 과정. 문의 031-945-8333. 게시 시작일 표기 없음(11/16 촬영). ※현장 배치: 1층 공동현관 홀 5번 — 외부 광고물(알바생이 부착·제거, 기한관리 대상).",
+  "permanent": false,
+  "photo": "images/r04_artsoop_kindergarten.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층"
+    ],
+    "order": 1,
+    "slot": "05"
+   }
+  ],
+  "title": "ART숲 유치원 2027학년도 신입생 모집",
+  "updatedAt": 1794949058026
+ },
+ "R05": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-23",
+  "id": "R05",
+  "isTest": false,
+  "memo": "게시기간 스탬프 2026.11.23까지. 상담 010-2947-4770. 게시 시작일 표기 없음(11/16 촬영). ※현장 배치: 1층 공동현관 홀 6번 — 외부 광고물(알바생이 부착·제거, 기한관리 대상).",
+  "permanent": false,
+  "photo": "images/r05_yonsei_math_korean.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층"
+    ],
+    "order": 1,
+    "slot": "06"
+   }
+  ],
+  "title": "연세수학국어 예비중1·예비고1 모집",
+  "updatedAt": 1794949058026
+ },
+ "R06": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-30",
+  "id": "R06",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.11.04~11.30. 종일 난방 개시 2026.11.06(금). 외기온도에 따라 탄력 운영. 문의 관리사무소 031-949-8468. ※현장 배치: 지하1층·지하2층 공동현관 홀 5번 — 사진 손글씨 5. 카일 노트의 '영구' 표기와 달리 문서에 기간이 있어 한시 게시로 두었다(확인 필요).",
+  "permanent": false,
+  "photo": "images/r06_heating_start.jpg",
+  "postedAt": "2026-11-04",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "08"
+   }
+  ],
+  "title": "종일 난방 공급 시작",
+  "updatedAt": 1794949058026
+ },
+ "R07": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R07",
+  "isTest": false,
+  "memo": "문서에 기한 표기 없음 — 상시 게시. 층간소음 예방 생활수칙, 관리사무소 031-949-8468·국민콜센터 110. ※현장 배치: 지하1층·지하2층 공동현관 홀 6번(영구).",
+  "permanent": true,
+  "photo": "images/r07_floor_noise.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "05"
+   }
+  ],
+  "title": "공동주택 층간 소음 — 새로 배려하는 생활",
+  "updatedAt": 1794949058026
+ },
+ "R08": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R08",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.08.21~상시. 취식 가능/금지 음식, 음식물 쓰레기 자체 처리. ※현장 배치: 지하1층·지하2층 공동현관 홀 7번(영구) — 사진 손글씨 7. 1층 7번은 비어 있음.",
+  "permanent": true,
+  "photo": "images/r08_cafeteria_dining.jpg",
+  "postedAt": "2026-08-21",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 2,
+    "slot": "03"
+   }
+  ],
+  "title": "커뮤니티센터 카페테리아 취식 관련 안내",
+  "updatedAt": 1794949058026
+ },
+ "R09": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R09",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.01.01~상시. 매월 말일까지(공휴일이면 익일), 단지코드 80124, 자동이체·계좌이체·아파트너 앱. ※현장 배치: 전체 층 공동현관 홀 8번 앞(1번째).",
+  "permanent": true,
+  "photo": "images/r09_maintenance_fee.jpg",
+  "postedAt": "2026-01-01",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "06"
+   }
+  ],
+  "title": "관리비 납부 마감일 및 납부방법",
+  "updatedAt": 1794949058026
+ },
+ "R10": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-30",
+  "id": "R10",
+  "isTest": false,
+  "memo": "(주)아파트너 주차관제 유료화 안내 리플릿(뒷면 촬영). 게시기간 스탬프 2026.11.30까지. 게시 시작일 표기 없음(11/17 촬영 시점 게시 확인, 촬영일로 임시 입력). ※현장 배치: 전체 층 공동현관 홀 8번 뒤(2번째).",
+  "permanent": false,
+  "photo": "images/r10_apartner_parking_manual.jpg",
+  "postedAt": "2026-11-17",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층"
+    ],
+    "order": 1,
+    "slot": "11"
+   }
+  ],
+  "title": "주차관제 유료화 메뉴얼 (아파트너)",
+  "updatedAt": 1794949058026
+ },
+ "R11": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794953188025,
+  "createdBy": "카일",
+  "id": "R11",
+  "isTest": false,
+  "memo": "문서에 기한 표기 없음 — 상시 게시. 중앙 공동주택관리 분쟁조정위원회 홍보물(031-738-3300). ※현장 배치: 전체 층 공동현관 홀 9번 앞(1번째).",
+  "permanent": true,
+  "photo": "images/r11_smart_apartment_living.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 2,
+    "slot": "07"
+   }
+  ],
+  "title": "슬기로운 공동주택 생활",
+  "updatedAt": 1794953188025
+ },
+ "R12": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R12",
+  "isTest": false,
+  "memo": "문서에 기한 표기 없음 — 상시 게시. 법적 금연구역, 간접흡연 피해 장소, 지정 흡연구역 안내. ※현장 배치: 전체 층 공동현관 홀 9번 두 번째.",
+  "permanent": true,
+  "photo": "images/r12_smoking_guide.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 2,
+    "slot": "08"
+   }
+  ],
+  "title": "공동주택 내 흡연 관련 안내 및 협조 요청",
+  "updatedAt": 1794949058026
+ },
+ "R13": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R13",
+  "isTest": false,
+  "memo": "문서에 기한 표기 없음 — 상시 게시. 반려인·비반려인 수칙과 과태료 안내. ※현장 배치: 전체 층 공동현관 홀 10번.",
+  "permanent": true,
+  "photo": "images/r13_petiquette.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "09"
+   }
+  ],
+  "title": "반려동물 문화, 펫티켓 — 기억해야 할 5가지 수칙",
+  "updatedAt": 1794949058026
+ },
+ "R14": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-30",
+  "id": "R14",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.10.27~11.30. 방문차량 초과요금 2026.11.1부터 적용, 기존 일괄등록 10.30까지. ※현장 배치: 엘리베이터 5번 전면(거울 아래) — 카일 님 확인 2026-11-18.",
+  "permanent": false,
+  "photo": "images/r14_visitor_vehicle.jpg",
+  "postedAt": "2026-10-27",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "elevator",
+    "buildings": "all",
+    "elevators": "all",
+    "order": 1,
+    "slot": "05"
+   }
+  ],
+  "title": "방문차량 등록 서비스 이용방법 및 유의사항",
+  "updatedAt": 1794949058026
+ },
+ "R15": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "공고문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-20",
+  "id": "R15",
+  "isTest": false,
+  "memo": "공고문(별지 제29호 서식) — 작성일 2026.11.05, 게시기간 스탬프 2026.11.20까지. 이의신청 의견서 2026.11.20 18시까지 관리사무소 접수(전체 세대 10% 이상 시 경쟁입찰). ※현장 배치: 1층 공동현관 홀 12번 — 사진 손글씨 12.",
+  "permanent": false,
+  "photo": "images/r15_contractor_evaluation.jpg",
+  "postedAt": "2026-11-05",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층"
+    ],
+    "order": 1,
+    "slot": "12"
+   }
+  ],
+  "title": "기존사업자 사업수행실적 평가표(안)",
+  "updatedAt": 1794949058026
+ },
+ "R16": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "홍보물",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "id": "R16",
+  "isTest": false,
+  "memo": "문서에 기한 표기 없음 — 상시 게시. 경차·오토바이 전용 주차구역 안내('26.9.3 기준). ※현장 배치: 엘리베이터 1번(우측 액자).",
+  "permanent": true,
+  "photo": "images/r16_parking_order.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "elevator",
+    "buildings": "all",
+    "elevators": "all",
+    "order": 1,
+    "slot": "01"
+   }
+  ],
+  "title": "주차질서 확립을 위한 입주민 협조 안내",
+  "updatedAt": 1794949058026
+ },
+ "R17": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-12-31",
+  "id": "R17",
+  "isTest": false,
+  "memo": "문서 표기 기간 ~12.31(시작일은 사진 빛 반사로 판독 불가 — 게시 시작일 확인 필요). 분리배출장 수도 동결 중지 11.16~2.28, 지하 방화셔터 12.01~2.28. ※현장 배치: 엘리베이터 2번 (카일 님 확인 2026-11-18: 노트의 2번 항목 아래 동파 사진).",
+  "permanent": false,
+  "photo": "images/r17_winter_freezing.jpg",
+  "postedAt": "2026-11-16",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "elevator",
+    "buildings": "all",
+    "elevators": "all",
+    "order": 1,
+    "slot": "02"
+   }
+  ],
+  "title": "겨울철 시설물 동파 예방 협조",
+  "updatedAt": 1794949058026
+ },
+ "R18": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-11-30",
+  "id": "R18",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.08.27~11.30. 점검기간 2026.09.01~11.30(3개월), 아파트너 앱 '소방점검'으로 세대 점검. 미점검 세대 과태료 50만원 부과 가능. ※현장 배치: 엘리베이터 3번 전면(거울 아래).",
+  "permanent": false,
+  "photo": "images/r18_fire_safety_self_check.jpg",
+  "postedAt": "2026-08-27",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "elevator",
+    "buildings": "all",
+    "elevators": "all",
+    "order": 1,
+    "slot": "03"
+   }
+  ],
+  "title": "세대 내 소방시설 자체 점검 안내",
+  "updatedAt": 1794949058026
+ },
+ "R19": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "공고문",
+  "createdAt": 1794949058026,
+  "createdBy": "카일",
+  "deadline": "2026-12-31",
+  "id": "R19",
+  "isTest": false,
+  "memo": "공고일 2026.11.05, 공고기한 2026.12.31. 하자접수 2026.11.09~12.27 (m.dtspace.co.kr/ji0018, QR). 한 사진에 두 장(공고문 + '모바일 하자접수 및 처리확인 방법 안내')이 나란히 촬영됨 — 같은 게시물 1건. ※현장 배치: 엘리베이터 6번 좌측벽.",
+  "permanent": false,
+  "photo": "images/r19_defect_warranty_end.jpg",
+  "postedAt": "2026-11-05",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "elevator",
+    "buildings": "all",
+    "elevators": "all",
+    "order": 1,
+    "slot": "06"
+   }
+  ],
+  "title": "3년차 하자담보책임 기간 종료 알림",
+  "updatedAt": 1794949058026
+ },
+ "R20": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "안내문",
+  "createdAt": 1794953188025,
+  "createdBy": "카일",
+  "deadline": "2026-12-31",
+  "id": "R20",
+  "isTest": false,
+  "memo": "문서 표기 기간 26.11.17~12.31. 차량 잠금·사이드미러 접힘 확인, 귀중품 보관 금지, 수상한 행동 시 경비실·관리사무소·112 신고. 2026-11-17 A조 배포 — 전층 01번(앞).",
+  "permanent": false,
+  "photo": "images/r20_parking_theft_prevention.jpg",
+  "postedAt": "2026-11-17",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "01"
+   }
+  ],
+  "title": "지하주차장 차량 도난사고 예방 안내",
+  "updatedAt": 1794953188025
+ },
+ "R21": {
+  "attach": {
+   "backA": {
+    "at": 1794817500000,
+    "by": "김기춘",
+    "team": "B"
+   },
+   "backB": {
+    "at": 1794817800000,
+    "by": "조명수",
+    "team": "B"
+   },
+   "front": {
+    "at": 1794817200000,
+    "by": "염일엽",
+    "team": "A"
+   }
+  },
+  "category": "공고문",
+  "createdAt": 1794953188025,
+  "createdBy": "카일",
+  "deadline": "2026-12-01",
+  "id": "R21",
+  "isTest": false,
+  "memo": "공고문(별지 제29호 서식) — ㈜한일자원(재활용품 수거), 월 3,081,600원, 97점(A78+B19) 재계약 기준(85점) 충족. 게시기간 2026.11.17~12.01, 이의신청 2026.12.01 18시까지 관리사무소 접수(10% 이상 시 경쟁입찰). 2026-11-17 A조 배포 — 전층 07번(앞).",
+  "permanent": false,
+  "photo": "images/r21_hanil_evaluation.jpg",
+  "postedAt": "2026-11-17",
+  "status": "posted",
+  "targets": [
+   {
+    "board": "lobby",
+    "buildings": "all",
+    "floors": [
+     "1층",
+     "지하1층",
+     "지하2층"
+    ],
+    "order": 1,
+    "slot": "07"
+   }
+  ],
+  "title": "기존사업자 사업수행실적 평가표(안) — ㈜한일자원 (재활용품 수거)",
+  "updatedAt": 1794953188025
+ }
+}
