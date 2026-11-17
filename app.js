@@ -1447,7 +1447,7 @@ var App = (function () {
       return '<div id="fOrderWrap"><div class="f-chips" id="fOrder">' +
         '<button class="f-chip on" data-act="f-order" data-v="1">1번째 (자동)</button></div>' +
         '<div class="f-hint">신규는 항상 <b>맨 앞(1번째)</b>로 들어가고, 이 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다' +
-        (n ? ' (지금 ' + n + '장 → 2~' + (n + 1) + '번째로 밀림)' : "") + ".</div>" +
+        (n === 1 ? " (지금 1장 → 2번째로 밀림)" : n > 1 ? " (지금 " + n + "장 → 2~" + (n + 1) + "번째로 밀림)" : "") + ".</div>" +
         preview + "</div>";
     }
     var max = Math.max(3, orderNum(formState.order));
