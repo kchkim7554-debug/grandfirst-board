@@ -34,7 +34,7 @@
    "permanent": true,
    "photo": "images/r02_outdoor_unit_louver.jpg",
    "board": "lobby",
-   "slot": "03",
+   "slot": "09",
    "order": 2,
    "floors": [
     "1층",
@@ -137,9 +137,10 @@
    "permanent": true,
    "photo": "images/r08_cafeteria_dining.jpg",
    "board": "lobby",
-   "slot": "07",
-   "order": 1,
+   "slot": "03",
+   "order": 2,
    "floors": [
+    "1층",
     "지하1층",
     "지하2층"
    ],
@@ -187,10 +188,9 @@
    "permanent": true,
    "photo": "images/r11_smart_apartment_living.jpg",
    "board": "lobby",
-   "slot": "09",
+   "slot": "07",
    "order": 1,
    "floors": [
-    "1층",
     "지하1층",
     "지하2층"
    ],
@@ -223,7 +223,7 @@
    "permanent": true,
    "photo": "images/r13_petiquette.jpg",
    "board": "lobby",
-   "slot": "10",
+   "slot": "09",
    "order": 1,
    "floors": [
     "1층",
