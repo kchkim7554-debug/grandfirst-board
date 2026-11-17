@@ -102,9 +102,10 @@
    "permanent": false,
    "photo": "images/r06_heating_start.jpg",
    "board": "lobby",
-   "slot": "05",
+   "slot": "08",
    "order": 1,
    "floors": [
+    "1층",
     "지하1층",
     "지하2층"
    ],
@@ -119,7 +120,7 @@
    "permanent": true,
    "photo": "images/r07_floor_noise.jpg",
    "board": "lobby",
-   "slot": "06",
+   "slot": "05",
    "order": 1,
    "floors": [
     "지하1층",
@@ -153,10 +154,9 @@
    "permanent": true,
    "photo": "images/r09_maintenance_fee.jpg",
    "board": "lobby",
-   "slot": "08",
+   "slot": "06",
    "order": 1,
    "floors": [
-    "1층",
     "지하1층",
     "지하2층"
    ],
@@ -171,12 +171,10 @@
    "permanent": false,
    "photo": "images/r10_apartner_parking_manual.jpg",
    "board": "lobby",
-   "slot": "08",
-   "order": 2,
+   "slot": "11",
+   "order": 1,
    "floors": [
-    "1층",
-    "지하1층",
-    "지하2층"
+    "1층"
    ],
    "memo": "(주)아파트너 주차관제 유료화 안내 리플릿(뒷면 촬영). 게시기간 스탬프 2026.11.30까지. 게시 시작일 표기 없음(11/17 촬영 시점 게시 확인, 촬영일로 임시 입력). ※현장 배치: 전체 층 공동현관 홀 8번 뒤(2번째)."
   },
@@ -207,7 +205,7 @@
    "permanent": true,
    "photo": "images/r12_smoking_guide.jpg",
    "board": "lobby",
-   "slot": "09",
+   "slot": "08",
    "order": 2,
    "floors": [
     "1층",
