@@ -2,8 +2,8 @@
   "meta": {
     "complex": "제일풍경채 그랑퍼스트 1단지",
     "title": "게시판 관리",
-    "version": "0.2.0",
-    "updatedAt": "2026-11-15",
+    "version": "0.3.0",
+    "updatedAt": "2026-11-17",
     "facilityNote": "공동현관 홀 120개 게시판(40개 코어 × 3개 층) · 엘리베이터 44대",
     "dataNote": "시설(동·코어·층·게시판 번호) 정보만 이 파일에 있습니다. 게시물과 담당자 설정은 Firebase Realtime Database(board)에 실시간 저장됩니다."
   },
