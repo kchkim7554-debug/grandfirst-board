@@ -1222,13 +1222,27 @@ var App = (function () {
     if (q && alertHay(a).indexOf(q) < 0) return false;
     return true;
   }
+  function itemHay(it) {
+    return [it.id, it.title, it.location, it.message, it.memo, it.cardImage]
+      .filter(Boolean).join(" ").toLowerCase();
+  }
+  /* 내용 검색이 있으면 날짜별 항목 중 일치하는 것만 남긴다.
+     항목 문구가 아니라 날짜·근무조·요약으로만 걸린 날은 전체 항목을 그대로 보인다. */
+  function alertVisibleItems(a) {
+    var items = alertItems(a);
+    var all = items.map(function (it, i) { return { it: it, i: i }; });
+    var q = (ALERT_FILTER.q || "").trim().toLowerCase();
+    if (!q) return all;
+    var hit = all.filter(function (o) { return itemHay(o.it).indexOf(q) >= 0; });
+    return hit.length ? hit : all;
+  }
   function filteredAlerts() {
     var q = (ALERT_FILTER.q || "").trim().toLowerCase();
     return ALERTS.filter(function (a) { return alertMatches(a, q); });
   }
   function alertCountText(days) {
     var n = 0;
-    days.forEach(function (a) { n += alertItems(a).length; });
+    days.forEach(function (a) { n += alertVisibleItems(a).length; });
     var filtered = ALERT_FILTER.from || ALERT_FILTER.to || ALERT_FILTER.q;
     return (filtered ? "검색 결과 " : "전체 ") + "<b>" + days.length + "일</b> · <b>" + n + "건</b>";
   }
@@ -1253,8 +1267,8 @@ var App = (function () {
     return h;
   }
   function alertDayHtml(a) {
-    var items = alertItems(a);
-    var has = a.hasTargets !== false && items.length > 0;
+    var items = alertVisibleItems(a);
+    var has = a.hasTargets !== false && alertItems(a).length > 0;
     var dateTxt = a.date + " (" + (a.weekday || weekday(a.date)) + ")";
     if (!has) {
       return '<article class="aday none"><div class="aday-none">' + esc(dateTxt) + " · " +
@@ -1262,12 +1276,13 @@ var App = (function () {
         (shiftLabel(a) ? '<div class="aday-none-sub">' + esc(shiftLabel(a)) + " 근무조 · 07:00 기록</div>" : "") +
         "</article>";
     }
+    var total = alertItems(a).length;
     var h = '<article class="aday"><div class="aday-h">' +
       '<span class="aday-date">' + esc(a.date) + " <b>(" + esc(a.weekday || weekday(a.date)) + ")</b></span>" +
       (shiftLabel(a) ? '<span class="pill soon">' + esc(shiftLabel(a)) + "</span>" : "") +
-      '<span class="pill overdue">제거 대상 ' + items.length + "건</span></div>";
+      '<span class="pill overdue">제거 대상 ' + total + "건" + (items.length < total ? " · " + items.length + "건 일치" : "") + "</span></div>";
     if (a.summary) h += '<div class="aday-sum">' + esc(a.summary) + "</div>";
-    h += items.map(function (it, i) { return alertItemHtml(a, it, i); }).join("");
+    h += items.map(function (o) { return alertItemHtml(a, o.it, o.i); }).join("");
     return h + "</article>";
   }
   function alertFeedHtml(days) {
