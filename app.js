@@ -661,11 +661,19 @@ var App = (function () {
   }
 
   /* ---------- zone check actions ---------- */
+  function checkTeamOf(n, zone, st) {
+    if (!st) return "";
+    if (st.team === "A" || st.team === "B") return st.team;
+    if (st.by && guardName("A", zone) === st.by) return "A";
+    if (st.by && guardName("B", zone) === st.by) return "B";
+    return "";
+  }
   function toggleZoneCheck(id, kind, zone, team) {
     var n = getNotice(id);
     if (!n) return;
     var existing = zoneCheck(n, kind, zone);
-    if (existing) {
+    var existingTeam = checkTeamOf(n, zone, existing);
+    if (existing && (!team || existingTeam === team)) {
       if (SESSION.role !== "admin") {
         toast(kind === "attach"
           ? "이미 " + (existing.by || "담당자") + " 님이 게시 완료했습니다 (해제는 관리자만)"
@@ -681,18 +689,24 @@ var App = (function () {
       }).catch(function (e) { toast("저장 실패: " + e.message); });
       return;
     }
+    if (existing && team && existingTeam && existingTeam !== team && SESSION.role !== "admin") {
+      toast("이미 " + existingTeam + "조(" + (existing.by || "담당자") + ")에서 " + (kind === "attach" ? "게시" : "제거") + " 완료했습니다 (변경은 관리자만)");
+      return;
+    }
     requireGuard(function (a) {
+      var recTeam = (SESSION.role === "admin" && (team === "A" || team === "B")) ? team : (a.team || team);
+      var recBy = (SESSION.role === "admin" && (team === "A" || team === "B")) ? (guardName(team, zone) || a.name) : a.name;
       var updates = {};
       updates["board/notices/" + id + "/" + kind + "/" + zone] =
-        { by: a.name, team: a.team, at: nowTs() };
+        { by: recBy, team: recTeam, at: nowTs() };
       var status = n.status;
       var attachState = Object.assign({}, n.attach || {});
       var detachState = Object.assign({}, n.detach || {});
       if (kind === "attach") {
-        attachState[zone] = { by: a.name, team: a.team, at: nowTs() };
+        attachState[zone] = { by: recBy, team: recTeam, at: nowTs() };
         updates["board/notices/" + id + "/status"] = "posted";
       } else {
-        detachState[zone] = { by: a.name, team: a.team, at: nowTs() };
+        detachState[zone] = { by: recBy, team: recTeam, at: nowTs() };
         var zs = applicableZones(n);
         var allDone = zs.every(function (z) { return !!detachState[z]; });
         if (allDone) {
@@ -709,9 +723,9 @@ var App = (function () {
       fbUpdate(updates).then(function (ok) {
         if (!ok) return;
         writeLog({
-          noticeId: id, type: kind, zone: zone, by: a.name, team: a.team, at: nowTs(), title: n.title
+          noticeId: id, type: kind, zone: zone, by: recBy, team: recTeam, at: nowTs(), title: n.title
         });
-        toast((kind === "attach" ? "게시 완료" : "제거 완료") + " · " + zoneName(zone) + " (" + a.name + ")");
+        toast((kind === "attach" ? "게시 완료" : "제거 완료") + " · " + zoneName(zone) + " (" + recTeam + "조 " + recBy + ")");
       });
     });
   }
@@ -1129,9 +1143,10 @@ var App = (function () {
       return '<div class="chk na" aria-label="대상 아님"><span class="box">–</span><span class="zn">' + esc(zoneShort(zone)) + '</span><span class="nm">대상 아님</span></div>';
     }
     var st = zoneCheck(n, kind, zone);
+    var checkedTeam = checkTeamOf(n, zone, st);
     var gname = guardName(team, zone);
-    if (st) {
-      return '<button class="chk on" data-act="chk-undo" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '">' +
+    if (st && (checkedTeam === team || (!checkedTeam && team === "A"))) {
+      return '<button class="chk on" data-act="chk-undo" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '">' +
         '<span class="box">☑</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
         '<span class="nm">' + esc(st.by || gname) + " " + tsText(st.at).slice(-5) + "</span></button>";
     }
