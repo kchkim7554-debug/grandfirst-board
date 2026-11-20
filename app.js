@@ -1165,6 +1165,11 @@ var App = (function () {
     detachList.sort(sortByDeadline);
 
     var h = '<div class="sec-title"><h2>게시물 배포</h2><span class="hint">부착·탈착 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    h += '<div class="dsum">' +
+      '<span class="' + (attachList.length ? "warn" : "") + '">오늘 부착 대상 <b>' + attachList.length + "</b>건</span>" +
+      '<span class="' + (detachList.length ? "warn" : "") + '">오늘 탈착 대상 <b>' + detachList.length + "</b>건</span>" +
+      '<span>구역 <b>' + FAC.zones.length + "</b>곳 · 조 <b>2</b></span>" +
+      "</div>";
     h += '<div class="warnbox">부착 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 탈착은 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
 
     h += '<div class="sec-h"><h3>② 부착 필요</h3><span class="count">' + attachList.length + "건</span></div>";
