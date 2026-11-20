@@ -212,5 +212,49 @@ console.log("\n[8] 현재 데이터 정합성(같은 자리 안에서 1..n 이 �
     .map((g) => g.t.board + g.t.slot + "[" + g.items.map((i) => i.id + "=" + i.order).join(",") + "]").join(" "));
 }
 
+/* ---------- 9. 이동(게시판 위치·번호·순번 변경) ---------- */
+console.log("\n[9] 이동 — 같은 자리 재배열 / 다른 자리로 옮기기");
+{
+  const live = loadLive();
+  const r01 = live.R01;
+
+  // (a) 같은 자리(lobby 03) 안에서 1번째 → 2번째
+  const t2 = tgt("lobby", "03");
+  t2.order = 2;
+  const a = O.move("R01", r01, r01.targets, t2);
+  ok("같은 자리 순번 변경: 변경 있음", a.changed);
+  eq("R01 은 2번째로 저장", a.updates["board/notices/R01/targets"][0].order, 2);
+  eq("R08 이 1번째로 올라옴", a.updates["board/notices/R08/targets/0/order"], 1);
+
+  // (b) 같은 자리·같은 순번 → 저장 안 함
+  const t1 = tgt("lobby", "03");
+  t1.order = 1;
+  const b = O.move("R01", r01, r01.targets, t1);
+  ok("위치·순번이 그대로면 변경 없음", !b.changed && Object.keys(b.updates).length === 0);
+
+  // (c) 빈 자리(lobby 02)로 이동 → 원래 자리(lobby 03)는 1..n 으로 압축
+  const t3 = tgt("lobby", "02");
+  t3.order = 1;
+  const c = O.move("R01", r01, r01.targets, t3);
+  eq("R01 은 02번 1번째", [c.updates["board/notices/R01/targets"][0].slot, c.updates["board/notices/R01/targets"][0].order], ["02", 1]);
+  eq("원래 자리 R08 은 1번째로 압축", c.updates["board/notices/R08/targets/0/order"], 1);
+  ok("새 자리가 빈 곳이면 순번만 넣음", Object.keys(c.updates).sort().join(","),
+    "board/notices/R01/targets,board/notices/R01/updatedAt,board/notices/R08/targets/0/order");
+
+  // (d) 이미 2장이 겹침 자리(lobby 09: R13=1, R02=2)로 1번째에 넣기 → 기존은 +1
+  const t4 = tgt("lobby", "09");
+  t4.order = 1;
+  const d = O.move("R01", r01, r01.targets, t4);
+  eq("R13 은 2번째로 밀림", d.updates["board/notices/R13/targets/0/order"], 2);
+  eq("R02 는 3번째로 밀림", d.updates["board/notices/R02/targets/0/order"], 3);
+  eq("R01 은 09번 1번째", d.updates["board/notices/R01/targets"][0].order, 1);
+
+  // (e) 다른 구역으로 옮기면 그 구역은 부착 체크가 필요하다
+  const t5 = { board: "lobby", slot: "02", order: 1, buildings: [101] };
+  const e = O.move("R01", r01, r01.targets, t5);
+  ok("동을 좁힌 이동도 저장", e.changed && e.updates["board/notices/R01/targets"][0].buildings.length === 1);
+  ok("같은 자리 판정: 순번이 다르면 다른 자리", !O.same(tgt("lobby", "03"), Object.assign(tgt("lobby", "03"), { order: 2 })));
+}
+
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");
 globalThis.__BOARD_TEST_FAIL = fail;

@@ -310,6 +310,21 @@ var App = (function () {
     var n = Number(v);
     return (isFinite(n) && n >= 1) ? Math.floor(n) : 1;
   }
+  /* 두 대상이 게시판·번호·층/호기·동·순번까지 같은 자리인지 */
+  function sameTarget(a, b) {
+    if ((a.board || "lobby") !== (b.board || "lobby")) return false;
+    if (pad2(a.slot) !== pad2(b.slot)) return false;
+    if (orderNum(a.order) !== orderNum(b.order)) return false;
+    if ((b.board || "lobby") === "lobby") {
+      var fa = lobbyFloorsOf(a), fb = lobbyFloorsOf(b);
+      if (fa.length !== fb.length || !fa.every(function (f) { return fb.indexOf(f) >= 0; })) return false;
+    } else {
+      var ea = elevKeysOf(a), eb = elevKeysOf(b);
+      if (ea.length !== eb.length || !ea.every(function (k) { return eb.indexOf(k) >= 0; })) return false;
+    }
+    var ba = buildingsOfTarget(a), bb = buildingsOfTarget(b);
+    return ba.length === bb.length && ba.every(function (no) { return bb.indexOf(no) >= 0; });
+  }
 
   /* 신규 게시물의 대상(newTargets)과 겹치는 활성 게시물의 order 를 +1 씩 올린다.
      반환 { updates: {경로: 값}, pushed: [{id,title,from,to}] } — 한 번의 update()로 함께 저장한다. */
@@ -846,7 +861,7 @@ var App = (function () {
       '<button class="btn primary" data-act="copy" data-kind="today">' +
       '<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>' +
       "오늘 탈착 목록 복사</button>" +
-      '<button class="btn ghost" data-act="tab" data-tab="tasks">체크하러 가기</button>' +
+      '<button class="btn ghost" data-act="go" data-go="#/deploy">체크하러 가기</button>' +
       "</div></section>";
   }
   function renderZones() {
@@ -895,12 +910,68 @@ var App = (function () {
     return '<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px">' +
       '<span class="sync"><i class="dot ' + (CONNECTED ? "on" : "off") + '"></i>' + (CONNECTED ? "실시간 연결됨" : "연결 중…") + "</span>" +
       '<span style="flex:1"></span>' +
-      '<button class="mini-btn" data-act="tab" data-tab="tasks">부착·탈착 ' + (summary().pending + summary().removing) + "건</button>" +
+      '<button class="mini-btn" data-act="go" data-go="#/deploy">부착·탈착 ' + (summary().pending + summary().removing) + "건</button>" +
       "</div>";
   }
-  function renderHome() {
+
+  /* ========================================================
+     첫 화면 — 7개 네잎클로버 메뉴 포털
+     ======================================================== */
+  function cloverSvg() {
+    var leaf = "M12 12C12 6.3 9.4 3 6.2 3 3.2 3 1.9 5.7 3.6 8.3 5.1 10.6 8.3 11.9 12 12Z";
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path d="' + leaf + '" fill="currentColor"/>' +
+      '<path d="' + leaf + '" fill="currentColor" transform="rotate(90 12 12)"/>' +
+      '<path d="' + leaf + '" fill="currentColor" transform="rotate(180 12 12)"/>' +
+      '<path d="' + leaf + '" fill="currentColor" transform="rotate(270 12 12)"/>' +
+      '<path d="M12 12.4c0 3.8-.5 6.6-1.1 8.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>' +
+      "</svg>";
+  }
+  function menuRow(go, title, desc, badge, id) {
+    var b = badge ? '<span class="menu-badge"' + (id ? ' id="' + id + '"' : "") + ">" + (badge > 99 ? "99+" : badge) + "</span>" : "";
+    return '<button class="menu-row" data-act="go" data-go="' + esc(go) + '">' +
+      '<span class="menu-ico">' + cloverSvg() + "</span>" +
+      '<span class="menu-main"><span class="menu-title">' + esc(title) + "</span>" +
+      '<span class="menu-desc">' + esc(desc) + "</span></span>" + b +
+      '<span class="menu-arrow">›</span></button>';
+  }
+  function todayAlert() {
+    var t = null;
+    ALERTS.forEach(function (a) { if (a.date === TODAY) t = a; });
+    return t;
+  }
+  function renderPortal() {
     var s = summary();
-    var h = syncBar();
+    var al = todayAlert();
+    var nAlert = al ? alertItems(al).length : 0;
+    var removeToday = s.counts.overdue + s.counts.today;
+    var h = '<section class="pcard">' +
+      '<span class="pdot' + (CONNECTED ? "" : " off") + '"><i></i>' + (CONNECTED ? "실시간 연결됨" : "연결 중…") + "</span>" +
+      '<div class="pcard-title">게시판 관리 시스템</div>' +
+      '<div class="pcard-sub">운정 제일풍경채 그랑퍼스트 · 별하람마을 1단지</div>' +
+      '<div class="psum">' +
+      '<span' + (removeToday ? ' class="urgent"' : "") + ">오늘 탈착 <b>" + removeToday + "</b>건</span>" +
+      '<span>부착 대기 <b>' + s.pending + "</b>건</span>" +
+      '<span>게시 중 <b>' + num(s.sheetsTotal) + "</b>장</span>" +
+      "</div></section>";
+    h += '<div class="menu-wrap"><div class="menu-head"><h2>메뉴</h2><span class="hint">메뉴를 누르면 열립니다</span></div><div class="menu-list">';
+    h += menuRow("#/create", "게시물 생성 및 이동", "새 게시물 등록 · 게시판 위치·슬롯·순번 이동", 0);
+    h += menuRow("#/deploy", "게시물 배포", "오늘 배포 대상 · 구역·동별 부착·탈착 체크", s.pending + s.removing);
+    h += menuRow("#/status", "현재 게시물 게시 상태 조회", "동별·게시판별 게시 현황과 기한", removeToday);
+    h += menuRow("#/history", "게시물 이력 및 통계", "보관함·탈착 이력 · 전체/구역별/월별 통계", 0);
+    h += menuRow("#/alerts", "제거대상 일일 알림", "매일 07:00 제거 대상 · 카드 이미지 크게 보기·저장", nAlert, "menuAlertBadge");
+    h += menuRow("#/admin", "시스템 권한 관리", "관리자 인증 · 조·구역 담당자 권한", 0);
+    h += menuRow("#/info", "풍경채 그랑퍼스트 정보", "단지·게시판 구조(E/V 01~06) · 근무조 안내", 0);
+    h += "</div></div>";
+    h += '<p class="note">게시물·담당자 정보는 Firebase에 실시간 저장됩니다. 등록·수정·이동은 관리자 인증(PIN) 후 가능합니다.' +
+      (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다." : "") + "</p>";
+    return h;
+  }
+  /* 3. 현재 게시물 게시 상태 조회 (동별 현황) */
+  function renderStatus() {
+    var s = summary();
+    var h = '<div class="sec-title"><h2>현재 게시물 게시 상태 조회</h2><span class="hint">' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    h += syncBar();
     h += renderHero(s);
     h += renderStats(s);
     h += '<div class="sec-title"><h2>동별 게시판</h2><span class="hint">' + (ZONE === "all" ? "전체 구역" : zoneName(ZONE)) + "</span></div>";
@@ -908,7 +979,7 @@ var App = (function () {
     h += renderBuildingGrid();
     h += renderFacility();
     h += '<p class="note">게시물·담당자 정보는 Firebase에 실시간 저장됩니다. 경비원 8명이 같은 화면을 함께 봅니다.' +
-      (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 등록·관리 탭에서 한 번에 지울 수 있습니다." : "") + "</p>";
+      (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다." : "") + "</p>";
     return h;
   }
   function hasTest() { return NOTICES.some(function (n) { return n.isTest; }); }
@@ -1089,7 +1160,7 @@ var App = (function () {
     attachList.sort(sortByDeadline);
     detachList.sort(sortByDeadline);
 
-    var h = '<div class="sec-title"><h2>부착·탈착 체크</h2><span class="hint">' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    var h = '<div class="sec-title"><h2>게시물 배포</h2><span class="hint">부착·탈착 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
     h += '<div class="warnbox">부착 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 탈착은 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
 
     h += '<div class="sec-h"><h3>② 부착 필요</h3><span class="count">' + attachList.length + "건</span></div>";
@@ -1123,61 +1194,305 @@ var App = (function () {
     }
     return h;
   }
+  function renderDeploy() { return renderTasks(); }
 
-  /* ---------- admin view ---------- */
-  function renderAdmin() {
-    var h = '<div class="sec-title"><h2>등록·관리</h2><span class="hint">관리자 전용</span></div>';
-    if (SESSION.role !== "admin") {
-      h += '<div class="card" style="padding:16px;text-align:center">' +
-        '<div style="font-size:1.5rem">🔒</div>' +
-        '<div style="font-size:.92rem;font-weight:800;margin-top:6px">관리자 인증이 필요합니다</div>' +
-        '<div style="font-size:.74rem;color:var(--muted);line-height:1.6;margin-top:6px">게시물 등록·수정·삭제, 담당자 설정은 관리자(카일·관리사무소)가 PIN으로 인증한 뒤 사용할 수 있습니다.<br>경비원은 조회와 부착·탈착 체크를 바로 쓰실 수 있습니다.</div>' +
-        '<div style="display:flex;gap:8px;margin-top:14px"><button class="btn solid" data-act="admin-login" style="flex:1">관리자 인증</button></div></div>';
-      h += '<p class="note">PIN을 잊으셨다면 관리자 계정(kchkim7554@gmail.com)의 Firebase 콘솔에서 board/config/pinHash를 지우면 기본 PIN(7554)으로 돌아갑니다.</p>';
-      return h;
+  /* =========================================================
+     1. 게시물 생성 및 이동 ([생성] / [이동])
+     ========================================================= */
+  var MV_FILTER = { q: "" };
+  var moveState = null;
+
+  function flowBadge(n) {
+    var fl = flowOf(n);
+    if (fl === "pending") return '<span class="pill pending">부착 대기</span>';
+    if (fl === "attaching") return '<span class="pill pending">부착 ' + attachedZones(n).length + "/" + applicableZones(n).length + "</span>";
+    if (fl === "removing") return '<span class="pill overdue">탈착 필요</span>';
+    return '<span class="pill active">게시 중</span>';
+  }
+  function lockCardHtml(title, desc) {
+    return '<div class="lockcard"><div style="font-size:1.35rem">🔒</div>' +
+      '<div class="lk-t">' + esc(title) + "</div>" +
+      '<div class="lk-s">' + desc + "</div>" +
+      '<button class="btn solid wide lk-b" data-act="admin-login">관리자 인증 (PIN)</button></div>';
+  }
+  function renderCreate(tab) {
+    var isA = SESSION.role === "admin";
+    var h = '<div class="sec-title"><h2>게시물 생성 및 이동</h2><span class="hint">' + (isA ? "관리자 권한" : "관리자 인증 필요") + "</span></div>";
+    h += '<div class="seg-tabs" role="tablist" aria-label="생성·이동">' +
+      '<button class="seg-tab' + (tab === "move" ? "" : " on") + '" data-act="create-tab" data-v="new" role="tab" aria-selected="' + (tab !== "move") + '">생성</button>' +
+      '<button class="seg-tab' + (tab === "move" ? " on" : "") + '" data-act="create-tab" data-v="move" role="tab" aria-selected="' + (tab === "move") + '">이동</button>' +
+      "</div>";
+    h += (tab === "move") ? moveTabHtml(isA) : newTabHtml(isA);
+    return h;
+  }
+  function newTabHtml(isA) {
+    var h = "";
+    if (!isA) {
+      h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
+        "새 게시물 등록·수정·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 부착·탈착 체크를 바로 쓸 수 있습니다.");
+    } else {
+      h += '<div style="display:flex;gap:8px;margin-bottom:11px">' +
+        '<button class="btn solid" data-act="new-notice" style="flex:1 1 auto">＋ 새 게시물 등록</button>' +
+        '<button class="btn line" data-act="settings" style="flex:0 0 auto">설정</button></div>';
+      h += '<div class="warnbox">등록하면 <b>부착 대기</b>로 저장되고, 같은 자리(게시판·번호·겹치는 층/호기·동)에 이미 붙은 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 부착 체크를 해야 도면에 나타납니다.</div>';
     }
-    h += '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-      '<button class="btn solid" data-act="new-notice" style="flex:1">＋ 새 게시물 등록</button>' +
-      '<button class="btn line" data-act="settings" style="flex:0 0 auto">설정</button></div>';
-
+    h += noticeAdminList("등록·게시 중인 게시물", false, "");
+    return h;
+  }
+  function activeSorted() {
     var live = NOTICES.filter(function (n) { return !isArchived(n); });
-    var arch = NOTICES.filter(isArchived);
     live.sort(function (a, b) {
       var fa = flowOf(a), fb = flowOf(b);
       var rank = { removing: 0, attaching: 1, pending: 2, posted: 3 };
       if (rank[fa] !== rank[fb]) return rank[fa] - rank[fb];
       return sortByDeadline(a, b);
     });
-    h += '<div class="sec-h"><h3>게시 중·대기</h3><span class="count">' + live.length + "건</span>" +
-      '<span class="spacer"></span><button class="mini-btn" data-act="cleanup">정리 안내</button></div>';
-    if (!live.length) {
-      h += '<div class="empty-box">등록된 게시물이 없습니다.<br><b>＋ 새 게시물 등록</b>으로 시작하세요.</div>';
-    } else {
-      h += '<div class="list">' + live.map(function (n) {
-        var fl = flowOf(n);
-        var pill = fl === "pending" ? '<span class="pill pending">부착 대기</span>'
-          : fl === "attaching" ? '<span class="pill pending">부착 ' + attachedZones(n).length + "/" + applicableZones(n).length + "</span>"
-            : fl === "removing" ? '<span class="pill overdue">탈착 필요</span>'
-              : '<span class="pill active">게시 중</span>';
-        return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
-          '<span class="row-main">' +
-          '<span style="display:flex;gap:4px;flex-wrap:wrap">' + (fl === "posted" ? statusPill(n) : pill) + testTag(n) + "</span>" +
-          '<span class="row-title">' + esc(n.title) + "</span>" +
-          '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
-          '<span class="row-sub">' + esc(statusText(n)) + "</span></span>" +
-          '<span class="row-arrow">›</span></button>';
-      }).join("") + "</div>";
+    return live;
+  }
+  function noticeAdminList(title, withMove, q) {
+    var list = activeSorted();
+    if (q) {
+      var qq = q.toLowerCase();
+      list = list.filter(function (n) {
+        return (n.title || "").toLowerCase().indexOf(qq) >= 0 || targetsText(n).toLowerCase().indexOf(qq) >= 0;
+      });
     }
+    var h = '<div class="sec-h"><h3>' + esc(title) + '</h3><span class="count">' + list.length + "건</span></div>";
+    if (!list.length) return h + '<div class="empty-box">해당하는 게시물이 없습니다.</div>';
+    h += '<div class="list">';
+    list.forEach(function (n) {
+      h += '<div class="row" style="align-items:flex-start">' +
+        '<button class="row-main" data-act="open-notice" data-id="' + esc(n.id) + '">' +
+        '<span style="display:flex;gap:4px;flex-wrap:wrap">' + flowBadge(n) + testTag(n) + "</span>" +
+        '<span class="row-title">' + esc(n.title) + "</span>" +
+        '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
+        '<span class="row-sub">' + esc(statusText(n)) + "</span></button>" +
+        (withMove ? '<button class="mini-btn" style="align-self:center;flex:0 0 auto" data-act="move-open" data-id="' + esc(n.id) + '">이동</button>' : "") +
+        "</div>";
+    });
+    h += "</div>";
+    return h;
+  }
+  function moveTabHtml(isA) {
+    var h = "";
+    if (!isA) {
+      h += lockCardHtml("위치·순번 이동은 관리자 인증이 필요합니다",
+        "게시판 위치·슬롯 번호·겹치는 순번 변경은 현장 게시판 전체에 영향을 주므로 관리자만 할 수 있습니다. 아래 목록은 조회용입니다.");
+      return h + noticeAdminList("게시물 위치 이동", false, "");
+    }
+    h += '<div class="warnbox">게시물의 <b>게시판 종류·층/호기·번호·겹치는 순번</b>을 바꿉니다. 같은 번호에 여러 장이 있으면 순번대로 앞·뒤가 바뀝니다.</div>';
+    h += '<div class="fld" style="margin-bottom:10px"><input class="f-in" id="mvQ" type="search" placeholder="제목 · 게시 위치로 찾기" value="' + esc(MV_FILTER.q) + '"></div>';
+    h += noticeAdminList("게시물 위치 이동", true, MV_FILTER.q);
+    return h;
+  }
 
-    h += '<div class="sec-h"><h3>보관함</h3><span class="count">' + arch.length + "건</span></div>";
-    h += '<div class="list"><button class="row" data-act="tab" data-tab="archive"><span class="row-main">' +
-      '<span class="row-title">보관함 열기</span><span class="row-sub">탈착 완료된 게시물 조회·수정·삭제·재등록</span></span>' +
-      '<span class="row-arrow">›</span></button></div>';
+  /* ---- 이동 시트 ---- */
+  function openMoveSheet(id) {
+    var n = getNotice(id);
+    if (!n) return;
+    var t = targetsOf(n)[0] || { board: "lobby", slot: "01", order: 1 };
+    moveState = {
+      id: id,
+      orig: JSON.parse(JSON.stringify(t)),
+      buildings: (t.buildings === "all" || !t.buildings) ? "all" : t.buildings.slice(),
+      board: t.board || "lobby",
+      floors: (t.floors && t.floors.length) ? t.floors.slice() : FAC.boards.lobby.floors.slice(),
+      elevators: (t.elevators && t.elevators !== "all") ? t.elevators.map(String) : "all",
+      slot: pad2(t.slot || "01"),
+      order: orderNum(t.order)
+    };
+    openSheet({ title: "게시물 이동", sub: n.title, html: moveSheetHtml(n), form: true });
+  }
+  function moveStateTarget() {
+    var t = {
+      board: moveState.board, slot: moveState.slot, order: moveState.order,
+      buildings: moveState.buildings === "all" ? "all" : moveState.buildings.slice()
+    };
+    if (moveState.board === "lobby") t.floors = (moveState.floors && moveState.floors.length) ? moveState.floors.slice() : FAC.boards.lobby.floors.slice();
+    else t.elevators = moveState.elevators;
+    return t;
+  }
+  function mvLocChips() {
+    if (moveState.board === "elevator") {
+      var out = '<button class="f-chip' + (moveState.elevators === "all" ? " on" : "") + '" data-act="mv-loc" data-v="all">전체 호기</button>';
+      allElevKeys().forEach(function (k) {
+        var on = moveState.elevators !== "all" && moveState.elevators.indexOf(String(k)) >= 0;
+        out += '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-loc" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
+      });
+      return out;
+    }
+    return FAC.boards.lobby.floors.map(function (f) {
+      var on = moveState.floors.indexOf(f) >= 0;
+      return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-loc" data-v="' + esc(f) + '">' + esc(f) + "</button>";
+    }).join("");
+  }
+  function mvSlotChips() {
+    var max = moveState.board === "elevator" ? 6 : 12;
+    var out = "";
+    for (var i = 1; i <= max; i++) {
+      var s = pad2(i);
+      out += '<button class="f-chip' + (moveState.slot === s ? " on" : "") + '" data-act="mv-slot" data-v="' + s + '">' + s + "</button>";
+    }
+    return out;
+  }
+  function mvOrderChips() {
+    var out = "";
+    for (var o = 1; o <= Math.max(3, orderNum(moveState.order) + 1); o++) {
+      out += '<button class="f-chip' + (orderNum(moveState.order) === o ? " on" : "") + '" data-act="mv-order" data-v="' + o + '">' + o + "번째</button>";
+    }
+    return out;
+  }
+  function mvPreviewHtml() {
+    var here;
+    try { here = stackedHere(moveStateTarget(), moveState.id); } catch (e) { here = []; }
+    if (!here.length) return '<div class="f-hint" style="margin-top:6px">이 자리는 지금 비어 있습니다.</div>';
+    return '<div class="f-hint" style="margin-top:6px">이 자리 지금: ' + here.map(function (it) {
+      return esc(it.notice.title) + "(" + it.order + "번째)";
+    }).join(" · ") + "</div>";
+  }
+  function moveSheetHtml(n) {
+    var h = '<div class="fld"><label>현재 위치</label>' +
+      '<div class="f-in" style="background:#f7f9fb;font-size:.8rem;line-height:1.5;min-height:auto">' + esc(targetsText(n)) + "</div></div>";
+    h += '<div class="fld"><label>새 게시판 종류</label><div class="f-chips" id="mvBoard">' +
+      '<button class="f-chip' + (moveState.board === "lobby" ? " on" : "") + '" data-act="mv-board" data-v="lobby">공동현관 홀</button>' +
+      '<button class="f-chip' + (moveState.board === "elevator" ? " on" : "") + '" data-act="mv-board" data-v="elevator">엘리베이터</button>' +
+      "</div></div>";
+    h += '<div class="fld"><label><span id="mvLocLabel">' + (moveState.board === "elevator" ? "호기" : "층") + '</span></label><div class="f-chips" id="mvLoc">' + mvLocChips() + "</div></div>";
+    h += '<div class="fld"><label>게시 번호</label><div class="f-grid" id="mvSlot">' + mvSlotChips() + "</div></div>";
+    h += '<div class="fld"><label>겹치는 순번</label><div class="f-chips" id="mvOrder">' + mvOrderChips() + '</div><div id="mvPreview">' + mvPreviewHtml() + "</div></div>";
+    h += '<div class="f-hint" style="margin:0 2px">동 범위는 그대로 유지됩니다 · ' +
+      esc(moveState.buildings === "all" ? "전체 " + FAC.buildings.length + "개동" : buildingListText(moveState.buildings)) + "</div>";
+    h += '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
+      '<button class="btn solid" data-act="mv-save" data-id="' + esc(n.id) + '" style="flex:1.3">이동 저장</button></div>';
+    return h;
+  }
+  function refreshMoveBits() {
+    var b = document.getElementById("mvBoard");
+    if (b) b.querySelectorAll(".f-chip").forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-v") === moveState.board); });
+    var ll = document.getElementById("mvLocLabel");
+    if (ll) ll.textContent = moveState.board === "elevator" ? "호기" : "층";
+    var loc = document.getElementById("mvLoc");
+    if (loc) loc.innerHTML = mvLocChips();
+    var slot = document.getElementById("mvSlot");
+    if (slot) slot.innerHTML = mvSlotChips();
+    var ord = document.getElementById("mvOrder");
+    if (ord) ord.innerHTML = mvOrderChips();
+    var prev = document.getElementById("mvPreview");
+    if (prev) prev.innerHTML = mvPreviewHtml();
+  }
 
-    if (hasTest()) {
-      h += '<div class="sec-h"><h3>테스트 데이터</h3><span class="count">' + NOTICES.filter(function (n) { return n.isTest; }).length + "건</span></div>";
-      h += '<button class="btn danger wide" data-act="del-test">테스트 데이터 일괄 삭제</button>';
-      h += '<p class="note">테스트 표시된 게시물(6건 + 보관함 예시)만 지웁니다. 실제 게시물은 남습니다.</p>';
+  /* 이동 저장 맵 — 같은 자리면 1..N 재배열, 다른 자리면 새 자리에 순번 삽입 + 원래 자리 순번 압축 */
+  function buildMoveUpdates(id, n, oldTargets, newTarget) {
+    var olds = oldTargets || [];
+    if (olds.length === 1 && sameTarget(olds[0], newTarget)) return { updates: {}, changed: false, needsAttach: false };
+    var updates = {};
+    var sameArea = olds.some(function (o) { return targetOverlaps(o, newTarget); });
+    var dest = [];
+    NOTICES.forEach(function (x) {
+      if (x.id === id || isArchived(x)) return;
+      targetsOf(x).forEach(function (tt, i) {
+        if (!targetOverlaps(newTarget, tt)) return;
+        dest.push({ id: x.id, idx: i, order: orderNum(tt.order), createdAt: x.createdAt || 0 });
+      });
+    });
+    dest.sort(function (a, b) { return a.order - b.order || b.createdAt - a.createdAt; });
+    var want = orderNum(newTarget.order);
+    var selfTarget = Object.assign({}, newTarget, { order: want });
+    if (sameArea) {
+      var self = { id: id, self: true, order: orderNum(olds[0].order), createdAt: n.createdAt || 0 };
+      var list = dest.slice();
+      var at = Math.min(Math.max(1, want), list.length + 1);
+      list.splice(at - 1, 0, self);
+      list.forEach(function (d, i) {
+        var to = i + 1;
+        if (d.self) { selfTarget.order = to; updates["board/notices/" + id + "/targets"] = [selfTarget]; }
+        else if (orderNum(d.order) !== to) updates["board/notices/" + d.id + "/targets/" + d.idx + "/order"] = to;
+      });
+    } else {
+      var at2 = Math.min(Math.max(1, want), dest.length + 1);
+      dest.forEach(function (d, i) {
+        if (i + 1 >= at2) updates["board/notices/" + d.id + "/targets/" + d.idx + "/order"] = orderNum(d.order) + 1;
+      });
+      selfTarget.order = at2;
+      updates["board/notices/" + id + "/targets"] = [selfTarget];
+      var comp = compactOrders(olds, [id]);
+      Object.keys(comp.updates).forEach(function (k) { if (!(k in updates)) updates[k] = comp.updates[k]; });
+    }
+    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    var newZones = [];
+    buildingsOfTarget(newTarget).forEach(function (no) {
+      var z = zoneOfBuilding(no);
+      if (z && newZones.indexOf(z) < 0) newZones.push(z);
+    });
+    var att = attachedZones(n);
+    var needsAttach = newZones.some(function (z) { return att.indexOf(z) < 0; });
+    return { updates: updates, changed: true, needsAttach: needsAttach };
+  }
+  function saveMove(id) {
+    var n = getNotice(id);
+    if (!n || !moveState) return;
+    var t = moveStateTarget();
+    var res = buildMoveUpdates(id, n, targetsOf(n), t);
+    if (!res.changed) { toast("위치가 그대로입니다 · 번호나 순번을 바꿔 주세요"); return; }
+    requireAdmin(function () {
+      var btn = document.querySelector('[data-act="mv-save"]');
+      if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
+      fbUpdate(res.updates).then(function (ok) {
+        if (!ok) { if (btn) { btn.disabled = false; btn.textContent = "다시 저장"; } return; }
+        writeLog({ noticeId: id, type: "move", by: SESSION.admin || "관리자", at: nowTs(), title: n.title, from: targetsText(n), to: targetText(t) });
+        closeSheet();
+        toast("이동했습니다 · " + targetShort(t) + (res.needsAttach ? " (새 구역은 부착 체크 필요)" : ""));
+      });
+    });
+  }
+
+  /* ---------- 시스템 권한 관리 ---------- */
+  function whoText() {
+    if (SESSION.role === "admin") return "관리자 " + (SESSION.admin || "");
+    if (SESSION.role === "guard" && SESSION.name) return SESSION.team + "조 " + zoneShort(SESSION.zone) + " " + SESSION.name;
+    return "조회 중 (권한 없음)";
+  }
+  function renderAdmin() {
+    var isAdmin = SESSION.role === "admin";
+    var h = '<div class="sec-title"><h2>시스템 권한 관리</h2><span class="hint">관리자 · 경비원 · 조회</span></div>';
+    h += '<div class="lockcard" style="text-align:left">' +
+      '<div style="font-size:.7rem;font-weight:800;color:var(--muted)">현재 접속</div>' +
+      '<div style="font-size:1rem;font-weight:800;margin-top:4px">' + esc(whoText()) + "</div>" +
+      '<div class="lk-s" style="text-align:left">' +
+      (isAdmin ? "관리자 권한 · 등록·수정·삭제·이동·권한 설정을 쓸 수 있습니다."
+        : SESSION.role === "guard" ? "경비원 권한 · 조회와 부착·탈착 체크를 할 수 있습니다. 등록·이동은 관리자 인증이 필요합니다."
+          : "조회 모드입니다. 부착·탈착 체크를 하려면 내 조·구역을 고르세요.") + "</div>" +
+      '<div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">' +
+      '<button class="btn soft" data-act="who" style="flex:1 1 46%">내 조·구역 선택</button>' +
+      (isAdmin
+        ? '<button class="btn line" data-act="admin-logout" style="flex:1 1 46%">관리자 해제</button>'
+        : '<button class="btn solid" data-act="admin-login" style="flex:1 1 46%">관리자 인증</button>') +
+      "</div></div>";
+
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>권한 구조</h3></div>' +
+      '<table class="itable">' +
+      '<tr><th>관리자</th><td>게시물 등록·수정·삭제·이동, 기한 변경, 담당자·PIN 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">PIN 4자리 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
+      '<tr><th>경비원</th><td>조회, 구역별 부착·탈착 체크 (본인 기록으로 남음)<br><span style="color:var(--muted);font-weight:600">A·B조 × 정문/후문A/후문B 담당자로 선택</span></td></tr>' +
+      '<tr><th>조회</th><td>누구나 읽기 가능 (기록·수정 불가)</td></tr>' +
+      "</table></div>";
+
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>조·구역 담당자</h3>' +
+      '<span class="spacer"></span>' +
+      (isAdmin ? '<button class="mini-btn" data-act="settings">설정</button>' : "") + "</div>" +
+      '<table class="itable">' +
+      FAC.zones.map(function (z) {
+        return "<tr><th>" + esc(z.name) + "</th><td>" + z.buildings.length + "개동<br><span style='color:var(--muted);font-weight:600'>A조 " +
+          esc(guardName("A", z.id) || "미지정") + " · B조 " + esc(guardName("B", z.id) || "미지정") + "</span></td></tr>";
+      }).join("") +
+      "</table>" +
+      (isAdmin ? "" : '<div class="f-hint" style="margin-top:8px">담당자·PIN 변경은 관리자 인증 후 가능합니다.</div>') + "</div>";
+
+    if (isAdmin) {
+      h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>데이터 관리</h3></div>' +
+        '<button class="btn line wide" data-act="export-json" style="margin-bottom:7px">전체 데이터 내보내기 (JSON 복사)</button>' +
+        '<button class="btn line wide" data-act="go" data-go="#/history" style="margin-bottom:7px">게시물 이력·보관함 열기</button>' +
+        '<button class="btn danger wide" data-act="del-test">테스트 데이터 일괄 삭제</button>' +
+        '<div class="f-hint" style="margin-top:7px">Database: grandfirst-board-default-rtdb (asia-southeast1) · Spark 무료 요금제</div></div>';
     }
     return h;
   }
@@ -1322,15 +1637,7 @@ var App = (function () {
     syncQuickChips();
     syncAlertBadge();
   }
-  function syncAlertBadge() {
-    var ab = document.getElementById("alertBadge");
-    if (!ab) return;
-    var ta = null;
-    ALERTS.forEach(function (a) { if (a.date === TODAY) ta = a; });
-    var n = ta ? alertItems(ta).length : 0;
-    ab.hidden = n === 0;
-    ab.textContent = n > 99 ? "99+" : String(n);
-  }
+  function syncAlertBadge() { syncMenuBadges(); }
   function renderAlerts() {
     var days = filteredAlerts();
     var h = '<div class="sec-title"><h2>게시물 제거 대상 일일 알림</h2><span class="hint">매일 07:00 · 최신순</span></div>';
@@ -1374,10 +1681,68 @@ var App = (function () {
     } else copyFallback(text);
   }
 
-  /* ---------- archive view ---------- */
-  function renderArchive() {
+  /* ---------- 4. 게시물 이력 및 통계 ---------- */
+  function renderHistory() {
+    var s = summary();
     var arch = NOTICES.filter(isArchived);
-    var h = '<div class="sec-title"><h2>보관함</h2><span class="hint">탈착 완료 ' + arch.length + "건</span></div>";
+    var live = NOTICES.filter(function (n) { return !isArchived(n); });
+    var h = '<div class="sec-title"><h2>게시물 이력 및 통계</h2><span class="hint">전체 ' + NOTICES.length + "건</span></div>";
+    h += '<div class="stats4">' +
+      '<div class="s4 navy"><span class="n">' + NOTICES.length + '</span><span class="l">전체 등록</span></div>' +
+      '<div class="s4 green"><span class="n">' + live.length + '</span><span class="l">게시 중·대기</span></div>' +
+      '<div class="s4 gray"><span class="n">' + arch.length + '</span><span class="l">탈착 완료</span></div>' +
+      '<div class="s4 red"><span class="n">' + (s.counts.overdue + s.counts.today) + '</span><span class="l">오늘 탈착 대상</span></div>' +
+      "</div>";
+
+    var zrows = FAC.zones.map(function (z) {
+      return {
+        z: z,
+        a: live.filter(function (n) { return applicableZones(n).indexOf(z.id) >= 0; }).length,
+        d: arch.filter(function (n) { return applicableZones(n).indexOf(z.id) >= 0; }).length
+      };
+    });
+    var maxZ = 1;
+    zrows.forEach(function (r) { maxZ = Math.max(maxZ, r.a); });
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>구역별 게시 현황</h3><span class="count">게시 중 / 탈착 완료</span></div>';
+    zrows.forEach(function (r) {
+      h += '<div class="bar-row"><span class="bar-k">' + esc(r.z.name) + "</span>" +
+        '<span class="bar-track"><i class="bar-fill" style="width:' + Math.round(r.a / maxZ * 100) + '%"></i></span>' +
+        '<span class="bar-v">' + r.a + "건 <span style=\"color:var(--muted);font-weight:600\">/ " + r.d + "</span></span></div>";
+    });
+    h += "</div>";
+
+    /* 월별 등록 건수 (최근 6개월) */
+    var counts = {};
+    NOTICES.forEach(function (n) {
+      var m = (n.postedAt || "").slice(0, 7);
+      if (m) counts[m] = (counts[m] || 0) + 1;
+    });
+    var base = new Date(toUTC(TODAY));
+    var months = [];
+    for (var i = 5; i >= 0; i--) {
+      var d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 1));
+      months.push(ymdUTC(d).slice(0, 7));
+    }
+    var maxM = 1;
+    months.forEach(function (m) { maxM = Math.max(maxM, counts[m] || 0); });
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>월별 등록</h3><span class="count">최근 6개월</span></div>';
+    months.forEach(function (m) {
+      var c = counts[m] || 0;
+      h += '<div class="bar-row"><span class="bar-k">' + (+m.slice(5, 7)) + "월</span>" +
+        '<span class="bar-track"><i class="bar-fill arch" style="width:' + Math.round(c / maxM * 100) + '%"></i></span>' +
+        '<span class="bar-v">' + c + "건</span></div>";
+    });
+    h += "</div>";
+
+    h += '<div class="sec-h"><h3>탈착 이력 · 보관함</h3><span class="count">' + arch.length + "건</span></div>";
+    h += renderArchiveBody();
+    return h;
+  }
+
+  /* ---------- archive view ---------- */
+  function renderArchiveBody() {
+    var arch = NOTICES.filter(isArchived);
+    var h = "";
     if (!arch.length) {
       return h + '<div class="empty-box">아직 탈착 완료된 게시물이 없습니다.<br>모든 구역의 탈착 체크가 끝나면 이곳으로 자동 이동합니다.</div>';
     }
@@ -1430,6 +1795,61 @@ var App = (function () {
     }).join("") + "</div>";
     h += '<p class="note">탈착 날짜·게시 번호로 찾을 수 있습니다. ' +
       (SESSION.role === "admin" ? "게시물을 누르면 수정·삭제·재등록할 수 있습니다." : "수정·삭제는 관리자 인증 후 가능합니다.") + "</p>";
+    return h;
+  }
+
+  /* ---------- 7. 풍경채 그랑퍼스트 정보 ---------- */
+  function procRow(no, title, desc) {
+    return '<div class="proc-row"><span class="proc-no">' + no + "</span><span><b>" + esc(title) + "</b> · " + esc(desc) + "</span></div>";
+  }
+  function renderInfo() {
+    var nos = FAC.buildings.map(function (b) { return b.no; });
+    var minNo = Math.min.apply(null, nos), maxNo = Math.max.apply(null, nos);
+    var h = '<div class="sec-title"><h2>풍경채 그랑퍼스트 정보</h2><span class="hint">현장 안내용</span></div>';
+    h += '<div class="ihero">' +
+      '<button class="ihero-shot gate" data-act="zoom" data-src="images/bg_complex_gate.jpg" data-cap="운정 제일풍경채 그랑퍼스트 · 정문(GATE)">' +
+      '<img src="images/bg_complex_gate.jpg" alt="단지 정문">' +
+      '<span class="ihero-tag">정문 GATE</span>' +
+      '<span class="ihero-cap"><b>운정 제일풍경채 그랑퍼스트 아파트</b>' +
+      '<small>별하람마을 1단지 · ' + minNo + "~" + maxNo + "동 · " + FAC.buildings.length + "개동</small></span></button>" +
+      '<button class="ihero-shot aerial" data-act="zoom" data-src="images/bg_complex_aerial.jpg" data-cap="운정 제일풍경채 그랑퍼스트 · 단지 배치 조감도">' +
+      '<img src="images/bg_complex_aerial.jpg" alt="단지 배치 조감도" loading="lazy">' +
+      '<span class="ihero-tag">조감도</span>' +
+      '<span class="ihero-cap"><b>단지 배치</b><small>정문 · 후문A · 후문B 3개 구역</small></span></button>' +
+      "</div>";
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 4px"><h3>단지 기본 정보</h3></div><table class="itable">' +
+      "<tr><th>단지명</th><td>운정 제일풍경채 그랑퍼스트 아파트<br><span style='color:var(--muted);font-weight:600'>(별하람마을 1단지)</span></td></tr>" +
+      "<tr><th>동 범위</th><td>" + minNo + "동 ~ " + maxNo + "동 · " + FAC.buildings.length + "개동</td></tr>" +
+      "<tr><th>구역</th><td>" + FAC.zones.map(function (z) { return esc(z.name) + " " + z.buildings.length + "동"; }).join(" · ") + "</td></tr>" +
+      "<tr><th>근무조</th><td>A조 · B조 격일 근무<br><span style='color:var(--muted);font-weight:600'>구역별 담당이 부착·탈착을 맡습니다</span></td></tr>" +
+      "<tr><th>게시판</th><td>공동현관 홀 12칸 (01~12번)<br>엘리베이터 6곳 (E/V 01~06번)</td></tr>" +
+      "</table></div>";
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>게시판 구조</h3></div>' +
+      '<table class="itable">' +
+      "<tr><th>공동현관 홀</th><td>게시판 4면 · 번호판 12칸<br><span style='color:var(--muted);font-weight:600'>2줄 × 6칸 · 01~12번</span></td></tr>" +
+      "<tr><th>엘리베이터</th><td>E/V 01~06번<br><span style='color:var(--muted);font-weight:600'>우측 액자 01~03 · 우측 액자 위 04 · 정면(거울 아래) 05 · 좌측 06</span></td></tr>" +
+      "<tr><th>겹침</th><td>같은 번호에 여러 장이면 순번(1번째 = 맨 앞)으로 구분합니다</td></tr>" +
+      "</table>" +
+      '<div class="tpl2">' +
+      '<button class="tpl-btn" data-act="zoom" data-src="templates/lobby_board_template.jpg" data-cap="공동현관 홀 게시판 번호판 01~12번">' +
+      '<img src="templates/lobby_board_template.jpg" alt="공동현관 홀 번호판" loading="lazy">' +
+      '<span class="tl">공동현관 홀 12칸<small>01~12번 배치</small></span></button>' +
+      '<button class="tpl-btn" data-act="zoom" data-src="templates/elevator_board_template.jpg" data-cap="엘리베이터 게시판 E/V 01~06번">' +
+      '<img src="templates/elevator_board_template.jpg" alt="엘리베이터 번호판" loading="lazy">' +
+      '<span class="tl">엘리베이터 6곳<small>E/V 01~06번 배치</small></span></button>' +
+      "</div>" +
+      '<div class="f-hint" style="margin-top:7px">사진을 누르면 크게 볼 수 있습니다.</div></div>';
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 4px"><h3>구역별 담당</h3></div><table class="itable">' +
+      FAC.zones.map(function (z) {
+        return "<tr><th>" + esc(z.name) + "</th><td>A조 " + esc(guardName("A", z.id) || "미지정") + " · B조 " + esc(guardName("B", z.id) || "미지정") +
+          "<br><span style='color:var(--muted);font-weight:600'>" + esc(buildingListText(z.buildings)) + "</span></td></tr>";
+      }).join("") + "</table></div>";
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>게시판 관리 절차</h3></div><div class="proc">' +
+      procRow("1", "등록", "관리자가 게시물을 등록합니다 (부착 대기)") +
+      procRow("2", "부착 체크", "담당 구역에서 붙이고 체크하면 도면에 게시됩니다") +
+      procRow("3", "탈착 체크", "기한이 되면 탈착 후 체크합니다") +
+      procRow("4", "보관함", "모든 구역 탈착이 끝나면 자동으로 보관함으로 들어갑니다") +
+      "</div></div>";
     return h;
   }
 
@@ -1963,40 +2383,55 @@ var App = (function () {
     var raw = (location.hash || "").replace(/^#\/?/, "");
     var p = raw.split("/").filter(Boolean);
     if (!p.length) return { name: "home" };
-    if (p[0] === "tasks") return { name: "tasks" };
-    if (p[0] === "admin") return { name: "admin" };
-    if (p[0] === "archive") return { name: "archive" };
-    if (p[0] === "alerts") return { name: "alerts" };
-    if (p[0] === "b") {
+    var k = p[0];
+    if (k === "create") return { name: "create", tab: (p[1] === "move" ? "move" : "new") };
+    if (k === "deploy" || k === "tasks") return { name: "deploy" };
+    if (k === "status") return { name: "status" };
+    if (k === "history" || k === "archive") return { name: "history" };
+    if (k === "alerts") return { name: "alerts" };
+    if (k === "admin") return { name: "admin" };
+    if (k === "info") return { name: "info" };
+    if (k === "b") {
       return { name: "building", no: Number(p[1]) || null, core: p[2] || null, loc: p[3] || "f1", slot: p[4] || null };
     }
     return { name: "home" };
   }
-  function setTab(name) {
-    document.querySelectorAll(".tab").forEach(function (t) {
-      t.classList.toggle("on", t.dataset.tab === name);
-    });
+  /* 서브 화면에서는 상단에 '← 첫 화면' 버튼을 보이고, 로고는 첫 화면에서만 보인다 */
+  function syncChrome() {
+    var hb = document.getElementById("homeBtn");
+    var br = document.getElementById("brand");
+    var sub = VIEW.name !== "home";
+    if (hb) hb.hidden = !sub;
+    if (br) br.hidden = sub;
+    if (document.body) {
+      document.body.classList.toggle("bg-home", !sub);
+      document.body.classList.toggle("bg-sub", sub);
+    }
   }
   function render() {
     if (!FAC || !LOADED) return;
     var view = document.getElementById("view");
     var h = "";
-    if (VIEW.name === "home") { h = renderHome(); setTab("home"); }
-    else if (VIEW.name === "tasks") { h = renderTasks(); setTab("tasks"); }
-    else if (VIEW.name === "admin") { h = renderAdmin(); setTab("admin"); }
-    else if (VIEW.name === "archive") { h = renderArchive(); setTab("archive"); }
-    else if (VIEW.name === "alerts") { h = renderAlerts(); setTab("alerts"); }
-    else if (VIEW.name === "building") { h = renderBuilding(); setTab("home"); }
+    if (VIEW.name === "home") h = renderPortal();
+    else if (VIEW.name === "create") h = renderCreate(VIEW.tab);
+    else if (VIEW.name === "deploy") h = renderDeploy();
+    else if (VIEW.name === "status") h = renderStatus();
+    else if (VIEW.name === "history") h = renderHistory();
+    else if (VIEW.name === "alerts") h = renderAlerts();
+    else if (VIEW.name === "admin") h = renderAdmin();
+    else if (VIEW.name === "info") h = renderInfo();
+    else if (VIEW.name === "building") h = renderBuilding();
     view.innerHTML = h;
+    syncChrome();
     syncWho();
-    var badge = document.getElementById("taskBadge");
-    if (badge) {
-      var s = summary();
-      var n = s.pending + s.removing;
-      badge.hidden = n === 0;
-      badge.textContent = n > 99 ? "99+" : String(n);
-    }
-    syncAlertBadge();
+    syncMenuBadges();
+  }
+  function syncMenuBadges() {
+    var al = null;
+    ALERTS.forEach(function (a) { if (a.date === TODAY) al = a; });
+    var n = al ? alertItems(al).length : 0;
+    var el = document.getElementById("menuAlertBadge");
+    if (el) { el.hidden = n === 0; el.textContent = n > 99 ? "99+" : String(n); }
   }
   function route() {
     VIEW = parseHash();
@@ -2020,7 +2455,49 @@ var App = (function () {
       if (!el) return;
       var act = el.dataset.act;
 
-      if (act === "tab") { go(el.dataset.tab === "home" ? "#/" : "#/" + el.dataset.tab); }
+      if (act === "go") { if (el.dataset.go) go(el.dataset.go); }
+      else if (act === "home") { go("#/"); }
+      else if (act === "create-tab") { go(el.dataset.v === "move" ? "#/create/move" : "#/create"); }
+      else if (act === "move-open") {
+        var mvId = el.dataset.id;
+        closeSheet();
+        setTimeout(function () { openMoveSheet(mvId); }, 200);
+      }
+      else if (act === "mv-board") {
+        moveState.board = el.dataset.v;
+        if (moveState.board === "elevator" && moveState.slot > "06") moveState.slot = "01";
+        refreshMoveBits();
+      }
+      else if (act === "mv-loc") {
+        var mvv = el.dataset.v;
+        if (moveState.board === "elevator") {
+          if (mvv === "all") moveState.elevators = "all";
+          else {
+            if (moveState.elevators === "all") moveState.elevators = [];
+            var ei = moveState.elevators.indexOf(mvv);
+            if (ei >= 0) moveState.elevators.splice(ei, 1);
+            else moveState.elevators.push(mvv);
+            if (!moveState.elevators.length) moveState.elevators = "all";
+          }
+        } else {
+          var fi = moveState.floors.indexOf(mvv);
+          if (fi >= 0) moveState.floors.splice(fi, 1);
+          else moveState.floors.push(mvv);
+          if (!moveState.floors.length) moveState.floors = FAC.boards.lobby.floors.slice();
+        }
+        refreshMoveBits();
+      }
+      else if (act === "mv-slot") { moveState.slot = el.dataset.v; refreshMoveBits(); }
+      else if (act === "mv-order") { moveState.order = Number(el.dataset.v); refreshMoveBits(); }
+      else if (act === "mv-save") { saveMove(el.dataset.id); }
+      else if (act === "admin-logout") {
+        SESSION.role = null; SESSION.admin = "";
+        saveSession(); render(); toast("관리자 권한을 해제했습니다");
+      }
+      else if (act === "tab") {
+        var tb = el.dataset.tab;
+        go(tb === "home" ? "#/" : tb === "tasks" ? "#/deploy" : tb === "archive" ? "#/history" : "#/" + tb);
+      }
       else if (act === "close-sheet") { closeSheet(); }
       else if (act === "zone") { ZONE = el.dataset.zone; render(); }
       else if (act === "building") { go("#/b/" + el.dataset.no); }
@@ -2189,6 +2666,12 @@ var App = (function () {
         if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
       }
       else if (e.target.id === "alertQ") { ALERT_FILTER.q = e.target.value; renderAlertList(); }
+      else if (e.target.id === "mvQ") {
+        MV_FILTER.q = e.target.value.trim();
+        render();
+        var mq = document.getElementById("mvQ");
+        if (mq) { mq.focus(); mq.setSelectionRange(mq.value.length, mq.value.length); }
+      }
       else if (e.target.id === "alertFrom") { ALERT_FILTER.from = e.target.value || ""; renderAlertList(); }
       else if (e.target.id === "alertTo") { ALERT_FILTER.to = e.target.value || ""; renderAlertList(); }
     });
@@ -2304,7 +2787,7 @@ var App = (function () {
     /* 겹침 순번 자동화 검증용 (Node 테스트에서 사용) */
     order: {
       overlaps: targetOverlaps, push: pushOrdersForNew, compact: compactOrders, stacked: stackedHere,
-      build: buildNoticeUpdates,
+      build: buildNoticeUpdates, move: buildMoveUpdates, same: sameTarget,
       load: function (notices, fac) { FAC = fac; ELEV_KEYS_CACHE = null; setNotices(notices); return NOTICES; }
     },
     state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION }; },
