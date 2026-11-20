@@ -41,6 +41,8 @@ var App = (function () {
   var FONT_LG = false;
   var SESSION = { role: null, team: "A", zone: "front", name: "", admin: "" };
   var ARCH_FILTER = { date: "all", slot: "all", q: "" };
+  /* 게시물 이력 및 통계 화면 탭 상태 (누적조회 · 년월별 · 처리 이력) */
+  var HIST = { tab: "cum", from: "", to: "", month: "", day: "" };
   var CONNECTED = false;
   var LOADED = false;
   var db = null;
@@ -1690,13 +1692,291 @@ var App = (function () {
     } else copyFallback(text);
   }
 
-  /* ---------- 4. 게시물 이력 및 통계 ---------- */
+  /* ---------- 4. 게시물 이력 및 통계 ----------
+     집계 기준 (2026-11-20 개편 · 손그림 설계)
+     · 단위: 게시물 1건 × 구역 1곳의 게시(제거) 체크 기록 1건.
+       그 구역에서 그 게시물이 공동현관 게시판이면 「게시판」 1건, 엘리베이터(E/V)면 「E/V」 1건으로 센다.
+       (두 게시판에 모두 거는 게시물은 게시판 1 + E/V 1 = 합계 2건)
+     · 게시 = notice.attach[구역] 기록, 제거 = notice.detach[구역] 기록.
+       체크를 취소하면 기록이 지워지므로 logs(이력) 대신 현재 기록을 기준으로 센다(취소분 미집계).
+     · 테스트 게시물(isTest)은 집계에서 제외.
+     · 날짜: 게시는 게시일(postedAt) — 없으면 게시 체크 시각.
+             제거는 제거 체크 시각 — 없으면 보관일(archivedAt).
+       (시드처럼 과거 실적을 한꺼번에 입력한 게시 체크 시각은 실제 게시일이 아니므로 postedAt 을 먼저 쓴다)
+     · 조: 체크 기록에 남은 team(A/B). 기록이 없으면 「미지정」으로 합계에만 더한다.
+  --------------------------------------------------------- */
+  var STAT_KINDS = ["lobby", "elevator"];
+  var STAT_KIND_LABEL = { lobby: "게시판", elevator: "E/V" };
+
+  function isYmd(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+  function ymOf(s) { return s ? String(s).slice(0, 7) : ""; }
+  /* 밀리초 시각 → 한국 시간 기준 YYYY-MM-DD */
+  function ymdOfTs(ms) {
+    var v = Number(ms);
+    if (!v) return "";
+    var d = new Date(v + 9 * 3600000);
+    if (isNaN(d.getTime())) return "";
+    return d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate());
+  }
+  function shiftYm(ym, delta) {
+    var base = /^\d{4}-\d{2}$/.test(String(ym || "")) ? ym : (TODAY || todayStr()).slice(0, 7);
+    var d = new Date(Date.UTC(+base.slice(0, 4), +base.slice(5, 7) - 1 + delta, 1));
+    return d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1);
+  }
+  function ymLabel(ym) { return +ym.slice(0, 4) + "년 " + (+ym.slice(5, 7)) + "월"; }
+  function statTeamOf(t) { return (t === "A" || t === "B") ? t : ""; }
+
+  /* 게시·제거 이벤트 목록 (순수 함수 — DB를 건드리지 않는다) */
+  function statEvents(notices, fac) {
+    var list = notices || [];
+    var f = fac || FAC || { buildings: [] };
+    var zoneOf = Object.create(null), allNos = [];
+    (f.buildings || []).forEach(function (b) { zoneOf[Number(b.no)] = b.zone; allNos.push(Number(b.no)); });
+    var out = [];
+    list.forEach(function (n) {
+      if (!n || n.isTest) return;                       // 테스트 건 제외
+      var zoneKinds = Object.create(null);
+      targetsOf(n).forEach(function (t) {
+        var kind = t.board === "elevator" ? "elevator" : "lobby";
+        var nos = (t.buildings === "all" || !t.buildings) ? allNos : (t.buildings || []).map(Number);
+        nos.forEach(function (no) {
+          var z = zoneOf[no];
+          if (!z) return;
+          (zoneKinds[z] = zoneKinds[z] || Object.create(null))[kind] = true;
+        });
+      });
+      var postDate = isYmd(n.postedAt) ? n.postedAt : "";
+      Object.keys(zoneKinds).forEach(function (z) {
+        var kinds = STAT_KINDS.filter(function (k) { return zoneKinds[z][k]; });
+        var a = (n.attach || {})[z];
+        if (a) {
+          var ad = postDate || ymdOfTs(a.at);
+          kinds.forEach(function (k) {
+            out.push({
+              type: "post", kind: k, date: ad, zone: z,
+              team: statTeamOf(a.team), by: a.by || "",
+              noticeId: n.id, title: n.title || ""
+            });
+          });
+        }
+        var r = (n.detach || {})[z];
+        if (r) {
+          var rd = ymdOfTs(r.at) || (isYmd(n.archivedAt) ? n.archivedAt : "");
+          kinds.forEach(function (k) {
+            out.push({
+              type: "remove", kind: k, date: rd, zone: z,
+              team: statTeamOf(r.team), by: r.by || "",
+              noticeId: n.id, title: n.title || ""
+            });
+          });
+        }
+      });
+    });
+    return out;
+  }
+
+  function statBucket() {
+    return {
+      total: 0, lobby: 0, elevator: 0,
+      teams: {
+        A: { total: 0, lobby: 0, elevator: 0 },
+        B: { total: 0, lobby: 0, elevator: 0 },
+        "": { total: 0, lobby: 0, elevator: 0 }
+      }
+    };
+  }
+  /* 기간(년월 from ~ to, 양끝 포함) 집계 — from/to 가 비면 전체 */
+  function statAggregate(events, from, to) {
+    var res = { post: statBucket(), remove: statBucket() };
+    (events || []).forEach(function (e) {
+      var ym = ymOf(e.date);
+      if (!ym) return;
+      if (from && ym < from) return;
+      if (to && ym > to) return;
+      var b = e.type === "remove" ? res.remove : res.post;
+      var kind = e.kind === "elevator" ? "elevator" : "lobby";
+      var t = b.teams[statTeamOf(e.team)];
+      b.total++; b[kind]++;
+      t.total++; t[kind]++;
+    });
+    return res;
+  }
+  /* 한 달(YYYY-MM)의 날짜별 집계 */
+  function statByDay(events, ym) {
+    var days = Object.create(null);
+    (events || []).forEach(function (e) {
+      if (ymOf(e.date) !== ym) return;
+      var d = days[e.date] = days[e.date] || { date: e.date, post: 0, remove: 0, items: [] };
+      if (e.type === "remove") d.remove++; else d.post++;
+      d.items.push(e);
+    });
+    return { days: days, sum: statAggregate(events, ym, ym) };
+  }
+  /* 통계에 쓰이는 전체 이벤트 (화면 렌더마다 새로 계산) */
+  function histEvents() { return statEvents(NOTICES, FAC); }
+  function histEnsure(events) {
+    var now = (TODAY || todayStr()).slice(0, 7);
+    var months = [];
+    (events || []).forEach(function (e) { var m = ymOf(e.date); if (m) months.push(m); });
+    months.sort();
+    if (!HIST.from) HIST.from = months.length ? months[0] : now;
+    if (!HIST.to) HIST.to = now;
+    if (!HIST.month) HIST.month = now;
+    if (HIST.to < HIST.from) HIST.to = HIST.from;
+    return events;
+  }
+  function histTabOn(v) { return HIST.tab === v ? " on" : ""; }
+
   function renderHistory() {
+    var events = histEnsure(histEvents());
+    var h = '<div class="sec-title"><h2>게시물 이력 및 통계</h2><span class="hint">게시 · 제거 기록</span></div>';
+    h += '<div class="seg-tabs three">' +
+      '<button class="seg-tab' + histTabOn("cum") + '" data-act="hist-tab" data-v="cum">누적조회</button>' +
+      '<button class="seg-tab' + histTabOn("month") + '" data-act="hist-tab" data-v="month">년월별</button>' +
+      '<button class="seg-tab' + histTabOn("log") + '" data-act="hist-tab" data-v="log">처리 이력</button>' +
+      "</div>";
+    if (HIST.tab === "month") h += renderHistoryMonth(events);
+    else if (HIST.tab === "log") h += renderHistoryLog();
+    else h += renderHistoryCumulative(events);
+    return h;
+  }
+
+  /* ---------- 4-1. 누적조회 탭 ---------- */
+  function histTableRow(label, cls, b) {
+    function cell(v) { return '<td class="' + (v ? "" : "z") + '">' + num(v) + "</td>"; }
+    return '<tr class="' + cls + '"><th scope="row">' + esc(label) + "</th>" +
+      cell(b.total) + cell(b.lobby) + cell(b.elevator) + "</tr>";
+  }
+  function renderHistoryCumulative(events) {
+    var agg = statAggregate(events, HIST.from, HIST.to);
+    var h = '<div class="statcard" style="padding:11px 12px 10px">';
+    h += '<div class="f-daterow">' +
+      '<span class="hd-lab">년월</span>' +
+      '<input class="f-in" type="month" id="cumFrom" value="' + esc(HIST.from) + '" aria-label="시작 년월">' +
+      '<span class="tilde">~</span>' +
+      '<input class="f-in" type="month" id="cumTo" value="' + esc(HIST.to) + '" aria-label="끝 년월">' +
+      "</div>";
+    h += '<div class="quickrow">' +
+      '<button class="qchip" data-act="hist-range" data-v="all">전체 기간</button>' +
+      '<button class="qchip" data-act="hist-range" data-v="year">올해</button>' +
+      '<button class="qchip" data-act="hist-range" data-v="month">이번 달</button>' +
+      "</div></div>";
+
+    h += '<div class="dsum">' +
+      '<span>기간 게시 <b>' + num(agg.post.total) + "건</b></span>" +
+      '<span>제거 <b>' + num(agg.remove.total) + "건</b></span>" +
+      "</div>";
+
+    h += '<div class="statcard" style="padding:2px 4px 6px">';
+    h += '<table class="ptable"><thead><tr><th>구분</th><th>합계</th><th>게시판</th><th>E/V</th></tr></thead><tbody>';
+    h += histTableRow("게시", "grp post", agg.post);
+    h += histTableRow("(A조)", "sub", agg.post.teams.A);
+    h += histTableRow("(B조)", "sub", agg.post.teams.B);
+    if (agg.post.teams[""].total) h += histTableRow("(미지정)", "sub", agg.post.teams[""]);
+    h += histTableRow("제거", "grp remove", agg.remove);
+    h += histTableRow("(A조)", "sub", agg.remove.teams.A);
+    h += histTableRow("(B조)", "sub", agg.remove.teams.B);
+    if (agg.remove.teams[""].total) h += histTableRow("(미지정)", "sub", agg.remove.teams[""]);
+    h += "</tbody></table></div>";
+
+    h += '<p class="note">기간은 게시일·제거일이 속한 <b>년월</b> 기준입니다. ' +
+      "한 게시물을 한 구역에 게시하면 그 구역 <b>게시판 종류(공동현관 / E/V)에 1건</b>으로 잡히고, " +
+      "두 곳에 함께 거는 게시물은 양쪽에 각각 잡힙니다. 테스트 게시물은 빠집니다.</p>";
+    return h;
+  }
+
+  /* ---------- 4-2. 년월별 탭 (달력) ---------- */
+  function renderHistoryMonth(events) {
+    var ym = HIST.month;
+    var data = statByDay(events, ym);
+    var y = +ym.slice(0, 4), m = +ym.slice(5, 7);
+    var startDow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    var lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    var nowYm = (TODAY || todayStr()).slice(0, 7);
+
+    var h = '<div class="statcard" style="padding:9px 10px 11px">';
+    h += '<div class="monthnav">' +
+      '<button class="mnav" data-act="hist-prev" aria-label="전월">‹</button>' +
+      '<div class="mlabel">' + ymLabel(ym) +
+      (ym === nowYm ? '<small>당월</small>' : "") + "</div>" +
+      '<button class="mnav" data-act="hist-next" aria-label="차월">›</button>' +
+      "</div>";
+
+    h += '<div class="cal-head">';
+    WEEK.forEach(function (w, i) {
+      h += '<div class="cal-h' + (i === 0 ? " sun" : i === 6 ? " sat" : "") + '">' + w + "</div>";
+    });
+    h += "</div>";
+
+    h += '<div class="cal">';
+    for (var i = 0; i < startDow; i++) h += '<div class="cal-cell blank"></div>';
+    for (var d = 1; d <= lastDay; d++) {
+      var ds = ym + "-" + pad2(d);
+      var day = data.days[ds];
+      var pc = day ? day.post : 0, rc = day ? day.remove : 0;
+      h += '<button class="cal-cell' + (ds === TODAY ? " today" : "") + (ds === HIST.day ? " sel" : "") + '"' +
+        ' data-act="hist-day" data-d="' + ds + '" aria-label="' + korDate(ds) + " 게시 " + pc + "건 제거 " + rc + '건">' +
+        '<span class="cal-d">' + d + "</span>" +
+        '<span class="cal-p' + (pc ? "" : " zero") + '">게시 ' + pc + "건</span>" +
+        '<span class="cal-r' + (rc ? "" : " zero") + '">제거 ' + rc + "건</span>" +
+        "</button>";
+    }
+    h += "</div>";
+
+    var s = data.sum;
+    h += '<div class="calsum">' +
+      '<div class="csrow"><b class="post">게시 ' + num(s.post.total) + '건</b>' +
+      '<span>A조 ' + num(s.post.teams.A.total) + '건</span>' +
+      '<span>B조 ' + num(s.post.teams.B.total) + '건</span>' +
+      (s.post.teams[""].total ? '<span>미지정 ' + num(s.post.teams[""].total) + '건</span>' : "") +
+      "</div>" +
+      '<div class="csrow"><b class="remove">제거 ' + num(s.remove.total) + '건</b>' +
+      '<span>A조 ' + num(s.remove.teams.A.total) + '건</span>' +
+      '<span>B조 ' + num(s.remove.teams.B.total) + '건</span>' +
+      (s.remove.teams[""].total ? '<span>미지정 ' + num(s.remove.teams[""].total) + '건</span>' : "") +
+      "</div></div>";
+    h += '<p class="note" style="padding:4px 4px 0">파란색은 게시, 붉은색은 제거 건수입니다. 날짜를 누르면 그날 내역이 아래에 나옵니다.</p>';
+    h += "</div>";
+
+    if (HIST.day) h += renderHistoryDay(data, HIST.day);
+    return h;
+  }
+
+  function renderHistoryDay(data, ds) {
+    var day = data.days[ds];
+    var post = day ? day.post : 0, remove = day ? day.remove : 0;
+    var h = '<div class="statcard">';
+    h += '<div class="sec-h" style="margin:0 0 7px"><h3>' + korDate(ds) + " " + weekday(ds) + '요일</h3>' +
+      '<span class="count">게시 ' + post + "건 · 제거 " + remove + "건</span></div>";
+    if (!day || !day.items.length) {
+      return h + '<div class="empty-box" style="padding:14px">이 날은 게시·제거 기록이 없습니다.</div></div>';
+    }
+    var items = day.items.slice().sort(function (a, b) {
+      if (a.type !== b.type) return a.type === "post" ? -1 : 1;
+      if (a.zone !== b.zone) return a.zone < b.zone ? -1 : 1;
+      return a.kind === b.kind ? 0 : (a.kind === "lobby" ? -1 : 1);
+    });
+    h += '<div class="evlist">';
+    items.forEach(function (e) {
+      h += '<div class="ev-row">' +
+        '<span class="ev-badge ' + (e.type === "post" ? "post" : "remove") + '">' +
+        (e.type === "post" ? "게시" : "제거") + "</span>" +
+        '<span class="ev-main"><b>' + esc(e.title || e.noticeId) + "</b>" +
+        '<small>' + esc(STAT_KIND_LABEL[e.kind]) + " · " + esc(zoneName(e.zone)) +
+        (e.by ? " · " + esc(e.by) : "") +
+        (e.team ? " (" + esc(e.team) + "조)" : "") + "</small></span>" +
+        "</div>";
+    });
+    h += "</div></div>";
+    return h;
+  }
+
+  /* ---------- 4-3. 처리 이력 탭 (기존 요약 · 보관함) ---------- */
+  function renderHistoryLog() {
     var s = summary();
     var arch = NOTICES.filter(isArchived);
     var live = NOTICES.filter(function (n) { return !isArchived(n); });
-    var h = '<div class="sec-title"><h2>게시물 이력 및 통계</h2><span class="hint">전체 ' + NOTICES.length + "건</span></div>";
-    h += '<div class="stats4">' +
+    var h = '<div class="stats4">' +
       '<div class="s4 navy"><span class="n">' + NOTICES.length + '</span><span class="l">전체 등록</span></div>' +
       '<div class="s4 green"><span class="n">' + live.length + '</span><span class="l">게시 중·대기</span></div>' +
       '<div class="s4 gray"><span class="n">' + arch.length + '</span><span class="l">제거 완료</span></div>' +
@@ -1717,29 +1997,6 @@ var App = (function () {
       h += '<div class="bar-row"><span class="bar-k">' + esc(r.z.name) + "</span>" +
         '<span class="bar-track"><i class="bar-fill" style="width:' + Math.round(r.a / maxZ * 100) + '%"></i></span>' +
         '<span class="bar-v">' + r.a + "건 <span style=\"color:var(--muted);font-weight:600\">/ " + r.d + "</span></span></div>";
-    });
-    h += "</div>";
-
-    /* 월별 등록 건수 (최근 6개월) */
-    var counts = {};
-    NOTICES.forEach(function (n) {
-      var m = (n.postedAt || "").slice(0, 7);
-      if (m) counts[m] = (counts[m] || 0) + 1;
-    });
-    var base = new Date(toUTC(TODAY));
-    var months = [];
-    for (var i = 5; i >= 0; i--) {
-      var d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 1));
-      months.push(ymdUTC(d).slice(0, 7));
-    }
-    var maxM = 1;
-    months.forEach(function (m) { maxM = Math.max(maxM, counts[m] || 0); });
-    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>월별 등록</h3><span class="count">최근 6개월</span></div>';
-    months.forEach(function (m) {
-      var c = counts[m] || 0;
-      h += '<div class="bar-row"><span class="bar-k">' + (+m.slice(5, 7)) + "월</span>" +
-        '<span class="bar-track"><i class="bar-fill arch" style="width:' + Math.round(c / maxM * 100) + '%"></i></span>' +
-        '<span class="bar-v">' + c + "건</span></div>";
     });
     h += "</div>";
 
@@ -2543,6 +2800,28 @@ var App = (function () {
         SESSION.role = null; SESSION.admin = "";
         saveSession(); render(); toast("관리자 권한을 해제했습니다");
       }
+      else if (act === "hist-tab") {
+        HIST.tab = (el.dataset.v === "month" || el.dataset.v === "log") ? el.dataset.v : "cum";
+        render();
+      }
+      else if (act === "hist-prev") { HIST.month = shiftYm(HIST.month, -1); HIST.day = ""; render(); }
+      else if (act === "hist-next") { HIST.month = shiftYm(HIST.month, 1); HIST.day = ""; render(); }
+      else if (act === "hist-day") {
+        HIST.day = (HIST.day === el.dataset.d) ? "" : el.dataset.d;
+        render();
+      }
+      else if (act === "hist-range") {
+        var hv = el.dataset.v, hnow = (TODAY || todayStr()).slice(0, 7);
+        if (hv === "all") {
+          var evs = histEvents(), ms = [];
+          evs.forEach(function (e) { var m2 = ymOf(e.date); if (m2) ms.push(m2); });
+          ms.sort();
+          HIST.from = ms.length ? ms[0] : hnow;
+          HIST.to = hnow;
+        } else if (hv === "year") { HIST.from = hnow.slice(0, 4) + "-01"; HIST.to = hnow; }
+        else { HIST.from = hnow; HIST.to = hnow; }
+        render();
+      }
       else if (act === "tab") {
         var tb = el.dataset.tab;
         go(tb === "home" ? "#/" : tb === "tasks" ? "#/deploy" : tb === "archive" ? "#/history" : "#/" + tb);
@@ -2725,6 +3004,21 @@ var App = (function () {
       else if (e.target.id === "alertTo") { ALERT_FILTER.to = e.target.value || ""; renderAlertList(); }
     });
 
+    /* 누적조회 기간(년월) 입력 */
+    document.addEventListener("change", function (e) {
+      if (!e.target) return;
+      if (e.target.id === "cumFrom") {
+        HIST.from = (e.target.value || HIST.from).slice(0, 7);
+        if (HIST.to < HIST.from) HIST.to = HIST.from;
+        render();
+      }
+      else if (e.target.id === "cumTo") {
+        HIST.to = (e.target.value || HIST.to).slice(0, 7);
+        if (HIST.to < HIST.from) HIST.from = HIST.to;
+        render();
+      }
+    });
+
     window.addEventListener("hashchange", function () {
       var lb = document.querySelector(".lightbox");
       if (lb) lb.remove();
@@ -2838,6 +3132,19 @@ var App = (function () {
       overlaps: targetOverlaps, push: pushOrdersForNew, compact: compactOrders, stacked: stackedHere,
       build: buildNoticeUpdates, move: buildMoveUpdates, same: sameTarget,
       load: function (notices, fac) { FAC = fac; ELEV_KEYS_CACHE = null; setNotices(notices); return NOTICES; }
+    },
+    /* 게시물 통계 집계 검증용 (순수 함수) */
+    stats: {
+      events: statEvents, aggregate: statAggregate, byDay: statByDay,
+      shiftMonth: shiftYm, monthLabel: ymLabel, dateOfTs: ymdOfTs,
+      fixture: function () {
+        return {
+          events: statEvents(NOTICES, FAC),
+          hist: { tab: HIST.tab, from: HIST.from, to: HIST.to, month: HIST.month, day: HIST.day }
+        };
+      },
+      setHist: function (o) { Object.keys(o || {}).forEach(function (k) { HIST[k] = o[k]; }); },
+      html: function () { return renderHistory(); }
     },
     state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION }; },
     setToday: function (d) { TODAY = d; buildIndex(); render(); }
