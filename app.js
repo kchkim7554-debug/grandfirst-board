@@ -1831,8 +1831,21 @@ var App = (function () {
       "<tr><th>동 범위</th><td>" + minNo + "동 ~ " + maxNo + "동 · " + FAC.buildings.length + "개동</td></tr>" +
       "<tr><th>구역</th><td>" + FAC.zones.map(function (z) { return esc(z.name) + " " + z.buildings.length + "동"; }).join(" · ") + "</td></tr>" +
       "<tr><th>근무조</th><td>A조 · B조 격일 근무<br><span style='color:var(--muted);font-weight:600'>구역별 담당이 부착·탈착을 맡습니다</span></td></tr>" +
+      "<tr><th>세대수</th><td>총 1,926세대<br><span style='color:var(--muted);font-weight:600'>59㎡ 796 · 74㎡A 90 · 74㎡B 223 · 84㎡ 817</span></td></tr>" +
       "<tr><th>게시판</th><td>공동현관 홀 12칸 (01~12번)<br>엘리베이터 6곳 (E/V 01~06번)</td></tr>" +
       "</table></div>";
+    h += '<div class="mapcard"><div class="sec-h" style="margin:0 0 8px"><h3>단지 배치도</h3><span class="count">총 1,926세대</span></div>' +
+      '<button class="map-shot" data-act="zoom" data-src="images/complex_layout_map.jpg" data-cap="운정 제일풍경채 그랑퍼스트 단지 배치도 (총 1,926세대)">' +
+      '<img src="images/complex_layout_map.jpg" alt="단지 배치도 101~124동" loading="lazy">' +
+      '<span class="map-hint">눌러서 크게 보기</span></button>' +
+      '<div class="hh-grid">' +
+      '<div class="hh"><b>59㎡</b><span>796세대</span></div>' +
+      '<div class="hh"><b>74㎡A</b><span>90세대</span></div>' +
+      '<div class="hh"><b>74㎡B</b><span>223세대</span></div>' +
+      '<div class="hh"><b>84㎡</b><span>817세대</span></div>' +
+      '</div>' +
+      '<div class="hh total" style="margin-top:7px"><b>합계 1,926세대</b><span>101동 ~ 124동 · 24개동</span></div>' +
+      '<div class="f-hint" style="margin-top:8px">배치도의 동 번호와 게시판 조회의 동 번호가 같습니다. 현장 안내 시 함께 보세요.</div></div>';
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>게시판 구조</h3></div>' +
       '<table class="itable">' +
       "<tr><th>공동현관 홀</th><td>게시판 4면 · 번호판 12칸<br><span style='color:var(--muted);font-weight:600'>2줄 × 6칸 · 01~12번</span></td></tr>" +
@@ -2413,8 +2426,9 @@ var App = (function () {
     if (hb) hb.hidden = !sub;
     if (br) br.hidden = sub;
     if (document.body) {
-      document.body.classList.toggle("bg-home", !sub);
-      document.body.classList.toggle("bg-sub", sub);
+      document.body.classList.toggle("bg-home", VIEW.name === "home");
+      document.body.classList.toggle("bg-info", VIEW.name === "info");
+      document.body.classList.toggle("bg-sub", VIEW.name !== "home" && VIEW.name !== "info");
     }
   }
   function render() {
