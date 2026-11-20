@@ -31,6 +31,8 @@ var App = (function () {
   var FAC = null;                       // 시설 데이터 (data.json): 동/코어/게시판
   var CFG = null;                       // 담당자·PIN 설정 (Firebase board/config)
   var NOTICES = [];                     // 게시물 배열 (Firebase board/notices)
+  var ALERTS = [];                      // 07시 제거 알림 (Firebase board/daily_alerts), 최신순
+  var ALERT_FILTER = { from: "", to: "", q: "" };
   var BYID = {};                        // id → notice
   var INDEX = {}, PLACE = {}, BSTAT = {};   // 게시판 인덱스
   var TODAY = "";
@@ -469,10 +471,12 @@ var App = (function () {
     else if (LOADED && wasForm) render();   // 폼에서 저장·삭제 후 목록을 즉시 반영
   }
 
-  function openLightbox(src, cap) {
+  function openLightbox(src, cap, dl) {
     var lb = document.createElement("div");
-    lb.className = "lightbox";
-    lb.innerHTML = '<button class="lb-close" aria-label="닫기">×</button><img src="' + esc(src) + '" alt=""><div class="lb-cap">' + esc(cap || "") + "</div>";
+    lb.className = "lightbox" + (dl ? " with-dl" : "");
+    lb.innerHTML = '<button class="lb-close" aria-label="닫기">×</button><img src="' + esc(src) + '" alt="">' +
+      '<div class="lb-cap">' + esc(cap || "") + "</div>" +
+      (dl ? '<div class="lb-actions"><a class="lb-dl" href="' + esc(src) + '" download="' + esc(dl) + '">이미지 저장</a></div>' : "");
     lb.addEventListener("click", function (e) {
       if (e.target === lb || e.target.classList.contains("lb-close")) lb.remove();
     });
@@ -1178,6 +1182,178 @@ var App = (function () {
     return h;
   }
 
+  /* =========================================================
+     게시물 제거 대상 일일 알림 (매일 07:00 · Firebase board/daily_alerts)
+     ========================================================= */
+  function ymdUTC(d) { return d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate()); }
+  function addDays(s, n) { var d = new Date(toUTC(s)); d.setUTCDate(d.getUTCDate() + n); return ymdUTC(d); }
+
+  function alertItems(a) {
+    if (!a || !a.items) return [];
+    if (Array.isArray(a.items)) return a.items.filter(Boolean);
+    return Object.keys(a.items).map(function (k) { return a.items[k]; }).filter(Boolean);
+  }
+  function setAlerts(val) {
+    ALERTS = [];
+    if (val && typeof val === "object") {
+      Object.keys(val).forEach(function (k) {
+        var a = val[k];
+        if (!a || typeof a !== "object") return;
+        a.date = a.date || k;
+        ALERTS.push(a);
+      });
+    }
+    ALERTS.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  }
+  function shiftLabel(a) {
+    var s = (a && a.shift) || "";
+    return s && s.indexOf("조") < 0 ? s + "조" : s;
+  }
+  function alertHay(a) {
+    var parts = [a.date, a.weekday, shiftLabel(a), a.summary, a.memo];
+    alertItems(a).forEach(function (it) {
+      parts.push(it.id, it.title, it.location, it.message, it.memo, it.cardImage);
+    });
+    return parts.filter(Boolean).join(" ").toLowerCase();
+  }
+  function alertMatches(a, q) {
+    if (ALERT_FILTER.from && a.date < ALERT_FILTER.from) return false;
+    if (ALERT_FILTER.to && a.date > ALERT_FILTER.to) return false;
+    if (q && alertHay(a).indexOf(q) < 0) return false;
+    return true;
+  }
+  function filteredAlerts() {
+    var q = (ALERT_FILTER.q || "").trim().toLowerCase();
+    return ALERTS.filter(function (a) { return alertMatches(a, q); });
+  }
+  function alertCountText(days) {
+    var n = 0;
+    days.forEach(function (a) { n += alertItems(a).length; });
+    var filtered = ALERT_FILTER.from || ALERT_FILTER.to || ALERT_FILTER.q;
+    return (filtered ? "검색 결과 " : "전체 ") + "<b>" + days.length + "일</b> · <b>" + n + "건</b>";
+  }
+  function alertItemHtml(a, it, i) {
+    var img = it.cardImage ? esc(it.cardImage) : "";
+    var fname = img ? img.split("/").pop() : "";
+    var h = '<div class="aitem">' +
+      '<div class="aitem-h"><span class="aitem-no">' + (i + 1) + "</span>" +
+      '<span class="aitem-title">' + esc(it.title || "제거 대상") + "</span></div>";
+    if (it.location) h += '<div class="aitem-loc">위치 · ' + esc(it.location) + "</div>";
+    if (img) {
+      h += '<button class="acard" data-act="zoom" data-src="' + img + '" data-dl="' + esc(fname) + '" data-cap="' +
+        esc(a.date + " " + (shiftLabel(a) ? shiftLabel(a) + " " : "") + (it.title || "")) + '">' +
+        '<img src="' + img + '" alt="' + esc(it.title || "제거 공지 카드") + '" loading="lazy">' +
+        '<span class="acard-tag">눌러서 크게 보기 · 저장</span></button>';
+    }
+    if (it.message) h += '<div class="aitem-msg">' + esc(it.message) + "</div>";
+    h += '<div class="aitem-foot">' +
+      '<button class="mini-btn" data-act="alert-copy" data-date="' + esc(a.date) + '" data-i="' + i + '">안내 문구 복사</button>' +
+      (img ? '<a class="mini-btn" href="' + img + '" download="' + esc(fname) + '">카드 저장</a>' : "") +
+      "</div></div>";
+    return h;
+  }
+  function alertDayHtml(a) {
+    var items = alertItems(a);
+    var has = a.hasTargets !== false && items.length > 0;
+    var dateTxt = a.date + " (" + (a.weekday || weekday(a.date)) + ")";
+    if (!has) {
+      return '<article class="aday none"><div class="aday-none">' + esc(dateTxt) + " · " +
+        esc(a.summary || "오늘 제거 대상 게시물이 없습니다.") + "</div>" +
+        (shiftLabel(a) ? '<div class="aday-none-sub">' + esc(shiftLabel(a)) + " 근무조 · 07:00 기록</div>" : "") +
+        "</article>";
+    }
+    var h = '<article class="aday"><div class="aday-h">' +
+      '<span class="aday-date">' + esc(a.date) + " <b>(" + esc(a.weekday || weekday(a.date)) + ")</b></span>" +
+      (shiftLabel(a) ? '<span class="pill soon">' + esc(shiftLabel(a)) + "</span>" : "") +
+      '<span class="pill overdue">제거 대상 ' + items.length + "건</span></div>";
+    if (a.summary) h += '<div class="aday-sum">' + esc(a.summary) + "</div>";
+    h += items.map(function (it, i) { return alertItemHtml(a, it, i); }).join("");
+    return h + "</article>";
+  }
+  function alertFeedHtml(days) {
+    if (!ALERTS.length) {
+      return '<div class="empty-box">아직 07시 알림 기록이 없습니다.<br>매일 07:00 제거 알림이 날짜별로 이곳에 쌓입니다.</div>';
+    }
+    if (!days.length) {
+      return '<div class="empty-box">조건에 맞는 알림이 없습니다.<br>날짜 범위를 넓히거나 검색어를 바꿔 보세요.</div>';
+    }
+    return days.map(alertDayHtml).join("");
+  }
+  function quickRange() {
+    if (!ALERT_FILTER.from && !ALERT_FILTER.to) return "all";
+    var t = TODAY;
+    if (ALERT_FILTER.from === t && ALERT_FILTER.to === t) return "today";
+    if (ALERT_FILTER.from === addDays(t, -6) && ALERT_FILTER.to === t) return "7";
+    if (ALERT_FILTER.from === t.slice(0, 7) + "-01" && ALERT_FILTER.to === t) return "month";
+    return "";
+  }
+  function syncQuickChips() {
+    var cur = quickRange();
+    document.querySelectorAll('[data-act="alert-range"]').forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-v") === cur);
+    });
+  }
+  function renderAlertList() {
+    var feed = document.getElementById("alertFeed");
+    if (!feed) return;
+    var days = filteredAlerts();
+    feed.innerHTML = alertFeedHtml(days);
+    var c = document.getElementById("alertCount");
+    if (c) c.innerHTML = alertCountText(days);
+    syncQuickChips();
+    syncAlertBadge();
+  }
+  function syncAlertBadge() {
+    var ab = document.getElementById("alertBadge");
+    if (!ab) return;
+    var ta = null;
+    ALERTS.forEach(function (a) { if (a.date === TODAY) ta = a; });
+    var n = ta ? alertItems(ta).length : 0;
+    ab.hidden = n === 0;
+    ab.textContent = n > 99 ? "99+" : String(n);
+  }
+  function renderAlerts() {
+    var days = filteredAlerts();
+    var h = '<div class="sec-title"><h2>게시물 제거 대상 일일 알림</h2><span class="hint">매일 07:00 · 최신순</span></div>';
+    h += '<div class="card filtercard">' +
+      '<div class="fld" style="margin-bottom:9px"><label>날짜 범위 (시작일 ~ 종료일)</label>' +
+      '<div class="f-daterow">' +
+      '<input class="f-in" type="date" id="alertFrom" value="' + esc(ALERT_FILTER.from) + '" aria-label="시작일">' +
+      '<span class="tilde">~</span>' +
+      '<input class="f-in" type="date" id="alertTo" value="' + esc(ALERT_FILTER.to) + '" aria-label="종료일">' +
+      "</div>" +
+      '<div class="quickrow">' +
+      '<button class="qchip" data-act="alert-range" data-v="today">오늘</button>' +
+      '<button class="qchip" data-act="alert-range" data-v="7">최근 7일</button>' +
+      '<button class="qchip" data-act="alert-range" data-v="month">이번 달</button>' +
+      '<button class="qchip" data-act="alert-range" data-v="all">전체</button>' +
+      "</div></div>" +
+      '<div class="fld"><label>내용 검색</label>' +
+      '<input class="f-in" id="alertQ" type="search" placeholder="제목 · 층/게시판 번호 · 안내 문구 검색" value="' + esc(ALERT_FILTER.q) + '">' +
+      "</div>" +
+      '<div class="filter-foot"><span class="cnt" id="alertCount">' + alertCountText(days) + "</span>" +
+      '<button class="mini-btn" data-act="alert-reset">초기화</button></div></div>';
+    h += '<div id="alertFeed">' + alertFeedHtml(days) + "</div>";
+    h += '<p class="note">매일 07:00 제거 알림이 날짜별로 쌓입니다. 제거 대상이 없는 날도 기록이 남습니다. 카드 이미지를 누르면 크게 보거나 저장할 수 있습니다.</p>';
+    setTimeout(syncQuickChips, 0);
+    return h;
+  }
+  function copyAlertItem(date, idx) {
+    var a = null;
+    ALERTS.forEach(function (x) { if (x.date === date) a = x; });
+    if (!a) return;
+    var it = alertItems(a)[idx];
+    if (!it) return;
+    var text = it.message || ((it.location ? it.location + " " : "") + "게시판 게시물 [" + (it.title || "") + "] 오늘 제거 바랍니다.");
+    copyPlain(text);
+  }
+  function copyPlain(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast("복사했습니다. 카카오톡에 붙여넣기 하세요."); })
+        .catch(function () { copyFallback(text); });
+    } else copyFallback(text);
+  }
+
   /* ---------- archive view ---------- */
   function renderArchive() {
     var arch = NOTICES.filter(isArchived);
@@ -1770,6 +1946,7 @@ var App = (function () {
     if (p[0] === "tasks") return { name: "tasks" };
     if (p[0] === "admin") return { name: "admin" };
     if (p[0] === "archive") return { name: "archive" };
+    if (p[0] === "alerts") return { name: "alerts" };
     if (p[0] === "b") {
       return { name: "building", no: Number(p[1]) || null, core: p[2] || null, loc: p[3] || "f1", slot: p[4] || null };
     }
@@ -1788,6 +1965,7 @@ var App = (function () {
     else if (VIEW.name === "tasks") { h = renderTasks(); setTab("tasks"); }
     else if (VIEW.name === "admin") { h = renderAdmin(); setTab("admin"); }
     else if (VIEW.name === "archive") { h = renderArchive(); setTab("archive"); }
+    else if (VIEW.name === "alerts") { h = renderAlerts(); setTab("alerts"); }
     else if (VIEW.name === "building") { h = renderBuilding(); setTab("home"); }
     view.innerHTML = h;
     syncWho();
@@ -1798,6 +1976,7 @@ var App = (function () {
       badge.hidden = n === 0;
       badge.textContent = n > 99 ? "99+" : String(n);
     }
+    syncAlertBadge();
   }
   function route() {
     VIEW = parseHash();
@@ -1859,7 +2038,7 @@ var App = (function () {
       else if (act === "open-notice") { closeSheet(); setTimeout(function () { openNoticeSheet(el.dataset.id); }, 200); }
       else if (act === "dl-open") { closeSheet(); setTimeout(function () { openDeadlineSheet(el.dataset.id); }, 200); }
       else if (act === "dl-save") { saveDeadline(el.dataset.id); }
-      else if (act === "zoom") { openLightbox(el.dataset.src, el.dataset.cap); }
+      else if (act === "zoom") { openLightbox(el.dataset.src, el.dataset.cap, el.dataset.dl); }
       else if (act === "new-notice") { requireAdmin(function () { openNoticeForm({}); }); }
       else if (act === "edit-notice") {
         var n = getNotice(el.dataset.id);
@@ -1888,6 +2067,16 @@ var App = (function () {
       else if (act === "cleanup") { toast("부착·탈착 탭에서 체크하세요. 도면은 부착 후 표시됩니다."); }
       else if (act === "arch-date") { ARCH_FILTER.date = el.dataset.v; render(); }
       else if (act === "arch-slot") { ARCH_FILTER.slot = el.dataset.v; render(); }
+      else if (act === "alert-range") {
+        var rv = el.dataset.v, td = TODAY;
+        if (rv === "all") { ALERT_FILTER.from = ""; ALERT_FILTER.to = ""; }
+        else if (rv === "today") { ALERT_FILTER.from = td; ALERT_FILTER.to = td; }
+        else if (rv === "7") { ALERT_FILTER.from = addDays(td, -6); ALERT_FILTER.to = td; }
+        else if (rv === "month") { ALERT_FILTER.from = td.slice(0, 7) + "-01"; ALERT_FILTER.to = td; }
+        render();
+      }
+      else if (act === "alert-reset") { ALERT_FILTER.from = ""; ALERT_FILTER.to = ""; ALERT_FILTER.q = ""; render(); }
+      else if (act === "alert-copy") { copyAlertItem(el.dataset.date, Number(el.dataset.i)); }
       else if (act === "f-cat") { formDefaults.category = el.dataset.v; markChips("#fCat", el); }
       else if (act === "f-board") {
         formState.board = el.dataset.v;
@@ -1972,12 +2161,16 @@ var App = (function () {
     });
 
     document.addEventListener("input", function (e) {
-      if (e.target && e.target.id === "archQ") {
+      if (!e.target) return;
+      if (e.target.id === "archQ") {
         ARCH_FILTER.q = e.target.value.trim();
         render();
         var q = document.getElementById("archQ");
         if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
       }
+      else if (e.target.id === "alertQ") { ALERT_FILTER.q = e.target.value; renderAlertList(); }
+      else if (e.target.id === "alertFrom") { ALERT_FILTER.from = e.target.value || ""; renderAlertList(); }
+      else if (e.target.id === "alertTo") { ALERT_FILTER.to = e.target.value || ""; renderAlertList(); }
     });
 
     window.addEventListener("hashchange", function () {
@@ -2056,6 +2249,12 @@ var App = (function () {
           document.getElementById("view").innerHTML =
             '<div class="empty-box">게시판 데이터에 연결하지 못했습니다.<br><b>' + esc(err.message) + '</b><br>인터넷 연결을 확인하고 새로고침해 주세요.</div>';
         });
+        db.ref("board/daily_alerts").on("value", function (s) {
+          setAlerts(s.val());
+          if (!LOADED) return;
+          if (VIEW.name === "alerts") renderAlertList();
+          else if (!document.querySelector('.sheet[data-form="1"]')) render();
+        }, function () { /* 알림 기록을 읽지 못해도 다른 화면은 그대로 쓴다 */ });
       } catch (e) {
         document.getElementById("view").innerHTML = '<div class="empty-box">Firebase 초기화 실패: ' + esc(e.message) + "</div>";
         res();
@@ -2077,6 +2276,11 @@ var App = (function () {
   var api = {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,
+    /* 07시 알림 검증용 */
+    alerts: {
+      set: setAlerts, matches: alertMatches, feed: alertFeedHtml,
+      filter: function () { return ALERT_FILTER; }, state: function () { return ALERTS; }
+    },
     /* 겹침 순번 자동화 검증용 (Node 테스트에서 사용) */
     order: {
       overlaps: targetOverlaps, push: pushOrdersForNew, compact: compactOrders, stacked: stackedHere,
