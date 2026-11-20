@@ -1223,7 +1223,7 @@ var App = (function () {
     return true;
   }
   function itemHay(it) {
-    return [it.id, it.title, it.location, it.message, it.memo, it.cardImage]
+    return [it.id, it.title, it.name, it.location, it.loc, it.message, it.desc, it.text, it.memo, it.cardImage, it.image]
       .filter(Boolean).join(" ").toLowerCase();
   }
   /* 내용 검색이 있으면 날짜별 항목 중 일치하는 것만 남긴다.
@@ -1247,19 +1247,23 @@ var App = (function () {
     return (filtered ? "검색 결과 " : "전체 ") + "<b>" + days.length + "일</b> · <b>" + n + "건</b>";
   }
   function alertItemHtml(a, it, i) {
-    var img = it.cardImage ? esc(it.cardImage) : "";
+    var title = it.title || it.name || "제거 대상";
+    var loc = it.location || it.loc || it.place || "";
+    var msg = it.message || it.desc || it.text || "";
+    var img = it.cardImage || it.image || it.img || "";
+    img = img ? esc(img) : "";
     var fname = img ? img.split("/").pop() : "";
     var h = '<div class="aitem">' +
       '<div class="aitem-h"><span class="aitem-no">' + (i + 1) + "</span>" +
-      '<span class="aitem-title">' + esc(it.title || "제거 대상") + "</span></div>";
-    if (it.location) h += '<div class="aitem-loc">위치 · ' + esc(it.location) + "</div>";
+      '<span class="aitem-title">' + esc(title) + "</span></div>";
+    if (loc) h += '<div class="aitem-loc">위치 · ' + esc(loc) + "</div>";
     if (img) {
       h += '<button class="acard" data-act="zoom" data-src="' + img + '" data-dl="' + esc(fname) + '" data-cap="' +
-        esc(a.date + " " + (shiftLabel(a) ? shiftLabel(a) + " " : "") + (it.title || "")) + '">' +
-        '<img src="' + img + '" alt="' + esc(it.title || "제거 공지 카드") + '" loading="lazy">' +
+        esc(a.date + " " + (shiftLabel(a) ? shiftLabel(a) + " " : "") + title) + '">' +
+        '<img src="' + img + '" alt="' + esc(title) + '" loading="lazy">' +
         '<span class="acard-tag">눌러서 크게 보기 · 저장</span></button>';
     }
-    if (it.message) h += '<div class="aitem-msg">' + esc(it.message) + "</div>";
+    if (msg) h += '<div class="aitem-msg">' + esc(msg) + "</div>";
     h += '<div class="aitem-foot">' +
       '<button class="mini-btn" data-act="alert-copy" data-date="' + esc(a.date) + '" data-i="' + i + '">안내 문구 복사</button>' +
       (img ? '<a class="mini-btn" href="' + img + '" download="' + esc(fname) + '">카드 저장</a>' : "") +
@@ -1359,7 +1363,8 @@ var App = (function () {
     if (!a) return;
     var it = alertItems(a)[idx];
     if (!it) return;
-    var text = it.message || ((it.location ? it.location + " " : "") + "게시판 게시물 [" + (it.title || "") + "] 오늘 제거 바랍니다.");
+    var text = it.message || it.desc || it.text ||
+      ((it.location ? it.location + " " : "") + "게시판 게시물 [" + (it.title || it.name || "") + "] 오늘 제거 바랍니다.");
     copyPlain(text);
   }
   function copyPlain(text) {
