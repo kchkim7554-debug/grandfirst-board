@@ -2692,7 +2692,7 @@ var App = (function () {
     if (k === "create") return { name: "create", tab: (p[1] === "move" ? "move" : "new") };
     if (k === "deploy" || k === "tasks") return { name: "deploy" };
     if (k === "status") return { name: "status" };
-    if (k === "history" || k === "archive") return { name: "history" };
+    if (k === "history" || k === "archive" || k === "stats") return { name: "history" };
     if (k === "alerts") return { name: "alerts" };
     if (k === "admin") return { name: "admin" };
     if (k === "info") return { name: "info" };
