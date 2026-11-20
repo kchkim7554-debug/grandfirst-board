@@ -1168,7 +1168,7 @@ var App = (function () {
     h += '<div class="dsum">' +
       '<span class="' + (attachList.length ? "warn" : "") + '">오늘 부착 대상 <b>' + attachList.length + "</b>건</span>" +
       '<span class="' + (detachList.length ? "warn" : "") + '">오늘 탈착 대상 <b>' + detachList.length + "</b>건</span>" +
-      '<span>구역 <b>' + FAC.zones.length + "</b>곳 · 조 <b>2</b></span>" +
+      '<span>구역 <b>' + FAC.zones.length + "</b>곳 · 담당 <b>" + (FAC.zones.length * 2) + "</b>명</span>" +
       "</div>";
     h += '<div class="warnbox">부착 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 탈착은 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
 
