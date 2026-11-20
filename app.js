@@ -2,7 +2,7 @@
 /* =========================================================
    💓💓게시판 관리💓💓 — 풍경채 그랑퍼스트
    실시간 다중 사용자 게시판 (Firebase Realtime Database / Spark 무료)
-   프로세스: 1 등록(관리자) → 2 부착 체크 → 3 탈착 체크 → 4 보관함
+   프로세스: 1 등록(관리자) → 2 게시 체크 → 3 제거 체크 → 4 보관함
    ========================================================= */
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyDl9QEY_NSwR4CB4ln71m9vfbF9pbbN7uI",
@@ -47,8 +47,8 @@ var App = (function () {
   var lastRenderKey = "";
 
   var STATUS_LABEL = {
-    overdue: "기한 경과", today: "오늘 탈착", tomorrow: "내일 탈착",
-    soon: "기한 임박", active: "게시 중", permanent: "상시", removed: "탈착 완료"
+    overdue: "기한 경과", today: "오늘 제거", tomorrow: "내일 제거",
+    soon: "기한 임박", active: "게시 중", permanent: "상시", removed: "제거 완료"
   };
   var STATUS_RANK = { overdue: 0, today: 1, tomorrow: 2, soon: 3, permanent: 4, active: 5 };
   var CATEGORIES = ["안내문", "공고문", "홍보물", "기타"];
@@ -167,10 +167,10 @@ var App = (function () {
   function statusText(n) {
     var st = statusOf(n);
     if (st.key === "permanent") return "상시 (별도 지시 전까지 유지)";
-    if (st.key === "removed") return "탈착 완료 " + dotDate(n.archivedAt || "");
+    if (st.key === "removed") return "제거 완료 " + dotDate(n.archivedAt || "");
     if (st.key === "overdue") return "기한 " + dotDate(n.deadline) + " · " + st.days + "일 경과";
-    if (st.key === "today") return "기한 " + dotDate(n.deadline) + " · 오늘 탈착";
-    if (st.key === "tomorrow") return "기한 " + dotDate(n.deadline) + " · 내일 탈착";
+    if (st.key === "today") return "기한 " + dotDate(n.deadline) + " · 오늘 제거";
+    if (st.key === "tomorrow") return "기한 " + dotDate(n.deadline) + " · 내일 제거";
     return "기한 " + dotDate(n.deadline) + " · D-" + st.days;
   }
   function worstStatus(list) {
@@ -183,7 +183,7 @@ var App = (function () {
     return best || "empty";
   }
 
-  /* ---------- board index (부착된 구역만 노출) ---------- */
+  /* ---------- board index (게시된 구역만 노출) ---------- */
   function floorKey(f) { return f === "1층" ? "f1" : f === "지하1층" ? "fb1" : "fb2"; }
   function locLabel(locKey) { return ({ f1: "1층", fb1: "지하1층", fb2: "지하2층" })[locKey] || locKey; }
   function boardKey(no, core, loc, slot) { return no + "|" + core + "|" + loc + "|" + pad2(slot); }
@@ -196,7 +196,7 @@ var App = (function () {
 
     NOTICES.forEach(function (n) {
       PLACE[n.id] = PLACE[n.id] || [];
-      // 부착 대기 집계 (도면에는 표시하지 않음)
+      // 게시 대기 집계 (도면에는 표시하지 않음)
       if (!isArchived(n) && !allAttached(n)) {
         var zs = applicableZones(n);
         targetsOf(n).forEach(function (t) {
@@ -216,7 +216,7 @@ var App = (function () {
         nos.forEach(function (no) {
           var b = buildingByNo(no);
           if (!b) return;
-          if (placedZones.indexOf(b.zone) < 0) return;  // 부착 완료된 구역만 도면 표시
+          if (placedZones.indexOf(b.zone) < 0) return;  // 게시 완료된 구역만 도면 표시
           b.cores.forEach(function (core) {
             var locs = [];
             if (t.board === "lobby") {
@@ -265,8 +265,8 @@ var App = (function () {
   function placementsOf(id) { return PLACE[id] || []; }
 
   /* ---------- 겹침 순번(order) 자동 관리 ----------
-     order 1 = 맨 앞(가장 나중에 붙인 것), 숫자가 클수록 뒤(아래)로 밀린 것.
-     신규 게시물은 1번째로 들어가고, 같은 자리에 이미 붙어 있는 게시물은 한 칸씩 뒤로 밀린다.
+     order 1 = 맨 앞(가장 나중에 게시한 것), 숫자가 클수록 뒤(아래)로 밀린 것.
+     신규 게시물은 1번째로 들어가고, 같은 자리에 이미 게시되어 있는 게시물은 한 칸씩 뒤로 밀린다.
      같은 자리 = 같은 게시판(board) + 같은 번호(slot) + 겹치는 층(공동현관)/호기(엘리베이터) + 겹치는 동 */
   var ELEV_KEYS_CACHE = null;
   function allElevKeys() {
@@ -344,7 +344,7 @@ var App = (function () {
     return { updates: updates, pushed: pushed };
   }
 
-  /* 탈착·삭제로 자리가 비었을 때 남은 활성 게시물의 순번을 1,2,3… 으로 다시 이어 붙인다.
+  /* 제거·삭제로 자리가 비었을 때 남은 활성 게시물의 순번을 1,2,3… 으로 다시 이어 붙인다.
      반환 { updates: {경로: 값}, changed: [{id,title,from,to}] } */
   function compactOrders(removedTargets, excludeIds) {
     var skip = {};
@@ -373,7 +373,7 @@ var App = (function () {
     return { updates: updates, changed: changed };
   }
 
-  /* 지금 이 자리에 몇 장이 어떤 순번으로 붙어 있는지 (등록 화면 안내용) */
+  /* 지금 이 자리에 몇 장이 어떤 순번으로 게시되어 있는지 (등록 화면 안내용) */
   function stackedHere(t, excludeId) {
     var out = [];
     NOTICES.forEach(function (n) {
@@ -546,7 +546,7 @@ var App = (function () {
     openAdminLogin(cb);
   }
   function openWhoSheet(onDone) {
-    var html = '<p class="f-hint" style="margin:0 2px 10px">부착·탈착 체크는 담당자 확인 후 기록됩니다. 내 조와 구역을 고르세요. (이 기기에 기억됩니다)</p>';
+    var html = '<p class="f-hint" style="margin:0 2px 10px">게시·제거 체크는 담당자 확인 후 기록됩니다. 내 조와 구역을 고르세요. (이 기기에 기억됩니다)</p>';
     html += '<div class="pick">';
     ["A", "B"].forEach(function (t) {
       html += '<div class="pick-row"><div class="pick-head">' + t + "조</div>";
@@ -666,15 +666,15 @@ var App = (function () {
     if (existing) {
       if (SESSION.role !== "admin") {
         toast(kind === "attach"
-          ? "이미 " + (existing.by || "담당자") + " 님이 부착 완료했습니다 (해제는 관리자만)"
-          : "이미 " + (existing.by || "담당자") + " 님이 탈착 완료했습니다 (해제는 관리자만)");
+          ? "이미 " + (existing.by || "담당자") + " 님이 게시 완료했습니다 (해제는 관리자만)"
+          : "이미 " + (existing.by || "담당자") + " 님이 제거 완료했습니다 (해제는 관리자만)");
         return;
       }
       var path = "board/notices/" + id + "/" + kind + "/" + zone;
       fbUpdate({}).then(function () {});
       db.ref(path).remove().then(function () {
         writeLog({ noticeId: id, type: kind + "_undo", zone: zone, by: actor() ? actor().name : "", at: nowTs(), title: n.title });
-        toast((kind === "attach" ? "부착" : "탈착") + " 체크를 해제했습니다");
+        toast((kind === "attach" ? "게시" : "제거") + " 체크를 해제했습니다");
         afterZoneChange(id);
       }).catch(function (e) { toast("저장 실패: " + e.message); });
       return;
@@ -699,7 +699,7 @@ var App = (function () {
         }
       }
       updates["board/notices/" + id + "/updatedAt"] = nowTs();
-      // 탈착 완료로 보관함에 들어가면 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
+      // 제거 완료로 보관함에 들어가면 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
       if (updates["board/notices/" + id + "/status"] === "archived") {
         var comp = compactOrders(targetsOf(n), [id]);
         Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
@@ -709,7 +709,7 @@ var App = (function () {
         writeLog({
           noticeId: id, type: kind, zone: zone, by: a.name, team: a.team, at: nowTs(), title: n.title
         });
-        toast((kind === "attach" ? "부착 완료" : "탈착 완료") + " · " + zoneName(zone) + " (" + a.name + ")");
+        toast((kind === "attach" ? "게시 완료" : "제거 완료") + " · " + zoneName(zone) + " (" + a.name + ")");
       });
     });
   }
@@ -756,9 +756,9 @@ var App = (function () {
     var n = getNotice(id);
     if (!n) return;
     var fl = flowOf(n);
-    var flowPill = fl === "pending" ? '<span class="pill pending">부착 대기</span>'
-      : fl === "attaching" ? '<span class="pill pending">부착 진행</span>'
-        : fl === "removing" ? '<span class="pill overdue">탈착 필요</span>'
+    var flowPill = fl === "pending" ? '<span class="pill pending">게시 대기</span>'
+      : fl === "attaching" ? '<span class="pill pending">게시 진행</span>'
+        : fl === "removing" ? '<span class="pill overdue">제거 필요</span>'
           : fl === "archived" ? '<span class="pill removed">보관함</span>'
             : '<span class="pill active">게시 중</span>';
     var html = '<div style="display:flex;gap:12px">' +
@@ -775,10 +775,10 @@ var App = (function () {
       "<b>게시 위치</b> " + esc(targetsText(n)) + "<br>" +
       "<b>대상 구역</b> " + applicableZones(n).map(function (z) { return esc(zoneName(z)); }).join("·") + "</div>";
 
-    // 구역별 부착/탈착 기록
+    // 구역별 게시/제거 기록
     html += '<div style="margin-top:12px"><div class="sec-h" style="margin:0 0 6px"><h3>구역별 기록</h3></div>' +
       '<table style="width:100%;border-collapse:collapse;font-size:.7rem">' +
-      '<tr style="color:var(--muted)"><th style="text-align:left;padding:3px 2px">구역</th><th style="padding:3px 2px">부착</th><th style="padding:3px 2px">탈착</th></tr>';
+      '<tr style="color:var(--muted)"><th style="text-align:left;padding:3px 2px">구역</th><th style="padding:3px 2px">게시</th><th style="padding:3px 2px">제거</th></tr>';
     applicableZones(n).forEach(function (z) {
       var a = zoneCheck(n, "attach", z), d = zoneCheck(n, "detach", z);
       html += "<tr><td style='padding:4px 2px;font-weight:700'>" + esc(zoneName(z)) + "</td>" +
@@ -793,7 +793,7 @@ var App = (function () {
     if (SESSION.role === "admin") {
       btns += '<button class="btn soft" data-act="edit-notice" data-id="' + esc(id) + '">수정</button>';
       if (!isArchived(n)) {
-        btns += '<button class="btn line" data-act="force-archive" data-id="' + esc(id) + '">탈착 완료 처리</button>';
+        btns += '<button class="btn line" data-act="force-archive" data-id="' + esc(id) + '">제거 완료 처리</button>';
       }
       btns += '<button class="btn danger" data-act="del-notice" data-id="' + esc(id) + '">삭제</button>';
     }
@@ -811,11 +811,11 @@ var App = (function () {
     else if (st.key === "soon") extra = " D-" + st.days;
     return '<span class="pill ' + st.key + '">' + esc(st.label + extra) + "</span>";
   }
-  /* 부착 전 게시물은 '게시 중' 대신 '부착 전'으로 표시 */
+  /* 게시 전 게시물은 '게시 중' 대신 '게시 전'으로 표시 */
   function statusPillFor(n) {
     var fl = flowOf(n);
     if (fl === "pending" || fl === "attaching") {
-      return '<span class="pill pending">' + (n.permanent ? "상시 · 부착 전" : "부착 전") + "</span>";
+      return '<span class="pill pending">' + (n.permanent ? "상시 · 게시 전" : "게시 전") + "</span>";
     }
     return statusPill(n);
   }
@@ -827,8 +827,8 @@ var App = (function () {
   function renderStats(s) {
     return '<div class="stats">' +
       '<div class="stat danger"><span class="stat-num">' + s.counts.overdue + '</span><span class="stat-label">기한 경과</span></div>' +
-      '<div class="stat warn"><span class="stat-num">' + s.counts.today + '</span><span class="stat-label">오늘 탈착</span></div>' +
-      '<div class="stat info"><span class="stat-num">' + s.pending + '</span><span class="stat-label">부착 대기</span></div>' +
+      '<div class="stat warn"><span class="stat-num">' + s.counts.today + '</span><span class="stat-label">오늘 제거</span></div>' +
+      '<div class="stat info"><span class="stat-num">' + s.pending + '</span><span class="stat-label">게시 대기</span></div>' +
       '<div class="stat ok"><span class="stat-num">' + s.posted + '</span><span class="stat-label">게시 중</span></div>' +
       "</div>";
   }
@@ -836,23 +836,23 @@ var App = (function () {
     var cls, title, sub;
     if (s.counts.overdue > 0) {
       cls = "danger";
-      title = "오늘 탈착 대상 " + (s.counts.overdue + s.counts.today) + "건";
-      sub = "기한이 지난 게시물이 " + s.counts.overdue + "건 그대로 붙어 있습니다." +
-        (s.counts.today ? " 오늘 기한 도래 " + s.counts.today + "건." : "") + " 근무 중 바로 탈착해 주세요.";
+      title = "오늘 제거 대상 " + (s.counts.overdue + s.counts.today) + "건";
+      sub = "기한이 지난 게시물이 " + s.counts.overdue + "건 그대로 게시되어 있습니다." +
+        (s.counts.today ? " 오늘 기한 도래 " + s.counts.today + "건." : "") + " 근무 중 바로 제거해 주세요.";
     } else if (s.counts.today > 0) {
       cls = "warn";
-      title = "오늘 탈착 대상 " + s.counts.today + "건";
-      sub = "오늘 기한이 끝나는 게시물입니다. 퇴근 전 탈착 확인해 주세요.";
+      title = "오늘 제거 대상 " + s.counts.today + "건";
+      sub = "오늘 기한이 끝나는 게시물입니다. 퇴근 전 제거 확인해 주세요.";
     } else if (s.pending > 0) {
       cls = "warn";
-      title = "부착할 게시물 " + s.pending + "건";
-      sub = "관리자가 등록한 게시물이 부착을 기다리고 있습니다. 부착 체크 후 게시판에 반영됩니다.";
+      title = "게시할 게시물 " + s.pending + "건";
+      sub = "관리자가 등록한 게시물이 게시를 기다리고 있습니다. 게시 체크 후 게시판에 반영됩니다.";
     } else {
       cls = "ok";
-      title = "오늘 탈착 대상 없음";
+      title = "오늘 제거 대상 없음";
       sub = "기한이 지났거나 오늘 끝나는 게시물이 없습니다.";
     }
-    var extra = s.counts.tomorrow > 0 ? " 내일 탈착 예정 " + s.counts.tomorrow + "건." : "";
+    var extra = s.counts.tomorrow > 0 ? " 내일 제거 예정 " + s.counts.tomorrow + "건." : "";
     return '<section class="hero ' + cls + '">' +
       '<div class="hero-kicker">' + korDate(TODAY) + " (" + weekday(TODAY) + ") 기준 · 게시판 " + num(s.sheetsTotal) + "장 게시 중</div>" +
       '<div class="hero-title">' + esc(title) + "</div>" +
@@ -860,7 +860,7 @@ var App = (function () {
       '<div class="hero-actions">' +
       '<button class="btn primary" data-act="copy" data-kind="today">' +
       '<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>' +
-      "오늘 탈착 목록 복사</button>" +
+      "오늘 제거 목록 복사</button>" +
       '<button class="btn ghost" data-act="go" data-go="#/deploy">체크하러 가기</button>' +
       "</div></section>";
   }
@@ -886,11 +886,11 @@ var App = (function () {
         (urgent ? '<span class="btile-dot">' + urgent + "</span>" : "") +
         '<span class="btile-no">' + b.no + "<small>동</small></span>" +
         '<span class="btile-meta">게시 ' + ids + " · " + num(st.sheets) + "장</span>" +
-        (st.pending ? '<span class="btile-pending">부착 ' + st.pending + "</span>" : "") +
+        (st.pending ? '<span class="btile-pending">게시 ' + st.pending + "</span>" : "") +
         "</button>";
     });
     h += "</div>";
-    h += '<p class="note">동을 누르면 라인·층·엘리베이터별 게시판 그림이 열립니다. 빨간 숫자는 오늘 탈착할 게시물 수입니다. 부착 완료 전 게시물은 그림에 나타나지 않습니다.</p>';
+    h += '<p class="note">동을 누르면 라인·층·엘리베이터별 게시판 그림이 열립니다. 빨간 숫자는 오늘 제거할 게시물 수입니다. 게시 완료 전 게시물은 그림에 나타나지 않습니다.</p>';
     return h;
   }
   function renderFacility() {
@@ -910,7 +910,7 @@ var App = (function () {
     return '<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px">' +
       '<span class="sync"><i class="dot ' + (CONNECTED ? "on" : "off") + '"></i>' + (CONNECTED ? "실시간 연결됨" : "연결 중…") + "</span>" +
       '<span style="flex:1"></span>' +
-      '<button class="mini-btn" data-act="go" data-go="#/deploy">부착·탈착 ' + (summary().pending + summary().removing) + "건</button>" +
+      '<button class="mini-btn" data-act="go" data-go="#/deploy">게시·제거 ' + (summary().pending + summary().removing) + "건</button>" +
       "</div>";
   }
 
@@ -954,15 +954,15 @@ var App = (function () {
       '<div class="pcard-title">게시판 관리 시스템</div>' +
       '<div class="pcard-sub">운정 제일풍경채 그랑퍼스트 · 별하람마을 1단지</div>' +
       '<div class="psum">' +
-      '<span' + (removeToday ? ' class="urgent"' : "") + ">오늘 탈착 <b>" + removeToday + "</b>건</span>" +
-      '<span>부착 대기 <b>' + s.pending + "</b>건</span>" +
+      '<span' + (removeToday ? ' class="urgent"' : "") + ">오늘 제거 <b>" + removeToday + "</b>건</span>" +
+      '<span>게시 대기 <b>' + s.pending + "</b>건</span>" +
       '<span>게시 중 <b>' + num(s.sheetsTotal) + "</b>장</span>" +
       "</div></section>";
     h += '<div class="menu-wrap"><div class="menu-head"><h2>메뉴</h2><span class="hint">메뉴를 누르면 열립니다</span></div><div class="menu-list">';
     h += menuRow("#/create", "게시물 생성 및 이동", "새 게시물 등록 · 게시판 위치·슬롯·순번 이동", 0);
-    h += menuRow("#/deploy", "게시물 배포", "오늘 배포 대상 · 구역·동별 부착·탈착 체크", s.pending + s.removing);
+    h += menuRow("#/deploy", "게시물 배포", "오늘 배포 대상 · 구역·동별 게시·제거 체크", s.pending + s.removing);
     h += menuRow("#/status", "현재 게시물 게시 상태 조회", "동별·게시판별 게시 현황과 기한", removeToday);
-    h += menuRow("#/history", "게시물 이력 및 통계", "보관함·탈착 이력 · 전체/구역별/월별 통계", 0);
+    h += menuRow("#/history", "게시물 이력 및 통계", "보관함·제거 이력 · 전체/구역별/월별 통계", 0);
     h += menuRow("#/alerts", "제거대상 일일 알림", "매일 07:00 제거 대상 · 카드 이미지 크게 보기·저장", nAlert, "menuAlertBadge");
     h += menuRow("#/admin", "시스템 권한 관리", "관리자 인증 · 조·구역 담당자 권한", 0);
     h += menuRow("#/info", "풍경채 그랑퍼스트 정보", "단지·게시판 구조(E/V 01~06) · 근무조 안내", 0);
@@ -1034,8 +1034,8 @@ var App = (function () {
       '<span><i class="sw empty"></i>빈 게시판</span>' +
       '<span><i class="sw active"></i>게시 중</span>' +
       '<span><i class="sw soon"></i>7일 이내</span>' +
-      '<span><i class="sw tomorrow"></i>내일 탈착</span>' +
-      '<span><i class="sw today"></i>오늘 탈착</span>' +
+      '<span><i class="sw tomorrow"></i>내일 제거</span>' +
+      '<span><i class="sw today"></i>오늘 제거</span>' +
       '<span><i class="sw overdue"></i>기한 경과</span>' +
       '<span><i class="sw permanent"></i>상시</span>' +
       "</div>";
@@ -1098,7 +1098,7 @@ var App = (function () {
     h += '<div class="card board-card"><div class="board-head"><div>' +
       '<div class="board-title">' + esc(title) + "</div>" +
       '<div class="board-sub">' + b.no + "동 " + esc(core.name) + "</div></div>" +
-      '<div class="board-sum">게시 ' + bs.total + "장<br>" + (bs.urgent ? "<b>탈착 " + bs.urgent + "칸</b>" : "탈착 0칸") + "</div></div>";
+      '<div class="board-sum">게시 ' + bs.total + "장<br>" + (bs.urgent ? "<b>제거 " + bs.urgent + "칸</b>" : "제거 0칸") + "</div></div>";
     h += isElev ? renderElevBoard(b.no, core.key, locKey) : renderLobbyBoard(b.no, core.key, locKey);
     h += renderLegend() + "</div>";
 
@@ -1120,7 +1120,7 @@ var App = (function () {
     return h;
   }
 
-  /* ---------- tasks view (부착·탈착 체크) ---------- */
+  /* ---------- tasks view (게시·제거 체크) ---------- */
   function chkCell(n, kind, zone, team) {
     var zs = applicableZones(n);
     if (zs.indexOf(zone) < 0) {
@@ -1140,7 +1140,7 @@ var App = (function () {
   function taskCard(n, kind) {
     var st = statusOf(n);
     var pill = kind === "attach"
-      ? '<span class="pill pending">' + (someAttached(n) ? "부착 진행 " + attachedZones(n).length + "/" + applicableZones(n).length : "부착 대기") + "</span>"
+      ? '<span class="pill pending">' + (someAttached(n) ? "게시 진행 " + attachedZones(n).length + "/" + applicableZones(n).length : "게시 대기") + "</span>"
       : statusPill(n);
     var dl = n.permanent ? "상시" : "기한 " + dotDate(n.deadline) + (st.key === "overdue" ? " (" + st.days + "일 경과)" : "");
     var h = '<div class="task">';
@@ -1164,24 +1164,24 @@ var App = (function () {
     attachList.sort(sortByDeadline);
     detachList.sort(sortByDeadline);
 
-    var h = '<div class="sec-title"><h2>게시물 배포</h2><span class="hint">부착·탈착 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    var h = '<div class="sec-title"><h2>게시물 배포</h2><span class="hint">게시·제거 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
     h += '<div class="dsum">' +
-      '<span class="' + (attachList.length ? "warn" : "") + '">오늘 부착 대상 <b>' + attachList.length + "</b>건</span>" +
-      '<span class="' + (detachList.length ? "warn" : "") + '">오늘 탈착 대상 <b>' + detachList.length + "</b>건</span>" +
+      '<span class="' + (attachList.length ? "warn" : "") + '">오늘 게시 대상 <b>' + attachList.length + "</b>건</span>" +
+      '<span class="' + (detachList.length ? "warn" : "") + '">오늘 제거 대상 <b>' + detachList.length + "</b>건</span>" +
       '<span>구역 <b>' + FAC.zones.length + "</b>곳 · 담당 <b>" + (FAC.zones.length * 2) + "</b>명</span>" +
       "</div>";
-    h += '<div class="warnbox">부착 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 탈착은 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
+    h += '<div class="warnbox">게시 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 제거는 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
 
-    h += '<div class="sec-h"><h3>② 부착 필요</h3><span class="count">' + attachList.length + "건</span></div>";
+    h += '<div class="sec-h"><h3>② 게시 필요</h3><span class="count">' + attachList.length + "건</span></div>";
     if (!attachList.length) {
-      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">부착할 게시물이 없습니다.</div>';
+      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">게시할 게시물이 없습니다.</div>';
     } else {
       h += attachList.map(function (n) { return taskCard(n, "attach"); }).join("");
     }
 
-    h += '<div class="sec-h"><h3>③ 탈착 필요</h3><span class="count">' + detachList.length + "건</span></div>";
+    h += '<div class="sec-h"><h3>③ 제거 필요</h3><span class="count">' + detachList.length + "건</span></div>";
     if (!detachList.length) {
-      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">오늘 탈착할 게시물이 없습니다.</div>';
+      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">오늘 제거할 게시물이 없습니다.</div>';
     } else {
       h += detachList.map(function (n) { return taskCard(n, "detach"); }).join("");
     }
@@ -1189,10 +1189,10 @@ var App = (function () {
     var upcoming = NOTICES.filter(function (n) {
       return !isArchived(n) && allAttached(n) && !needsRemove(n) && !n.permanent && n.deadline;
     }).sort(sortByDeadline).slice(0, 6);
-    h += '<div class="sec-h"><h3>게시 중 (탈착 예정)</h3><span class="count">' + upcoming.length + "건</span>" +
+    h += '<div class="sec-h"><h3>게시 중 (제거 예정)</h3><span class="count">' + upcoming.length + "건</span>" +
       '<span class="spacer"></span><button class="mini-btn" data-act="copy" data-kind="all">전체 복사</button></div>';
     if (!upcoming.length) {
-      h += '<div class="empty-box">예정된 탈착이 없습니다.</div>';
+      h += '<div class="empty-box">예정된 제거가 없습니다.</div>';
     } else {
       h += '<div class="list">' + upcoming.map(function (n) {
         return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
@@ -1213,9 +1213,9 @@ var App = (function () {
 
   function flowBadge(n) {
     var fl = flowOf(n);
-    if (fl === "pending") return '<span class="pill pending">부착 대기</span>';
-    if (fl === "attaching") return '<span class="pill pending">부착 ' + attachedZones(n).length + "/" + applicableZones(n).length + "</span>";
-    if (fl === "removing") return '<span class="pill overdue">탈착 필요</span>';
+    if (fl === "pending") return '<span class="pill pending">게시 대기</span>';
+    if (fl === "attaching") return '<span class="pill pending">게시 ' + attachedZones(n).length + "/" + applicableZones(n).length + "</span>";
+    if (fl === "removing") return '<span class="pill overdue">제거 필요</span>';
     return '<span class="pill active">게시 중</span>';
   }
   function lockCardHtml(title, desc) {
@@ -1238,12 +1238,12 @@ var App = (function () {
     var h = "";
     if (!isA) {
       h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
-        "새 게시물 등록·수정·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 부착·탈착 체크를 바로 쓸 수 있습니다.");
+        "새 게시물 등록·수정·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
     } else {
       h += '<div style="display:flex;gap:8px;margin-bottom:11px">' +
         '<button class="btn solid" data-act="new-notice" style="flex:1 1 auto">＋ 새 게시물 등록</button>' +
         '<button class="btn line" data-act="settings" style="flex:0 0 auto">설정</button></div>';
-      h += '<div class="warnbox">등록하면 <b>부착 대기</b>로 저장되고, 같은 자리(게시판·번호·겹치는 층/호기·동)에 이미 붙은 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 부착 체크를 해야 도면에 나타납니다.</div>';
+      h += '<div class="warnbox">등록하면 <b>게시 대기</b>로 저장되고, 같은 자리(게시판·번호·겹치는 층/호기·동)에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 게시 체크를 해야 도면에 나타납니다.</div>';
     }
     h += noticeAdminList("등록·게시 중인 게시물", false, "");
     return h;
@@ -1450,7 +1450,7 @@ var App = (function () {
         if (!ok) { if (btn) { btn.disabled = false; btn.textContent = "다시 저장"; } return; }
         writeLog({ noticeId: id, type: "move", by: SESSION.admin || "관리자", at: nowTs(), title: n.title, from: targetsText(n), to: targetText(t) });
         closeSheet();
-        toast("이동했습니다 · " + targetShort(t) + (res.needsAttach ? " (새 구역은 부착 체크 필요)" : ""));
+        toast("이동했습니다 · " + targetShort(t) + (res.needsAttach ? " (새 구역은 게시 체크 필요)" : ""));
       });
     });
   }
@@ -1469,8 +1469,8 @@ var App = (function () {
       '<div style="font-size:1rem;font-weight:800;margin-top:4px">' + esc(whoText()) + "</div>" +
       '<div class="lk-s" style="text-align:left">' +
       (isAdmin ? "관리자 권한 · 등록·수정·삭제·이동·권한 설정을 쓸 수 있습니다."
-        : SESSION.role === "guard" ? "경비원 권한 · 조회와 부착·탈착 체크를 할 수 있습니다. 등록·이동은 관리자 인증이 필요합니다."
-          : "조회 모드입니다. 부착·탈착 체크를 하려면 내 조·구역을 고르세요.") + "</div>" +
+        : SESSION.role === "guard" ? "경비원 권한 · 조회와 게시·제거 체크를 할 수 있습니다. 등록·이동은 관리자 인증이 필요합니다."
+          : "조회 모드입니다. 게시·제거 체크를 하려면 내 조·구역을 고르세요.") + "</div>" +
       '<div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">' +
       '<button class="btn soft" data-act="who" style="flex:1 1 46%">내 조·구역 선택</button>' +
       (isAdmin
@@ -1481,7 +1481,7 @@ var App = (function () {
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>권한 구조</h3></div>' +
       '<table class="itable">' +
       '<tr><th>관리자</th><td>게시물 등록·수정·삭제·이동, 기한 변경, 담당자·PIN 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">PIN 4자리 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
-      '<tr><th>경비원</th><td>조회, 구역별 부착·탈착 체크 (본인 기록으로 남음)<br><span style="color:var(--muted);font-weight:600">A·B조 × 정문/후문A/후문B 담당자로 선택</span></td></tr>' +
+      '<tr><th>경비원</th><td>조회, 구역별 게시·제거 체크 (본인 기록으로 남음)<br><span style="color:var(--muted);font-weight:600">A·B조 × 정문/후문A/후문B 담당자로 선택</span></td></tr>' +
       '<tr><th>조회</th><td>누구나 읽기 가능 (기록·수정 불가)</td></tr>' +
       "</table></div>";
 
@@ -1699,8 +1699,8 @@ var App = (function () {
     h += '<div class="stats4">' +
       '<div class="s4 navy"><span class="n">' + NOTICES.length + '</span><span class="l">전체 등록</span></div>' +
       '<div class="s4 green"><span class="n">' + live.length + '</span><span class="l">게시 중·대기</span></div>' +
-      '<div class="s4 gray"><span class="n">' + arch.length + '</span><span class="l">탈착 완료</span></div>' +
-      '<div class="s4 red"><span class="n">' + (s.counts.overdue + s.counts.today) + '</span><span class="l">오늘 탈착 대상</span></div>' +
+      '<div class="s4 gray"><span class="n">' + arch.length + '</span><span class="l">제거 완료</span></div>' +
+      '<div class="s4 red"><span class="n">' + (s.counts.overdue + s.counts.today) + '</span><span class="l">오늘 제거 대상</span></div>' +
       "</div>";
 
     var zrows = FAC.zones.map(function (z) {
@@ -1712,7 +1712,7 @@ var App = (function () {
     });
     var maxZ = 1;
     zrows.forEach(function (r) { maxZ = Math.max(maxZ, r.a); });
-    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>구역별 게시 현황</h3><span class="count">게시 중 / 탈착 완료</span></div>';
+    h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>구역별 게시 현황</h3><span class="count">게시 중 / 제거 완료</span></div>';
     zrows.forEach(function (r) {
       h += '<div class="bar-row"><span class="bar-k">' + esc(r.z.name) + "</span>" +
         '<span class="bar-track"><i class="bar-fill" style="width:' + Math.round(r.a / maxZ * 100) + '%"></i></span>' +
@@ -1743,7 +1743,7 @@ var App = (function () {
     });
     h += "</div>";
 
-    h += '<div class="sec-h"><h3>탈착 이력 · 보관함</h3><span class="count">' + arch.length + "건</span></div>";
+    h += '<div class="sec-h"><h3>제거 이력 · 보관함</h3><span class="count">' + arch.length + "건</span></div>";
     h += renderArchiveBody();
     return h;
   }
@@ -1753,7 +1753,7 @@ var App = (function () {
     var arch = NOTICES.filter(isArchived);
     var h = "";
     if (!arch.length) {
-      return h + '<div class="empty-box">아직 탈착 완료된 게시물이 없습니다.<br>모든 구역의 탈착 체크가 끝나면 이곳으로 자동 이동합니다.</div>';
+      return h + '<div class="empty-box">아직 제거 완료된 게시물이 없습니다.<br>모든 구역의 제거 체크가 끝나면 이곳으로 자동 이동합니다.</div>';
     }
     var dates = {};
     var slots = {};
@@ -1788,7 +1788,7 @@ var App = (function () {
       return true;
     }).sort(function (a, b) { return (b.archivedAt || "") < (a.archivedAt || "") ? -1 : 1; });
 
-    h += '<div class="sec-h"><h3>탈착 기록</h3><span class="count">' + list.length + "건</span></div>";
+    h += '<div class="sec-h"><h3>제거 기록</h3><span class="count">' + list.length + "건</span></div>";
     if (!list.length) {
       h += '<div class="empty-box">조건에 맞는 보관 기록이 없습니다.</div>';
       return h;
@@ -1796,13 +1796,13 @@ var App = (function () {
     h += '<div class="list">' + list.map(function (n) {
       return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
         '<span class="row-main">' +
-        '<span style="display:flex;gap:4px;flex-wrap:wrap"><span class="pill removed">탈착 ' + mmdd(n.archivedAt || "") + "</span>" + testTag(n) + "</span>" +
+        '<span style="display:flex;gap:4px;flex-wrap:wrap"><span class="pill removed">제거 ' + mmdd(n.archivedAt || "") + "</span>" + testTag(n) + "</span>" +
         '<span class="row-title">' + esc(n.title) + "</span>" +
         '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
         '<span class="row-sub">게시 ' + dotDate(n.postedAt) + " · 기한 " + (n.deadline ? dotDate(n.deadline) : "상시") + "</span>" +
         "</span><span class=\"row-arrow\">›</span></button>";
     }).join("") + "</div>";
-    h += '<p class="note">탈착 날짜·게시 번호로 찾을 수 있습니다. ' +
+    h += '<p class="note">제거 날짜·게시 번호로 찾을 수 있습니다. ' +
       (SESSION.role === "admin" ? "게시물을 누르면 수정·삭제·재등록할 수 있습니다." : "수정·삭제는 관리자 인증 후 가능합니다.") + "</p>";
     return h;
   }
@@ -1830,7 +1830,7 @@ var App = (function () {
       "<tr><th>단지명</th><td>운정 제일풍경채 그랑퍼스트 아파트<br><span style='color:var(--muted);font-weight:600'>(별하람마을 1단지)</span></td></tr>" +
       "<tr><th>동 범위</th><td>" + minNo + "동 ~ " + maxNo + "동 · " + FAC.buildings.length + "개동</td></tr>" +
       "<tr><th>구역</th><td>" + FAC.zones.map(function (z) { return esc(z.name) + " " + z.buildings.length + "동"; }).join(" · ") + "</td></tr>" +
-      "<tr><th>근무조</th><td>A조 · B조 격일 근무<br><span style='color:var(--muted);font-weight:600'>구역별 담당이 부착·탈착을 맡습니다</span></td></tr>" +
+      "<tr><th>근무조</th><td>A조 · B조 격일 근무<br><span style='color:var(--muted);font-weight:600'>구역별 담당이 게시·제거를 맡습니다</span></td></tr>" +
       "<tr><th>세대수</th><td>총 1,926세대<br><span style='color:var(--muted);font-weight:600'>59㎡ 796 · 74㎡A 90 · 74㎡B 223 · 84㎡ 817</span></td></tr>" +
       "<tr><th>게시판</th><td>공동현관 홀 12칸 (01~12번)<br>엘리베이터 6곳 (E/V 01~06번)</td></tr>" +
       "</table></div>";
@@ -1867,10 +1867,10 @@ var App = (function () {
           "<br><span style='color:var(--muted);font-weight:600'>" + esc(buildingListText(z.buildings)) + "</span></td></tr>";
       }).join("") + "</table></div>";
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>게시판 관리 절차</h3></div><div class="proc">' +
-      procRow("1", "등록", "관리자가 게시물을 등록합니다 (부착 대기)") +
-      procRow("2", "부착 체크", "담당 구역에서 붙이고 체크하면 도면에 게시됩니다") +
-      procRow("3", "탈착 체크", "기한이 되면 탈착 후 체크합니다") +
-      procRow("4", "보관함", "모든 구역 탈착이 끝나면 자동으로 보관함으로 들어갑니다") +
+      procRow("1", "등록", "관리자가 게시물을 등록합니다 (게시 대기)") +
+      procRow("2", "게시 체크", "담당 구역에 게시한 뒤 체크하면 도면에 나타납니다") +
+      procRow("3", "제거 체크", "기한이 되면 제거 후 체크합니다") +
+      procRow("4", "보관함", "모든 구역 제거가 끝나면 자동으로 보관함으로 들어갑니다") +
       "</div></div>";
     return h;
   }
@@ -1889,7 +1889,7 @@ var App = (function () {
       : locLabel(locKey) + " 공동현관 홀 · " + slot + "번";
     var html = "";
     if (!items.length) {
-      html = '<div class="empty-box">이 번호는 비어 있습니다.<br>부착 완료 체크 전의 게시물은 이곳에 보이지 않습니다.</div>';
+      html = '<div class="empty-box">이 번호는 비어 있습니다.<br>게시 완료 체크 전의 게시물은 이곳에 보이지 않습니다.</div>';
     } else {
       items.forEach(function (it, idx) {
         var n = it.notice;
@@ -2001,16 +2001,16 @@ var App = (function () {
     html += '<div class="fld"><label>기한 <span class="req">*</span></label>' +
       '<div class="f-row"><input type="date" class="f-in" id="fDeadline" value="' + esc(formDefaults.deadline) + '">' +
       '<button class="btn line" data-act="f-perm" id="fPerm" style="flex:0 0 auto">' + (formDefaults.permanent ? "상시 ∞ (해제)" : "상시 ∞") + "</button></div>" +
-      '<div class="f-hint">상시 게시물은 탈착 목록에 오르지 않고, 관리자가 직접 탈착 처리할 때까지 유지됩니다.</div></div>';
+      '<div class="f-hint">상시 게시물은 제거 목록에 오르지 않고, 관리자가 직접 제거 처리할 때까지 유지됩니다.</div></div>';
 
     html += '<div class="fld"><label>메모 (선택)</label><textarea class="f-ta" id="fMemo" placeholder="현장 메모">' + esc(formDefaults.memo) + "</textarea></div>";
 
     html += '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
-      '<button class="btn solid" data-act="f-save" style="flex:1.4">' + (isEdit ? "수정 저장" : "등록 (부착 대기)") + "</button></div>";
+      '<button class="btn solid" data-act="f-save" style="flex:1.4">' + (isEdit ? "수정 저장" : "등록 (게시 대기)") + "</button></div>";
 
     openSheet({
       title: isEdit ? "게시물 수정" : "새 게시물 등록",
-      sub: isEdit ? "수정해도 부착 기록은 유지됩니다" : "등록 후 부착 체크 전까지 도면에 표시되지 않습니다",
+      sub: isEdit ? "수정해도 게시 기록은 유지됩니다" : "등록 후 게시 체크 전까지 도면에 표시되지 않습니다",
       html: html, form: true,
       onMount: function (sh) {
         var inp = sh.querySelector("#fPhoto");
@@ -2035,7 +2035,7 @@ var App = (function () {
   }
   function scopeBodyHtml() {
     if (formState.scope === "all") {
-      return '<div class="f-hint">전체 ' + FAC.buildings.length + "개동 · 정문/후문A/후문B 모두 게시 (구역별 부착 체크 필요)</div>";
+      return '<div class="f-hint">전체 ' + FAC.buildings.length + "개동 · 정문/후문A/후문B 모두 게시 (구역별 게시 체크 필요)</div>";
     }
     if (formState.scope === "zone") {
       return '<div class="f-chips">' + FAC.zones.map(function (z) {
@@ -2217,7 +2217,7 @@ var App = (function () {
       });
       html += "</div>";
     });
-    html += '<div class="f-hint">이름을 바꾸면 부착·탈착 담당자 표시가 함께 바뀝니다.</div></div>';
+    html += '<div class="f-hint">이름을 바꾸면 게시·제거 담당자 표시가 함께 바뀝니다.</div></div>';
     html += '<div class="fld"><label>관리자 PIN 변경 (선택)</label><div class="f-row">' +
       '<input class="f-in" id="sPin1" inputmode="numeric" maxlength="4" placeholder="새 PIN 4자리">' +
       '<input class="f-in" id="sPin2" inputmode="numeric" maxlength="4" placeholder="한 번 더"></div>' +
@@ -2277,7 +2277,7 @@ var App = (function () {
   function forceArchive(id) {
     var n = getNotice(id);
     if (!n) return;
-    if (!confirm("모든 대상 구역을 탈착 완료로 처리하고 보관함으로 옮길까요?")) return;
+    if (!confirm("모든 대상 구역을 제거 완료로 처리하고 보관함으로 옮길까요?")) return;
     var detach = Object.assign({}, n.detach || {});
     applicableZones(n).forEach(function (z) {
       if (!detach[z]) detach[z] = { by: SESSION.admin || "관리자", team: "관리", at: nowTs(), forced: true };
@@ -2335,13 +2335,13 @@ var App = (function () {
       ? zs.filter(function (z) { return !zoneCheck(n, "attach", z); })
       : zs.filter(function (z) { return !zoneCheck(n, "detach", z); });
     var line = (idx ? idx + ". " : "- ") + n.title + " — " + when + cnt + "\n   " + targetsText(n);
-    if (todo.length) line += "\n   " + (kind === "attach" ? "미부착" : "미탈착") + ": " + todo.map(zoneShort).join("·");
+    if (todo.length) line += "\n   " + (kind === "attach" ? "미게시" : "미제거") + ": " + todo.map(zoneShort).join("·");
     return line;
   }
   function copyText(kind) {
     var s = summary();
     var lines = [];
-    lines.push("[제일풍경채 그랑퍼스트 1단지] 게시판 부착·탈착 안내");
+    lines.push("[제일풍경채 그랑퍼스트 1단지] 게시판 게시·제거 안내");
     lines.push(korDate(TODAY) + " (" + weekday(TODAY) + ") 기준");
     lines.push("");
 
@@ -2357,11 +2357,11 @@ var App = (function () {
       lines.push("");
     }
     if (kind === "today") {
-      section("탈착 대상", detachList, "detach");
-      if (attachList.length) section("부착 필요", attachList, "attach");
+      section("제거 대상", detachList, "detach");
+      if (attachList.length) section("게시 필요", attachList, "attach");
     } else {
-      section("탈착 대상", detachList, "detach");
-      section("부착 필요", attachList, "attach");
+      section("제거 대상", detachList, "detach");
+      section("게시 필요", attachList, "attach");
       lines.push("■ 게시 중 " + posted.length + "건");
       if (!posted.length) lines.push("- 없음");
       posted.sort(function (a, b) {
@@ -2584,7 +2584,7 @@ var App = (function () {
       else if (act === "s-save") { saveSettings(); }
       else if (act === "del-test") { requireAdmin(function () { deleteTestData(); }); }
       else if (act === "export-json") { exportJson(); }
-      else if (act === "cleanup") { toast("부착·탈착 탭에서 체크하세요. 도면은 부착 후 표시됩니다."); }
+      else if (act === "cleanup") { toast("게시·제거 탭에서 체크하세요. 도면은 게시 후 표시됩니다."); }
       else if (act === "arch-date") { ARCH_FILTER.date = el.dataset.v; render(); }
       else if (act === "arch-slot") { ARCH_FILTER.slot = el.dataset.v; render(); }
       else if (act === "alert-range") {

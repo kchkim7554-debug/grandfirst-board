@@ -107,11 +107,11 @@ console.log("\n[2] 신규 등록 → 기존 게시물 한 칸씩 뒤로");
   eq("3번 최종 순서", [after2.R01.targets[0].order, after2.R08.targets[0].order, after2.NEW01.targets[0].order], [3, 4, 2]);
 }
 
-/* ---------- 3. 아카이브(탈착)되면 남은 순번이 1,2,3… 으로 이어진다 ---------- */
-console.log("\n[3] 탈착 완료 → 남은 게시물 순번 이어 붙이기");
+/* ---------- 3. 아카이브(제거)되면 남은 순번이 1,2,3… 으로 이어진다 ---------- */
+console.log("\n[3] 제거 완료 → 남은 게시물 순번 이어 붙이기");
 {
   const live = loadLive();
-  ok("3번 탈착 전 순서", live.R01.targets[0].order === 1 && live.R08.targets[0].order === 2);
+  ok("3번 제거 전 순서", live.R01.targets[0].order === 1 && live.R08.targets[0].order === 2);
   const c = O.compact(live.R01.targets, ["R01"]);
   eq("R08 이 1번째로 당겨짐", c.changed.map((x) => x.id + ":" + x.from + ">" + x.to), ["R08:2>1"]);
   const after = clone(live);
@@ -127,7 +127,7 @@ console.log("\n[3] 탈착 완료 → 남은 게시물 순번 이어 붙이기");
   };
   O.load(clone(st), FAC);
   const c2 = O.compact(st.B.targets, ["B"]);
-  eq("가운데 탈착 → C 가 2번째로", c2.changed.map((x) => x.id + ":" + x.to), ["C:2"]);
+  eq("가운데 제거 → C 가 2번째로", c2.changed.map((x) => x.id + ":" + x.to), ["C:2"]);
 }
 
 /* ---------- 4. 삭제도 같은 방식으로 메운다 ---------- */
@@ -249,7 +249,7 @@ console.log("\n[9] 이동 — 같은 자리 재배열 / 다른 자리로 옮기�
   eq("R02 는 3번째로 밀림", d.updates["board/notices/R02/targets/0/order"], 3);
   eq("R01 은 09번 1번째", d.updates["board/notices/R01/targets"][0].order, 1);
 
-  // (e) 다른 구역으로 옮기면 그 구역은 부착 체크가 필요하다
+  // (e) 다른 구역으로 옮기면 그 구역은 게시 체크가 필요하다
   const t5 = { board: "lobby", slot: "02", order: 1, buildings: [101] };
   const e = O.move("R01", r01, r01.targets, t5);
   ok("동을 좁힌 이동도 저장", e.changed && e.updates["board/notices/R01/targets"][0].buildings.length === 1);

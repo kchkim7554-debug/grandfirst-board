@@ -14,7 +14,7 @@ import json, datetime, os, sys, urllib.request, urllib.error
 DB = "https://grandfirst-board-default-rtdb.asia-southeast1.firebasedatabase.app"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# 구역별 담당자 (DB /board/config 의 B조 기준). 부착 기록은 등록 시점 기준 일괄 입력값입니다.
+# 구역별 담당자 (DB /board/config 의 B조 기준). 게시 기록은 등록 시점 기준 일괄 입력값입니다.
 ZONE_GUARD = {
     "front": {"by": "염일엽", "team": "A"},
     "backA": {"by": "김기춘", "team": "B"},
