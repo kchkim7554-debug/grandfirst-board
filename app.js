@@ -1811,6 +1811,19 @@ var App = (function () {
   function procRow(no, title, desc) {
     return '<div class="proc-row"><span class="proc-no">' + no + "</span><span><b>" + esc(title) + "</b> · " + esc(desc) + "</span></div>";
   }
+  /* 사진 여러 장을 한 카드에 담고 누르면 확대 모달로 보여 줍니다 */
+  function photoCard(opts) {
+    return '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>' + esc(opts.title) + '</h3><span class="count">' + esc(opts.count) + '</span></div>' +
+      '<div class="dhgrid' + (opts.cols === 2 ? " two" : "") + '">' +
+      opts.items.map(function (it) {
+        return '<button class="dh-btn" data-act="zoom" data-src="' + esc(it.src) + '" data-cap="' + esc(it.cap) + '">' +
+          '<img src="' + esc(it.src) + '" alt="' + esc(it.cap) + '" loading="lazy">' +
+          '<span class="dh-cap">' + esc(it.label) + '<small>크게 보기</small></span></button>';
+      }).join("") +
+      '</div>' +
+      (opts.hint ? '<div class="f-hint" style="margin-top:8px">' + opts.hint + "</div>" : "") +
+      "</div>";
+  }
   function renderInfo() {
     var nos = FAC.buildings.map(function (b) { return b.no; });
     var minNo = Math.min.apply(null, nos), maxNo = Math.max.apply(null, nos);
@@ -1846,6 +1859,19 @@ var App = (function () {
       '</div>' +
       '<div class="hh total" style="margin-top:7px"><b>합계 1,926세대</b><span>101동 ~ 124동 · 24개동</span></div>' +
       '<div class="f-hint" style="margin-top:8px">배치도의 동 번호와 게시판 조회의 동 번호가 같습니다. 현장 안내 시 함께 보세요.</div></div>';
+    h += photoCard({ title: "동·호수 배치표 (101~124동)", count: "3장",
+      hint: "동마다 아래(저층)부터 위(최고층)까지 호수 배치입니다. 사진을 누르면 크게 볼 수 있습니다.",
+      items: [
+        { src: "images/dong_ho_table_101_108.jpg", label: "101~108동", cap: "동·호수 배치표 · 101동~108동" },
+        { src: "images/dong_ho_table_109_116.jpg", label: "109~116동", cap: "동·호수 배치표 · 109동~116동" },
+        { src: "images/dong_ho_table_117_124.jpg", label: "117~124동", cap: "동·호수 배치표 · 117동~124동" }
+      ] });
+    h += photoCard({ title: "동·라인별 저층·최고층 요약표 (01~24동)", count: "2장", cols: 2,
+      hint: "동별 저층·라인별 최고 호수를 정리한 표입니다. 사진을 누르면 크게 볼 수 있습니다.",
+      items: [
+        { src: "images/dong_line_summary_01_12.jpg", label: "01~12동", cap: "동·라인별 저층·최고층 요약표 · 01동~12동" },
+        { src: "images/dong_line_summary_13_24.jpg", label: "13~24동", cap: "동·라인별 저층·최고층 요약표 · 13동~24동" }
+      ] });
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 6px"><h3>게시판 구조</h3></div>' +
       '<table class="itable">' +
       "<tr><th>공동현관 홀</th><td>게시판 4면 · 번호판 12칸<br><span style='color:var(--muted);font-weight:600'>2줄 × 6칸 · 01~12번</span></td></tr>" +

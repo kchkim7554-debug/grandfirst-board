@@ -535,6 +535,12 @@ body.bg-info .bgwash::before{
 body.bg-info .bgwash::after{
   background:linear-gradient(180deg,rgba(249,251,252,.72) 0%,rgba(245,248,250,.8) 55%,rgba(241,244,248,.88) 100%);
 }
+.dhgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.dhgrid.two{grid-template-columns:repeat(2,1fr);}
+.dh-btn{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#f2f5f8;padding:0;text-align:left;display:flex;flex-direction:column;}
+.dh-btn img{display:block;width:100%;height:auto;background:#fff;}
+.dh-btn .dh-cap{display:block;padding:6px 7px 7px;font-size:.68rem;font-weight:800;color:var(--ink-2);white-space:nowrap;}
+.dh-btn .dh-cap small{display:block;font-size:.62rem;font-weight:600;color:var(--muted);margin-top:2px;font-weight:600;}
 .mapcard{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(18,35,54,.06);}
 .map-shot{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#eef1f5;position:relative;}
 .map-shot img{display:block;width:100%;height:auto;}
@@ -744,6 +750,6 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261120e"></script>
+<script src="app.js?v=20261120f"></script>
 </body>
 </html>
