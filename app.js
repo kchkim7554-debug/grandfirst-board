@@ -1917,8 +1917,8 @@ var App = (function () {
       h += '<button class="cal-cell' + (ds === TODAY ? " today" : "") + (ds === HIST.day ? " sel" : "") + '"' +
         ' data-act="hist-day" data-d="' + ds + '" aria-label="' + korDate(ds) + " 게시 " + pc + "건 제거 " + rc + '건">' +
         '<span class="cal-d">' + d + "</span>" +
-        '<span class="cal-p' + (pc ? "" : " zero") + '">게시 ' + pc + "건</span>" +
-        '<span class="cal-r' + (rc ? "" : " zero") + '">제거 ' + rc + "건</span>" +
+        '<span class="cal-p' + (pc ? "" : " zero") + '">게시 ' + pc + "<em>건</em></span>" +
+        '<span class="cal-r' + (rc ? "" : " zero") + '">제거 ' + rc + "<em>건</em></span>" +
         "</button>";
     }
     h += "</div>";

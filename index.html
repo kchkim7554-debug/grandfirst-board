@@ -485,6 +485,12 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .cal-p{color:var(--blue);}
 .cal-r{color:var(--red);}
 .cal-p.zero,.cal-r.zero{color:#c6ced8;font-weight:600;}
+.cal-p em,.cal-r em{font-style:normal;}
+@media (max-width:480px){
+  .cal-cell{min-height:52px;padding:3px 2px 2px;}
+  .cal-p,.cal-r{font-size:.5rem;letter-spacing:-.5px;}
+  .cal-p em,.cal-r em{display:none;}
+}
 .calsum{margin-top:11px;border-top:1px dashed var(--line);padding-top:9px;display:flex;flex-direction:column;gap:6px;}
 .csrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.72rem;color:var(--ink-2);}
 .csrow b{font-size:.88rem;font-weight:800;}
@@ -805,6 +811,6 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261120h"></script>
+<script src="app.js?v=20261120i"></script>
 </body>
 </html>
