@@ -919,12 +919,15 @@ var App = (function () {
      ======================================================== */
   function cloverSvg() {
     var leaf = "M12 12C12 6.3 9.4 3 6.2 3 3.2 3 1.9 5.7 3.6 8.3 5.1 10.6 8.3 11.9 12 12Z";
+    var tf = function (deg) {
+      return ' transform="translate(12 12) rotate(' + deg + ') scale(.82) translate(-12 -12)"';
+    };
     return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-      '<path d="' + leaf + '" fill="currentColor"/>' +
-      '<path d="' + leaf + '" fill="currentColor" transform="rotate(90 12 12)"/>' +
-      '<path d="' + leaf + '" fill="currentColor" transform="rotate(180 12 12)"/>' +
-      '<path d="' + leaf + '" fill="currentColor" transform="rotate(270 12 12)"/>' +
-      '<path d="M12 12.4c0 3.8-.5 6.6-1.1 8.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>' +
+      '<path d="M12.2 12.6c0 4-.5 7-1.2 8.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".5"/>' +
+      '<path d="' + leaf + '" fill="currentColor"' + tf(0) + "/>" +
+      '<path d="' + leaf + '" fill="currentColor"' + tf(90) + "/>" +
+      '<path d="' + leaf + '" fill="currentColor"' + tf(180) + "/>" +
+      '<path d="' + leaf + '" fill="currentColor"' + tf(270) + "/>" +
       "</svg>";
   }
   function menuRow(go, title, desc, badge, id) {
