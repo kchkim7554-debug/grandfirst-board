@@ -62,7 +62,7 @@ a{color:var(--blue);text-decoration:none;}
 .rb-title{font-size:.97rem;font-weight:800;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rb-sub{font-size:.62rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;}
 .who{
-  flex:0 0 auto;max-width:9.4em;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);
+  flex:0 0 auto;max-width:8.8em;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);
   color:#fff;border-radius:999px;padding:5px 9px;font-size:.66rem;font-weight:700;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
@@ -542,6 +542,19 @@ body.bg-home .menu-head .hint{color:#5b6c7e;}
 
 [hidden]{display:none !important;}
 button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;min-width:0;}
+/* 좁은 화면(휴대폰) 상단바·메뉴 여백 보정 */
+@media (max-width:400px){
+  .rb-title{font-size:.88rem;letter-spacing:-.5px;}
+  .rb-sub{font-size:.58rem;}
+  .who{max-width:7em;padding:5px 8px;font-size:.62rem;}
+  .homebtn{font-size:.68rem;padding:6px 9px;gap:3px;}
+  .brand .wm{font-size:.66rem;}
+  .brand .mk{width:24px;height:24px;}
+  .fsbtn{padding:5px 7px;font-size:.72rem;}
+  .pcard{padding:13px 13px 12px;}
+  .menu-title{font-size:.9rem;}
+  .menu-desc{font-size:.66rem;}
+}
 /* ---------- footer ---------- */
 .sitefoot{
   max-width:760px;margin:20px auto 0;padding:15px 16px calc(18px + env(safe-area-inset-bottom));
