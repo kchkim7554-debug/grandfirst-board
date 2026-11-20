@@ -6,7 +6,7 @@ Firebase Realtime Database(무료 Spark 요금제)에 저장되므로, 한 사�
 - 서비스 주소: https://kchkim7554-debug.github.io/grandfirst-board/
 - 저장소: https://github.com/kchkim7554-debug/grandfirst-board
 
-## 화면 4개
+## 화면 5개
 
 | 탭 | 내용 |
 |---|---|
@@ -14,6 +14,7 @@ Firebase Realtime Database(무료 Spark 요금제)에 저장되므로, 한 사�
 | 부착·탈착 | ② 부착 체크 / ③ 탈착 체크 — 조·구역별 체크표 |
 | 등록·관리 | 관리자 PIN 인증 후 ① 게시물 등록·수정·삭제, 담당자 설정, 테스트 데이터 삭제 |
 | 보관함 | ④ 탈착 완료 게시물 — 탈착 날짜별·게시 번호별 조회, 수정·삭제·재등록 |
+| 제거 알림 | 매일 07:00 제거 대상 알림 기록 — 날짜별 누적 피드, 시작일~종료일·내용 검색, 합성 공지 카드 크게 보기·저장 |
 
 ## 처리 흐름
 
@@ -43,7 +44,39 @@ board/
   notices/{id} 제목·사진(압축 Base64 또는 이미지 경로)·대상·기한·status
                attach{구역:담당·시각} / detach{구역:담당·시각}
   logs/        누가·언제·무엇을 했는지 기록(추가 전용)
+  daily_alerts/{YYYY-MM-DD}  07시 제거 알림 기록(날짜별 1건, 대상 없는 날도 남김)
 ```
+
+## 게시물 제거 대상 일일 알림 (`제거 알림` 탭)
+
+매일 **07:00** 예약 작업(`scheduled-actions/📋-게시판-07시-탈착-알림`)이 그날의 제거 대상을 정리해
+`/board/daily_alerts/{YYYY-MM-DD}` 에 1건씩 남기고, 웹은 이 경로를 실시간으로 구독해 날짜별(최신순) 피드로 보여줍니다.
+
+```jsonc
+/board/daily_alerts/2026-11-20
+{
+  "date": "2026-11-20", "weekday": "금", "shift": "B조",
+  "hasTargets": true,
+  "summary": "오늘(11/20 금) B조 제거 대상 2건",
+  "items": [
+    { "id": "R01", "title": "승강기 정기 점검",
+      "location": "전층(1층·지하1층·지하2층) 공동현관 03번 첫 번째",
+      "message": "전층(1층·지하1층·지하2층) 공동현관 03번 첫 번째 게시물 [승강기 정기 점검] 오늘 제거 바랍니다.",
+      "memo": "선택",
+      "cardImage": "templates/cards/2026-11-20_R01.jpg" }
+  ],
+  "createdAt": "2026-11-20T07:00:00+09:00"
+}
+```
+
+- **대상 없는 날**: `"hasTargets": false, "items": []`, `"summary": "오늘 제거 대상 게시물이 없습니다."` → 화면에는
+  `2026-11-19 (목) · 오늘 제거 대상 게시물이 없습니다.` 한 줄 배지로 남습니다.
+- **검색**: 시작일~종료일(날짜 범위) + 내용(제목·층/게시판 번호·안내 문구·메모·근무조) 실시간 조합.
+  내용 검색이 있으면 날짜별 항목 중 일치하는 건만 남기고 `2건 · 1건 일치`처럼 표시합니다.
+- **카드 이미지**: `templates/cards/YYYY-MM-DD_Rxx.jpg`(합성 공지 카드)를 누르면 크게 보기 + `이미지 저장`.
+- 항목 필드 별칭 허용: `title|name`, `location|loc|place`, `message|desc|text`, `cardImage|image|img`, `shift`는 `B`도 `B조`로 표시.
+- 수동 추가(예: 보정):
+  `curl -X PUT -H 'Content-Type: application/json' --data @daily.json https://grandfirst-board-default-rtdb.asia-southeast1.firebasedatabase.app/board/daily_alerts/2026-11-20.json`
 
 - Firebase 프로젝트: `grandfirst-board` (Spark 무료, 결제카드 없음)
 - Database URL: `https://grandfirst-board-default-rtdb.asia-southeast1.firebasedatabase.app` (싱가포르)
@@ -56,6 +89,9 @@ board/
 - `app.js` — 앱 로직(실시간 동기화·체크·등록·보관함)
 - `data.json` — 시설 정보(동·코어·층·게시판 번호). 게시물은 들어 있지 않습니다.
 - `notices_real.json` — 2026-11-16~18 현장 촬영 사진 21장(11/17 A조 신규 배포 2건 포함) + 11/20 R22(입대의 정기회의 공고)을 판독해 정리한 실제 게시물 데이터 22건
+- `templates/` — 공동현관 12분할·엘리베이터 6분할 번호판 템플릿(`slots.json`), 체크 배치도(`checked/`), 제거 공지 카드(`cards/`)
+- `mark_slot.py` · `slotmap.py` · `build_templates.py` — 번호판 템플릿·체크마크 생성
+- `make_removal_card.py` — 안내 문구 + 체크 배치도 + 게시물 사진을 한 장의 공지 카드로 합성
 - `seed_firebase.py` — `notices_real.json`을 Firebase `/board/notices.json`으로 PUT 하는 스크립트(설정 `config`는 보존)
 - `test/order.test.js` · `test/run_quickjs.py` — 겹침 순번 자동 밀림 검증(실 DB 미사용)
 - `test/live-snapshot.json` — 2026-11-18 실 DB 게시물 21건 읽기 스냅샷(테스트 입력)
