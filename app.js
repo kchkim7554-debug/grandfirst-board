@@ -918,12 +918,13 @@ var App = (function () {
      첫 화면 — 7개 네잎클로버 메뉴 포털
      ======================================================== */
   function cloverSvg() {
-    var leaf = "M12 12C12 6.3 9.4 3 6.2 3 3.2 3 1.9 5.7 3.6 8.3 5.1 10.6 8.3 11.9 12 12Z";
+    /* 네잎클로버 — 잎은 바깥쪽이 넓고 가운데가 파인 하트 모양, 네 장으로 회전 배치 */
+    var leaf = "M12 13.4 C8.6 10.7 7.4 8.6 7.4 6.9 C7.4 5.3 8.6 4.2 10 4.2 C11 4.2 11.7 4.8 12 5.5 C12.3 4.8 13 4.2 14 4.2 C15.4 4.2 16.6 5.3 16.6 6.9 C16.6 8.6 15.4 10.7 12 13.4 Z";
     var tf = function (deg) {
-      return ' transform="translate(12 12) rotate(' + deg + ') scale(.82) translate(-12 -12)"';
+      return ' transform="translate(12 12) rotate(' + deg + ') scale(.8) translate(-12 -12)"';
     };
     return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-      '<path d="M12.2 12.6c0 4-.5 7-1.2 8.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".5"/>' +
+      '<path d="M12.2 12.2c0 4.6-.7 8-1.6 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".5"/>' +
       '<path d="' + leaf + '" fill="currentColor"' + tf(0) + "/>" +
       '<path d="' + leaf + '" fill="currentColor"' + tf(90) + "/>" +
       '<path d="' + leaf + '" fill="currentColor"' + tf(180) + "/>" +
