@@ -1742,18 +1742,27 @@ var App = (function () {
       '<div class="mvgo-wrap"><button class="btn solid mvgo" data-act="mv-apply">이동 →</button></div>' +
       mvSideHtml("to") + "</div>";
   }
-  /* 화면 전체를 다시 그리지 않고 폼·목록만 갱신 (칩을 눌러도 스크롤·제목이 유지된다) */
+  /* 화면 전체를 다시 그리지 않고 폼 또는 목록만 갱신 (칩을 눌러도 스크롤·제목이 유지된다) */
+  function refreshCreateList() {
+    var l = document.getElementById("nfList");
+    if (!l) { render(); return; }
+    l.innerHTML = createListHtml(SESSION.role === "admin");
+  }
   function refreshCreate() {
-    var b = document.getElementById("nfBody"), l = document.getElementById("nfList");
-    if (!b && !l) { render(); return; }
-    if (b) b.innerHTML = nfFormHtml();
-    if (l) l.innerHTML = createListHtml(SESSION.role === "admin");
+    var b = document.getElementById("nfBody");
+    if (!b) { render(); return; }
+    b.innerHTML = nfFormHtml();
+  }
+  function refreshMoveList() {
+    var l = document.getElementById("mvList");
+    if (!l) { render(); return; }
+    l.innerHTML = mvListHtml(SESSION.role === "admin");
   }
   function refreshMove() {
-    var b = document.getElementById("mvBody"), l = document.getElementById("mvList");
-    if (!b && !l) { render(); return; }
-    if (b) b.innerHTML = mvPanelsHtml();
-    if (l) l.innerHTML = mvListHtml(SESSION.role === "admin");
+    var b = document.getElementById("mvBody");
+    if (!b) { render(); return; }
+    b.innerHTML = mvPanelsHtml();
+    refreshMoveList();
   }
   function moveTabHtml(isA) {
     mvEnsure();
@@ -3497,13 +3506,13 @@ var App = (function () {
       else if (act === "nf-eslot") { nfEnsure(); NF.evSlot = el.dataset.v; refreshCreate(); }
       else if (act === "nf-nodeadline") { nfEnsure(); NF.noDeadline = !NF.noDeadline; refreshCreate(); }
       else if (act === "nf-save") { saveNewNotice(); }
-      else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; refreshCreate(); }
+      else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; refreshCreateList(); }
       else if (act === "nf-pick-all") {
         nfEnsure();
         var allOn = activeSorted().every(function (n) { return !!NF.picked[n.id]; });
         NF.picked = {};
         if (!allOn) activeSorted().forEach(function (n) { NF.picked[n.id] = true; });
-        refreshCreate();
+        refreshCreateList();
       }
       else if (act === "nf-delete") { deleteSelected(); }
       /* ---------- [이동] 탭 ---------- */
@@ -3544,7 +3553,7 @@ var App = (function () {
         mvEnsure();
         var mpk = el.dataset.id;
         MV.picked[mpk] = MV.picked[mpk] === false;
-        refreshMove();
+        refreshMoveList();
       }
       else if (act === "mv-all") {
         mvEnsure();
@@ -3552,7 +3561,7 @@ var App = (function () {
         var mAllOn = mrows.every(function (it) { return MV.picked[it.id] !== false; });
         MV.picked = {};
         if (mAllOn) mrows.forEach(function (it) { MV.picked[it.id] = false; });
-        refreshMove();
+        refreshMoveList();
       }
       else if (act === "mv-apply") { applyMassMove(); }
       else if (act === "f-cat") { formDefaults.category = el.dataset.v; markChips("#fCat", el); }
