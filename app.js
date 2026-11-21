@@ -1731,7 +1731,7 @@ var App = (function () {
         h += "<tr><td class=\"ct\">" + esc(m.count ? m.count + "건" : (m.noticeId ? "1건" : "-")) + "</td>" +
           '<td class="cn">' + esc((m.titles && m.titles.length ? m.titles.slice(0, 2).join(" · ") : (m.title || "-"))) + "</td>" +
           '<td class="cp">' + esc(m.to || "") + '<span class="csub">← ' + esc(m.from || "") + "</span></td>" +
-          '<td class="cd">' + esc(m.date || ymdOfTs(m.at) || "") + "</td></tr>";
+          '<td class="cd">' + esc(dotDate(m.date || ymdOfTs(m.at) || "")) + "</td></tr>";
       });
       h += "</tbody></table></div></div>";
     }
