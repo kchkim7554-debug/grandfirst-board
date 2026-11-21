@@ -218,7 +218,9 @@ var App = (function () {
           var b = buildingByNo(no);
           if (!b) return;
           if (placedZones.indexOf(b.zone) < 0) return;  // 게시 완료된 구역만 도면 표시
+          var coreSel = (t.cores && t.cores !== "all") ? t.cores.map(String) : null;
           b.cores.forEach(function (core) {
+            if (coreSel && coreSel.indexOf(String(core.key)) < 0) return;   // 고른 라인만 도면에 표시
             var locs = [];
             if (t.board === "lobby") {
               var floors = (t.floors && t.floors.length) ? t.floors : FAC.boards.lobby.floors;
@@ -1250,20 +1252,210 @@ var App = (function () {
     h += (tab === "move") ? moveTabHtml(isA) : newTabHtml(isA);
     return h;
   }
-  function newTabHtml(isA) {
-    var h = "";
-    if (!isA) {
-      h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
-        "새 게시물 등록·수정·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
-    } else {
-      h += '<div style="display:flex;gap:8px;margin-bottom:11px">' +
-        '<button class="btn solid" data-act="new-notice" style="flex:1 1 auto">＋ 새 게시물 등록</button>' +
-        '<button class="btn line" data-act="settings" style="flex:0 0 auto">설정</button></div>';
-      h += '<div class="warnbox">등록하면 <b>게시 대기</b>로 저장되고, 같은 자리(게시판·번호·겹치는 층/호기·동)에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 게시 체크를 해야 도면에 나타납니다.</div>';
+  /* ---------- 게시장소 선택 (생성·이동 공용) ----------
+     동(전체/복수) · 라인(전체/복수) · 게시판(전체/1층·지하1층·지하2층 + 번호 01~12) · E/V(전체/호기 + 번호 01~06) */
+  function dup(o) { return JSON.parse(JSON.stringify(o)); }
+  function lineList() {
+    var out = [];
+    (FAC && FAC.buildings ? FAC.buildings : []).forEach(function (b) {
+      (b.cores || []).forEach(function (c) {
+        var k = String(c.key), hit = false;
+        for (var i = 0; i < out.length; i++) if (out[i].key === k) hit = true;
+        if (!hit) out.push({ key: k, name: c.name });
+      });
+    });
+    return out;
+  }
+  function lineLabel(k) {
+    var list = lineList();
+    for (var i = 0; i < list.length; i++) if (list[i].key === String(k)) return list[i].name;
+    return k + "라인";
+  }
+  function allBuildingNos() { return FAC.buildings.map(function (b) { return b.no; }); }
+  function allFloorNames() { return FAC.boards.lobby.floors.slice(); }
+  function allLineKeys() { return lineList().map(function (l) { return l.key; }); }
+  /* "전체" | 배열 — 전체를 누르면 전체, 처음 하나를 누르면 그것만, 이어서 누르면 더하기/빼기 */
+  function togglePick(cur, allVals, v) {
+    if (String(v) === "all") return "all";
+    var arr = (cur === "all") ? [] : cur.slice();
+    var i = arr.indexOf(v);
+    if (i >= 0) arr.splice(i, 1); else arr.push(v);
+    if (!arr.length) return "all";
+    if (arr.length === allVals.length && allVals.every(function (x) { return arr.indexOf(x) >= 0; })) return "all";
+    return arr;
+  }
+  /* 선택 상태 → 저장용 대상(target) */
+  function specTarget(spec) {
+    var t = { board: spec.type === "elevator" ? "elevator" : "lobby", slot: pad2(spec.slot), order: 1 };
+    t.buildings = spec.buildings === "all" ? "all" : spec.buildings.map(Number).sort(function (a, b) { return a - b; });
+    if (spec.lines && spec.lines !== "all") t.cores = spec.lines.map(String);
+    if (t.board === "lobby") t.floors = (spec.floors === "all" || !spec.floors || !spec.floors.length) ? allFloorNames() : spec.floors.slice();
+    else t.elevators = (spec.elevators === "all" || !spec.elevators || !spec.elevators.length) ? "all" : spec.elevators.map(String);
+    return t;
+  }
+  /* 선택 상태 → 사람이 읽는 위치 문구 */
+  function specPlaceText(spec) {
+    var b = spec.buildings === "all" ? "전체 " + FAC.buildings.length + "개동" : buildingListText(spec.buildings.map(Number));
+    var l = (!spec.lines || spec.lines === "all") ? "전체 라인" : spec.lines.map(lineLabel).join("·");
+    if (spec.type === "elevator") {
+      var e = (!spec.elevators || spec.elevators === "all") ? "전체 호기" : spec.elevators.map(function (k) { return k + "호기"; }).join("·");
+      return b + " · " + l + " · E/V " + e + " " + pad2(spec.slot) + "번";
     }
-    h += noticeAdminList("등록·게시 중인 게시물", false, "");
+    var f = (!spec.floors || spec.floors === "all" || spec.floors.length === allFloorNames().length) ? "전체 층" : spec.floors.join("·");
+    return b + " · " + l + " · 게시판 " + f + " " + pad2(spec.slot) + "번";
+  }
+  /* 게시물의 대상이 이 위치에 걸리는지 (이동 원본 찾기) */
+  function specHitsTarget(spec, t) {
+    if ((t.board || "lobby") !== spec.type) return false;
+    if (pad2(t.slot) !== pad2(spec.slot)) return false;
+    var nb = buildingsOfTarget(t);
+    if (spec.buildings !== "all" && !spec.buildings.some(function (no) { return nb.indexOf(Number(no)) >= 0; })) return false;
+    if (spec.lines && spec.lines !== "all") {
+      var tc = (t.cores && t.cores !== "all") ? t.cores.map(String) : null;
+      if (tc && !tc.some(function (k) { return spec.lines.indexOf(k) >= 0; })) return false;
+    }
+    if (spec.type === "lobby") {
+      if (spec.floors && spec.floors !== "all" && spec.floors.length < allFloorNames().length) {
+        var tf = (t.floors && t.floors.length) ? t.floors : allFloorNames();
+        if (!spec.floors.some(function (f) { return tf.indexOf(f) >= 0; })) return false;
+      }
+    } else if (spec.elevators && spec.elevators !== "all" && spec.elevators.length < allElevKeys().length) {
+      var te = (t.elevators && t.elevators !== "all") ? t.elevators.map(String) : allElevKeys();
+      if (!spec.elevators.some(function (k) { return te.indexOf(String(k)) >= 0; })) return false;
+    }
+    return true;
+  }
+  function sameSpec(a, b) {
+    return a.type === b.type && pad2(a.slot) === pad2(b.slot) &&
+      JSON.stringify(a.buildings) === JSON.stringify(b.buildings) &&
+      JSON.stringify(a.lines) === JSON.stringify(b.lines) &&
+      JSON.stringify(a.floors || null) === JSON.stringify(b.floors || null) &&
+      JSON.stringify(a.elevators || null) === JSON.stringify(b.elevators || null);
+  }
+  function targetKinds(n) {
+    var lobby = false, elev = false;
+    targetsOf(n).forEach(function (t) { if ((t.board || "lobby") === "elevator") elev = true; else lobby = true; });
+    return lobby && elev ? "게시판·E/V" : elev ? "E/V" : "게시판";
+  }
+  function targetsPlaceText(n) {
+    return targetsOf(n).map(function (t) {
+      var b = (t.buildings === "all" || !t.buildings) ? "전체동" : buildingListText(t.buildings);
+      var where;
+      if (t.board === "elevator") {
+        where = (t.elevators && t.elevators !== "all") ? "E/V " + t.elevators.join("·") + "호기" : "E/V 전체";
+      } else {
+        var fl = (t.floors && t.floors.length) ? t.floors : allFloorNames();
+        where = fl.length === allFloorNames().length ? "전체층" : fl.join("·");
+      }
+      var line = (t.cores && t.cores !== "all") ? " " + t.cores.map(lineLabel).join("·") : "";
+      return b + line + " " + where + " " + pad2(t.slot) + "번" + orderText(t.order);
+    }).join(" / ");
+  }
+
+  /* ---------- [생성] 탭 ---------- */
+  var NF = null;
+  function nfReset() {
+    NF = {
+      photo: null, title: "",
+      scope: "all", buildings: [],
+      lines: "all",
+      lobbyOn: true, floors: "all", lobbySlot: "01",
+      evOn: false, elevators: "all", evSlot: "01",
+      deadline: "", noDeadline: false,
+      picked: {}
+    };
+    return NF;
+  }
+  function nfEnsure() { if (!NF) nfReset(); return NF; }
+
+  function nfPhotoHtml() {
+    nfEnsure();
+    return '<div class="nf-shot">' +
+      '<div class="photo-prev" id="nfPhotoPrev">' + (NF.photo ? '<img src="' + esc(NF.photo) + '" alt="">' : "사진<br>없음") + "</div>" +
+      '<div class="photo-ctl">' +
+      '<input type="file" accept="image/*" id="nfPhoto" style="display:none">' +
+      '<input type="file" accept="image/*" capture="environment" id="nfCam" style="display:none">' +
+      '<div class="f-row"><button class="btn line" data-act="nf-photo">사진 선택</button>' +
+      '<button class="btn line" data-act="nf-cam">카메라</button></div>' +
+      '<button class="mini-btn" data-act="nf-photo-clear">사진 지우기</button>' +
+      '<div class="f-hint" id="nfPhotoInfo">' + (NF.photo ? "첫 장만 저장합니다" : "촬영하거나 앨범에서 · 자동 축소(900px)") + "</div>" +
+      "</div></div>";
+  }
+  function nfPlaceHtml() {
+    nfEnsure();
+    var h = "";
+    /* 동 */
+    h += '<div class="nf-row"><div class="nf-lab">동</div><div class="nf-chips">' +
+      '<button class="f-chip' + (NF.scope === "all" ? " on" : "") + '" data-act="nf-bld" data-v="all">전체 ' + FAC.buildings.length + "동</button>" +
+      FAC.buildings.map(function (b) {
+        var on = NF.scope === "pick" && NF.buildings.indexOf(b.no) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="nf-bld" data-v="' + b.no + '">' + b.no + "</button>";
+      }).join("") + "</div></div>";
+    /* 라인 */
+    h += '<div class="nf-row"><div class="nf-lab">라인</div><div class="nf-chips">' +
+      '<button class="f-chip' + (NF.lines === "all" ? " on" : "") + '" data-act="nf-line" data-v="all">전체</button>' +
+      lineList().map(function (l) {
+        var on = NF.lines !== "all" && NF.lines.indexOf(l.key) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="nf-line" data-v="' + esc(l.key) + '">' + esc(l.name) + "</button>";
+      }).join("") + "</div></div>";
+    /* 게시판 */
+    h += '<div class="nf-row' + (NF.lobbyOn ? " on" : " off") + '"><div class="nf-lab">게시판</div><div class="nf-body">' +
+      '<div class="nf-line"><button class="f-chip sm' + (NF.lobbyOn ? " on" : "") + '" data-act="nf-lobby-on">' + (NF.lobbyOn ? "게시 ✓" : "게시 넣기") + "</button>" +
+      (NF.lobbyOn ? '<div class="nf-chips">' +
+        '<button class="f-chip' + (NF.floors === "all" ? " on" : "") + '" data-act="nf-floor" data-v="all">전체</button>' +
+        allFloorNames().map(function (f) {
+          var on = NF.floors !== "all" && NF.floors.indexOf(f) >= 0;
+          return '<button class="f-chip' + (on ? " on" : "") + '" data-act="nf-floor" data-v="' + esc(f) + '">' + esc(f) + "</button>";
+        }).join("") + "</div>" : "") + "</div>" +
+      (NF.lobbyOn ? '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + slotChipsHtml("nf-lslot", NF.lobbySlot, 12) + "</div></div>" : "") +
+      "</div></div>";
+    /* E/V */
+    h += '<div class="nf-row' + (NF.evOn ? " on" : " off") + '"><div class="nf-lab">E/V</div><div class="nf-body">' +
+      '<div class="nf-line"><button class="f-chip sm' + (NF.evOn ? " on" : "") + '" data-act="nf-ev-on">' + (NF.evOn ? "게시 ✓" : "게시 넣기") + "</button>" +
+      (NF.evOn ? '<div class="nf-chips">' +
+        '<button class="f-chip' + (NF.elevators === "all" ? " on" : "") + '" data-act="nf-elev" data-v="all">전체</button>' +
+        allElevKeys().map(function (k) {
+          var on = NF.elevators !== "all" && NF.elevators.indexOf(String(k)) >= 0;
+          return '<button class="f-chip' + (on ? " on" : "") + '" data-act="nf-elev" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
+        }).join("") + "</div>" : "") + "</div>" +
+      (NF.evOn ? '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + slotChipsHtml("nf-eslot", NF.evSlot, 6) + "</div></div>" : "") +
+      "</div></div>";
     return h;
   }
+  function mvSpecChips(side, kind, val, max) {
+    var out = "";
+    for (var i = 1; i <= max; i++) {
+      var s2 = pad2(i);
+      out += '<button class="f-chip' + (val && pad2(val) === s2 ? " on" : "") + '" data-act="mv-' + kind + 'slot" data-side="' + esc(side) + '" data-v="' + s2 + '">' + s2 + "</button>";
+    }
+    return out;
+  }
+  function slotChipsHtml(act, val, max) {
+    var out = "";
+    for (var i = 1; i <= max; i++) {
+      var s = pad2(i);
+      out += '<button class="f-chip' + (pad2(val) === s ? " on" : "") + '" data-act="' + act + '" data-v="' + s + '">' + s + "</button>";
+    }
+    return out;
+  }
+  function nfFormHtml() {
+    nfEnsure();
+    var h = "";
+    h += '<div class="nf"><div class="nf-h"><h3>① 게시물 사진</h3><span class="nf-tag">여러 page면 첫 page만</span></div>' + nfPhotoHtml() +
+      '<div class="fld" style="margin:11px 0 0"><label>게시물 제목 <span class="req">*</span></label>' +
+      '<input class="f-in" id="nfTitle" value="' + esc(NF.title) + '" placeholder="예: 승강기 정기 점검 안내"></div></div>';
+    h += '<div class="nf"><div class="nf-h"><h3>② 게시장소</h3><span class="nf-tag">동 · 라인 · 게시판 / E/V</span></div>' + nfPlaceHtml() + "</div>";
+    h += '<div class="nf"><div class="nf-h"><h3>③ 생성일자 · 게시 기한</h3></div>' +
+      '<div class="nf-row"><div class="nf-lab">생성일자</div><div class="nf-body"><span class="nf-fixed">' + esc(dotDate(TODAY)) +
+      " (" + esc(weekday(TODAY)) + ")</span><span class=\"f-hint\" style=\"display:block\">사진을 올린 날로 자동 기록됩니다</span></div></div>" +
+      '<div class="nf-row"><div class="nf-lab">게시 기한</div><div class="nf-body"><div class="f-row">' +
+      '<input type="date" class="f-in" id="nfDeadline" value="' + esc(NF.deadline) + '"' + (NF.noDeadline ? " disabled" : "") + ">" +
+      '<button class="btn line" data-act="nf-nodeadline" style="flex:0 0 auto">' + (NF.noDeadline ? "기한 없음 ✓" : "기한 없음") + "</button>" +
+      "</div></div></div></div>";
+    h += '<div class="nf-save"><button class="btn solid wide" data-act="nf-save">저장</button></div>';
+    return h;
+  }
+  /* 목록 정렬 — 제거 필요 → 게시 중 → 게시 대기 순, 같으면 기한 순 */
   function activeSorted() {
     var live = NOTICES.filter(function (n) { return !isArchived(n); });
     live.sort(function (a, b) {
@@ -1274,41 +1466,321 @@ var App = (function () {
     });
     return live;
   }
-  function noticeAdminList(title, withMove, q) {
+  function createListHtml(isA) {
+    nfEnsure();
     var list = activeSorted();
-    if (q) {
-      var qq = q.toLowerCase();
-      list = list.filter(function (n) {
-        return (n.title || "").toLowerCase().indexOf(qq) >= 0 || targetsText(n).toLowerCase().indexOf(qq) >= 0;
+    var h = '<div class="sec-h"><h3>게시물 목록</h3><span class="count">' + list.length + "건</span>";
+    if (isA) {
+      h += '<span class="spacer"></span><button class="mini-btn" data-act="nf-pick-all">전체 선택</button>' +
+        '<button class="mini-btn danger" data-act="nf-delete">선택 삭제</button>';
+    }
+    h += "</div>";
+    if (!list.length) return h + '<div class="empty-box">등록된 게시물이 없습니다.</div>';
+    h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable"><thead><tr>' +
+      (isA ? '<th class="ck"></th>' : "") +
+      "<th>구분</th><th>게시물</th><th>생성일자</th><th>게시장소</th><th>게시 기한</th></tr></thead><tbody>";
+    list.forEach(function (n) {
+      var gen = n.postedAt || ymdOfTs(n.createdAt) || "";
+      var dl = (n.permanent || !n.deadline) ? "기한 없음" : dotDate(n.deadline);
+      var on = !!(isA && NF.picked[n.id]);
+      h += '<tr class="' + (on ? "sel" : "") + '">' +
+        (isA ? '<td class="ck"><button class="ckbox' + (on ? " on" : "") + '" data-act="nf-pick" data-id="' + esc(n.id) + '" aria-label="선택">' + (on ? "✓" : "") + "</button></td>" : "") +
+        '<td class="ct">' + esc(targetKinds(n)) + "</td>" +
+        '<td class="cn"><button class="clink" data-act="open-notice" data-id="' + esc(n.id) + '">' + esc(n.title) + "</button></td>" +
+        '<td class="cd">' + esc(dotDate(gen)) + "</td>" +
+        '<td class="cp">' + esc(targetsPlaceText(n)) + "</td>" +
+        '<td class="cd">' + esc(dl) + "</td></tr>";
+    });
+    h += "</tbody></table></div></div>";
+    h += '<p class="note">줄의 <b>게시물 이름</b>을 누르면 관리자 화면에서 내용을 확인·수정·이동할 수 있습니다. ' +
+      "<b>선택 삭제</b>는 고른 게시물을 완전히 지웁니다(보관함 기록도 사라짐).</p>";
+    return h;
+  }
+  function newTabHtml(isA) {
+    var h = "";
+    if (!isA) {
+      h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
+        "새 게시물 등록·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
+      return h + createListHtml(false);
+    }
+    h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
+      "같은 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 게시 체크를 해야 도면에 나타납니다.</div>";
+    h += nfFormHtml();
+    h += createListHtml(true);
+    return h;
+  }
+  /* 작성 상태 → 저장할 대상(target) 목록 */
+  function nfBuildTargets(st) {
+    var s = st || NF;
+    var base = { buildings: s.scope === "all" ? "all" : s.buildings.slice(), lines: s.lines };
+    var out = [];
+    if (s.lobbyOn) out.push(specTarget(Object.assign({}, base, { type: "lobby", floors: s.floors, slot: s.lobbySlot })));
+    if (s.evOn) out.push(specTarget(Object.assign({}, base, { type: "elevator", elevators: s.elevators, slot: s.evSlot })));
+    return out;
+  }
+  function saveNewNotice() {
+    nfEnsure();
+    var titleEl = document.getElementById("nfTitle");
+    NF.title = titleEl ? titleEl.value : NF.title;
+    var title = (NF.title || "").trim();
+    if (!title) { toast("게시물 제목을 입력하세요"); return; }
+    if (!NF.lobbyOn && !NF.evOn) { toast("게시할 곳(게시판 또는 E/V)을 하나 이상 고르세요"); return; }
+    if (NF.scope !== "all" && !NF.buildings.length) { toast("게시할 동을 하나 이상 고르세요"); return; }
+    if (NF.lines !== "all" && !NF.lines.length) { toast("게시할 라인을 하나 이상 고르세요"); return; }
+    if (!NF.noDeadline) {
+      var dlEl = document.getElementById("nfDeadline");
+      if (dlEl) NF.deadline = dlEl.value || NF.deadline;
+      if (!NF.deadline) { toast("게시 기한을 고르거나 '기한 없음'을 선택하세요"); return; }
+    }
+    var targets = nfBuildTargets(NF);
+    var id = newId();
+    var payload = {
+      id: id, title: title, category: "안내문", memo: "",
+      postedAt: TODAY, deadline: NF.noDeadline ? null : NF.deadline, permanent: !!NF.noDeadline,
+      targets: targets, photo: NF.photo || null, updatedAt: nowTs(),
+      status: "pending_attach", createdAt: nowTs(), createdBy: SESSION.admin || "관리자",
+      attach: null, detach: null, archivedAt: null, isTest: false
+    };
+    var placeTxt = targetsPlaceText({ targets: targets });
+    var push = pushOrdersForNew(targets, id);
+    var updates = push.updates;
+    updates["board/notices/" + id] = payload;
+    var btn = document.querySelector('[data-act="nf-save"]');
+    if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
+    fbUpdate(updates).then(function (ok) {
+      if (!ok) { if (btn) { btn.disabled = false; btn.textContent = "다시 저장"; } return; }
+      writeLog({
+        noticeId: id, type: "create", by: SESSION.admin || "관리자", at: nowTs(), title: title,
+        place: placeTxt, pushed: push.pushed.length
+      });
+      var picked = NF.picked;
+      nfReset();
+      NF.picked = picked;
+      toast("등록했습니다 · " + placeTxt + (push.pushed.length ? " (기존 " + push.pushed.length + "건 뒤로 밀림)" : ""));
+    });
+  }
+  function deleteSelected() {
+    nfEnsure();
+    var ids = Object.keys(NF.picked).filter(function (k) { return NF.picked[k] && getNotice(k); });
+    if (!ids.length) { toast("삭제할 게시물을 선택하세요"); return; }
+    var names = ids.map(function (id) { return getNotice(id).title; });
+    if (!confirm("선택한 " + ids.length + "건을 완전히 삭제할까요?\n· " + names.slice(0, 5).join("\n· ") +
+      (names.length > 5 ? "\n· 외 " + (names.length - 5) + "건" : "") + "\n\n보관함 기록도 사라집니다.")) return;
+    var updates = {}, removed = [];
+    ids.forEach(function (id) {
+      var n = getNotice(id);
+      updates["board/notices/" + id] = null;
+      targetsOf(n).forEach(function (t) { removed.push(t); });
+    });
+    var comp = compactOrders(removed, ids);
+    Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
+    requireAdmin(function () {
+      fbUpdate(updates).then(function (ok) {
+        if (!ok) return;
+        writeLog({ type: "delete", count: ids.length, by: SESSION.admin || "관리자", at: nowTs(), ids: ids, titles: names });
+        NF.picked = {};
+        toast(ids.length + "건을 삭제했습니다");
+      });
+    });
+  }
+
+  /* ---------- [이동] 탭 ---------- */
+  var MV = null;
+  var MLOGS = [];          // 최근 이동 기록 (board/logs · type=move)
+  function mvBlank(type) {
+    return {
+      buildings: "all", lines: "all",
+      type: type || "lobby",
+      floors: "all", elevators: "all", slot: "01"
+    };
+  }
+  function mvReset() {
+    MV = { from: mvBlank("lobby"), to: mvBlank("lobby"), picked: {} };
+    MV.to.slot = "02";
+    return MV;
+  }
+  function mvEnsure() { if (!MV) mvReset(); return MV; }
+  function setMoveLogs(val) {
+    MLOGS = [];
+    if (val && typeof val === "object") {
+      Object.keys(val).forEach(function (k) {
+        var e = val[k];
+        if (!e || typeof e !== "object") return;
+        if (e.type !== "move") return;
+        e.key = k;
+        MLOGS.push(e);
       });
     }
-    var h = '<div class="sec-h"><h3>' + esc(title) + '</h3><span class="count">' + list.length + "건</span></div>";
-    if (!list.length) return h + '<div class="empty-box">해당하는 게시물이 없습니다.</div>';
-    h += '<div class="list">';
-    list.forEach(function (n) {
-      h += '<div class="row" style="align-items:flex-start">' +
-        '<button class="row-main" data-act="open-notice" data-id="' + esc(n.id) + '">' +
-        '<span style="display:flex;gap:4px;flex-wrap:wrap">' + flowBadge(n) + testTag(n) + "</span>" +
-        '<span class="row-title">' + esc(n.title) + "</span>" +
-        '<span class="row-sub">' + esc(targetsText(n)) + "</span>" +
-        '<span class="row-sub">' + esc(statusText(n)) + "</span></button>" +
-        (withMove ? '<button class="mini-btn" style="align-self:center;flex:0 0 auto" data-act="move-open" data-id="' + esc(n.id) + '">이동</button>' : "") +
-        "</div>";
+    MLOGS.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    MLOGS = MLOGS.slice(0, 12);
+  }
+  function mvSideHtml(side) {
+    var s = MV[side];
+    var title = side === "from" ? "현재 위치" : "이동할 곳";
+    var h = '<div class="mvpanel"><div class="mvph">' + title + "</div>";
+    h += '<div class="nf-row"><div class="nf-lab">동</div><div class="nf-chips">' +
+      '<button class="f-chip' + (s.buildings === "all" ? " on" : "") + '" data-act="mv-bld" data-side="' + side + '" data-v="all">전체</button>' +
+      FAC.buildings.map(function (b) {
+        var on = s.buildings !== "all" && s.buildings.indexOf(b.no) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-bld" data-side="' + side + '" data-v="' + b.no + '">' + b.no + "</button>";
+      }).join("") + "</div></div>";
+    h += '<div class="nf-row"><div class="nf-lab">라인</div><div class="nf-chips">' +
+      '<button class="f-chip' + (s.lines === "all" ? " on" : "") + '" data-act="mv-line" data-side="' + side + '" data-v="all">전체</button>' +
+      lineList().map(function (l) {
+        var on = s.lines !== "all" && s.lines.indexOf(l.key) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-line" data-side="' + side + '" data-v="' + esc(l.key) + '">' + esc(l.name) + "</button>";
+      }).join("") + "</div></div>";
+    h += '<div class="nf-row' + (s.type === "lobby" ? " on" : " off") + '"><div class="nf-lab">게시판</div><div class="nf-body">' +
+      '<div class="nf-chips">' +
+      '<button class="f-chip' + (s.type === "lobby" && s.floors === "all" ? " on" : "") + '" data-act="mv-floor" data-side="' + side + '" data-v="all">전체</button>' +
+      allFloorNames().map(function (f) {
+        var on = s.type === "lobby" && s.floors !== "all" && s.floors.indexOf(f) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-floor" data-side="' + side + '" data-v="' + esc(f) + '">' + esc(f) + "</button>";
+      }).join("") + "</div>" +
+      '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + mvSpecChips(side, "l", s.type === "lobby" ? s.slot : "", 12) + "</div></div>" +
+      "</div></div>";
+    h += '<div class="nf-row' + (s.type === "elevator" ? " on" : " off") + '"><div class="nf-lab">E/V</div><div class="nf-body">' +
+      '<div class="nf-chips">' +
+      '<button class="f-chip' + (s.type === "elevator" && s.elevators === "all" ? " on" : "") + '" data-act="mv-elev" data-side="' + side + '" data-v="all">전체</button>' +
+      allElevKeys().map(function (k) {
+        var on = s.type === "elevator" && s.elevators !== "all" && s.elevators.indexOf(String(k)) >= 0;
+        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-elev" data-side="' + side + '" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
+      }).join("") + "</div>" +
+      '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + mvSpecChips(side, "e", s.type === "elevator" ? s.slot : "", 6) + "</div></div>" +
+      "</div></div>";
+    h += '<div class="mvsum">' + esc(specPlaceText(s)) + "</div></div>";
+    return h;
+  }
+  function mvMatches(spec) {
+    var out = [];
+    NOTICES.forEach(function (n) {
+      if (isArchived(n)) return;
+      targetsOf(n).forEach(function (t, i) {
+        if (!specHitsTarget(spec, t)) return;
+        out.push({ id: n.id, title: n.title, idx: i, order: orderNum(t.order), t: t, notice: n });
+      });
     });
+    out.sort(function (a, b) {
+      if (a.order !== b.order) return a.order - b.order;
+      return (a.title || "") < (b.title || "") ? -1 : 1;
+    });
+    return out;
+  }
+  /* 선택한 게시물을 한 번에 옮기는 update 맵 — 도착지 순번은 기존 게시물 뒤로, 원래 자리는 1..n 압축 */
+  function massMoveUpdates(items, toSpec) {
+    var dest = specTarget(toSpec);
+    var moved = {};
+    items.forEach(function (it) { moved[it.id] = true; });
+    var destCount = 0;
+    NOTICES.forEach(function (n) {
+      if (isArchived(n) || moved[n.id]) return;
+      targetsOf(n).forEach(function (t) { if (targetOverlaps(dest, t)) destCount++; });
+    });
+    var updates = {}, olds = [];
+    items.forEach(function (it, k) {
+      var t = dup(dest);
+      t.order = destCount + k + 1;
+      var arr = targetsOf(it.notice).slice();
+      arr[it.idx] = t;
+      updates["board/notices/" + it.id + "/targets"] = arr;
+      updates["board/notices/" + it.id + "/updatedAt"] = nowTs();
+      olds.push(it.t);
+    });
+    var comp = compactOrders(olds, items.map(function (it) { return it.id; }));
+    Object.keys(comp.updates).forEach(function (k2) { if (!(k2 in updates)) updates[k2] = comp.updates[k2]; });
+    return { updates: updates, dest: dest, compacted: comp.changed };
+  }
+  function mvPickedList() {
+    return mvMatches(MV.from).filter(function (it) { return MV.picked[it.id] !== false; });
+  }
+  function mvListHtml(isA) {
+    var items = mvMatches(MV.from);
+    var picked = items.filter(function (it) { return MV.picked[it.id] !== false; });
+    var toTxt = specPlaceText(MV.to);
+    var h = '<div class="sec-h"><h3>이동 목록</h3><span class="count">' + items.length + "건" +
+      (picked.length !== items.length ? " · 선택 " + picked.length + "건" : "") + "</span>";
+    if (isA && items.length) h += '<span class="spacer"></span><button class="mini-btn" data-act="mv-all">전체 선택/해제</button>';
     h += "</div>";
+    if (!items.length) {
+      h += '<div class="empty-box">현재 위치에 게시 중인 게시물이 없습니다.<br>왼쪽에서 위치를, 오른쪽에서 옮길 곳을 고르세요.</div>';
+    } else {
+      h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
+        (isA ? '<th class="ck"></th>' : "") +
+        "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
+      items.forEach(function (it) {
+        var on = MV.picked[it.id] !== false;
+        var where = (it.t.board === "elevator")
+          ? "E/V " + pad2(it.t.slot) + "번"
+          : ((it.t.floors && it.t.floors.length && it.t.floors.length < allFloorNames().length ? it.t.floors.join("·") : "전체층") + " " + pad2(it.t.slot) + "번");
+        h += '<tr class="' + (on ? "sel" : "") + '">' +
+          (isA ? '<td class="ck"><button class="ckbox' + (on ? " on" : "") + '" data-act="mv-pick" data-id="' + esc(it.id) + '" aria-label="선택">' + (on ? "✓" : "") + "</button></td>" : "") +
+          '<td class="ct">' + ((it.t.board === "elevator") ? "E/V" : "게시판") + "</td>" +
+          '<td class="cn">' + esc(it.title) + '<span class="csub">' + esc(where + orderText(it.t.order)) + "</span></td>" +
+          '<td class="cp">' + esc(toTxt) + "</td>" +
+          '<td class="cd">' + esc(dotDate(TODAY)) + "</td></tr>";
+      });
+      h += "</tbody></table></div></div>";
+    }
+    if (MLOGS.length) {
+      h += '<div class="sec-h"><h3>최근 이동 기록</h3><span class="count">' + MLOGS.length + "건</span></div>";
+      h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
+        "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
+      MLOGS.forEach(function (m) {
+        h += "<tr><td class=\"ct\">" + esc(m.count ? m.count + "건" : "-") + "</td>" +
+          '<td class="cn">' + esc((m.titles || []).slice(0, 2).join(" · ") || "-") + "</td>" +
+          '<td class="cp">' + esc(m.to || "") + '<span class="csub">← ' + esc(m.from || "") + "</span></td>" +
+          '<td class="cd">' + esc(m.date || ymdOfTs(m.at) || "") + "</td></tr>";
+      });
+      h += "</tbody></table></div></div>";
+    }
     return h;
   }
   function moveTabHtml(isA) {
+    mvEnsure();
     var h = "";
     if (!isA) {
-      h += lockCardHtml("위치·순번 이동은 관리자 인증이 필요합니다",
-        "게시판 위치·슬롯 번호·겹치는 순번 변경은 현장 게시판 전체에 영향을 주므로 관리자만 할 수 있습니다. 아래 목록은 조회용입니다.");
-      return h + noticeAdminList("게시물 위치 이동", false, "");
+      h += lockCardHtml("게시물 이동은 관리자 인증이 필요합니다",
+        "게시판 위치·번호를 바꾸면 현장 게시판 전체에 영향을 주므로 관리자만 할 수 있습니다. 아래 목록은 조회용입니다.");
+      return h + mvListHtml(false);
     }
-    h += '<div class="warnbox">게시물의 <b>게시판 종류·층/호기·번호·겹치는 순번</b>을 바꿉니다. 같은 번호에 여러 장이 있으면 순번대로 앞·뒤가 바뀝니다.</div>';
-    h += '<div class="fld" style="margin-bottom:10px"><input class="f-in" id="mvQ" type="search" placeholder="제목 · 게시 위치로 찾기" value="' + esc(MV_FILTER.q) + '"></div>';
-    h += noticeAdminList("게시물 위치 이동", true, MV_FILTER.q);
+    h += '<div class="warnbox">왼쪽 <b>현재 위치</b>에 게시된 게시물을 골라 오른쪽 <b>이동할 곳</b>으로 한 번에 옮깁니다. ' +
+      "옮긴 게시물은 이동한 날짜와 함께 기록에 남습니다.</div>";
+    h += '<div class="mvpanels">' + mvSideHtml("from") +
+      '<div class="mvgo-wrap"><button class="btn solid mvgo" data-act="mv-apply">이동 →</button></div>' +
+      mvSideHtml("to") + "</div>";
+    h += mvListHtml(true);
     return h;
+  }
+  function applyMassMove() {
+    mvEnsure();
+    var items = mvPickedList();
+    if (!items.length) { toast("이동할 게시물을 선택하세요"); return; }
+    if (sameSpec(MV.from, MV.to)) { toast("이동할 곳이 현재 위치와 같습니다 · 오른쪽에서 옮길 곳을 바꾸세요"); return; }
+    var res = massMoveUpdates(items, MV.to);
+    var fromTxt = specPlaceText(MV.from), toTxt = specPlaceText(MV.to);
+    requireAdmin(function () {
+      var btn = document.querySelector('[data-act="mv-apply"]');
+      if (btn) { btn.disabled = true; btn.textContent = "이동 중…"; }
+      fbUpdate(res.updates).then(function (ok) {
+        if (btn) { btn.disabled = false; btn.textContent = "이동 →"; }
+        if (!ok) return;
+        writeLog({
+          type: "move", by: SESSION.admin || "관리자", at: nowTs(), date: TODAY,
+          from: fromTxt, to: toTxt, count: items.length,
+          ids: items.map(function (it) { return it.id; }),
+          titles: items.map(function (it) { return it.title; })
+        });
+        MV.picked = {};
+        var needAttach = items.some(function (it) {
+          var att = attachedZones(it.notice);
+          return buildingsOfTarget(res.dest).some(function (no) {
+            var z = zoneOfBuilding(no);
+            return z && att.indexOf(z) < 0;
+          });
+        });
+        toast(items.length + "건을 이동했습니다 · " + toTxt + (needAttach ? " (새 구역은 게시 체크 필요)" : ""));
+      });
+    });
   }
 
   /* ---- 이동 시트 ---- */
@@ -2974,6 +3446,88 @@ var App = (function () {
         render();
       }
       else if (act === "alert-copy") { copyAlertItem(el.dataset.date, Number(el.dataset.i)); }
+      /* ---------- [생성] 탭 ---------- */
+      else if (act === "nf-photo") { var npi = document.getElementById("nfPhoto"); if (npi) npi.click(); }
+      else if (act === "nf-cam") { var nci = document.getElementById("nfCam"); if (nci) nci.click(); }
+      else if (act === "nf-photo-clear") { nfEnsure(); NF.photo = null; render(); toast("사진을 지웠습니다"); }
+      else if (act === "nf-bld") {
+        nfEnsure();
+        var nbv = el.dataset.v;
+        if (nbv === "all") { NF.scope = "all"; NF.buildings = []; }
+        else {
+          NF.scope = "pick";
+          var nno = Number(nbv), nx = NF.buildings.indexOf(nno);
+          if (nx >= 0) NF.buildings.splice(nx, 1); else NF.buildings.push(nno);
+        }
+        render();
+      }
+      else if (act === "nf-line") { nfEnsure(); NF.lines = togglePick(NF.lines, allLineKeys(), el.dataset.v); render(); }
+      else if (act === "nf-lobby-on") { nfEnsure(); NF.lobbyOn = !NF.lobbyOn; render(); }
+      else if (act === "nf-ev-on") { nfEnsure(); NF.evOn = !NF.evOn; render(); }
+      else if (act === "nf-floor") { nfEnsure(); NF.floors = togglePick(NF.floors, allFloorNames(), el.dataset.v); render(); }
+      else if (act === "nf-elev") { nfEnsure(); NF.elevators = togglePick(NF.elevators, allElevKeys(), el.dataset.v); render(); }
+      else if (act === "nf-lslot") { nfEnsure(); NF.lobbySlot = el.dataset.v; render(); }
+      else if (act === "nf-eslot") { nfEnsure(); NF.evSlot = el.dataset.v; render(); }
+      else if (act === "nf-nodeadline") { nfEnsure(); NF.noDeadline = !NF.noDeadline; render(); }
+      else if (act === "nf-save") { saveNewNotice(); }
+      else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; render(); }
+      else if (act === "nf-pick-all") {
+        nfEnsure();
+        var allOn = activeSorted().every(function (n) { return !!NF.picked[n.id]; });
+        NF.picked = {};
+        if (!allOn) activeSorted().forEach(function (n) { NF.picked[n.id] = true; });
+        render();
+      }
+      else if (act === "nf-delete") { deleteSelected(); }
+      /* ---------- [이동] 탭 ---------- */
+      else if (act === "mv-bld" || act === "mv-line" || act === "mv-floor" || act === "mv-elev") {
+        mvEnsure();
+        var mside = el.dataset.side === "to" ? "to" : "from";
+        var ms = MV[mside], mvv = el.dataset.v;
+        if (act === "mv-bld") {
+          if (mvv === "all") ms.buildings = "all";
+          else {
+            ms.buildings = (ms.buildings === "all") ? [] : ms.buildings.slice();
+            var mbi = ms.buildings.indexOf(Number(mvv));
+            if (mbi >= 0) ms.buildings.splice(mbi, 1); else ms.buildings.push(Number(mvv));
+            if (!ms.buildings.length) ms.buildings = "all";
+          }
+        } else if (act === "mv-line") {
+          ms.lines = togglePick(ms.lines, allLineKeys(), mvv);
+        } else if (act === "mv-floor") {
+          if (ms.type !== "lobby") { ms.type = "lobby"; ms.floors = (mvv === "all" ? "all" : [mvv]); }
+          else ms.floors = togglePick(ms.floors, allFloorNames(), mvv);
+        } else {
+          if (ms.type !== "elevator") { ms.type = "elevator"; ms.elevators = (mvv === "all" ? "all" : [String(mvv)]); }
+          else ms.elevators = togglePick(ms.elevators, allElevKeys(), mvv);
+        }
+        MV.picked = {};
+        render();
+      }
+      else if (act === "mv-lslot" || act === "mv-eslot") {
+        mvEnsure();
+        var lside = el.dataset.side === "to" ? "to" : "from";
+        var ls = MV[lside];
+        if (act === "mv-lslot") { ls.type = "lobby"; ls.slot = el.dataset.v; }
+        else { ls.type = "elevator"; ls.slot = el.dataset.v; }
+        MV.picked = {};
+        render();
+      }
+      else if (act === "mv-pick") {
+        mvEnsure();
+        var mpk = el.dataset.id;
+        MV.picked[mpk] = MV.picked[mpk] === false;
+        render();
+      }
+      else if (act === "mv-all") {
+        mvEnsure();
+        var mrows = mvMatches(MV.from);
+        var mAllOn = mrows.every(function (it) { return MV.picked[it.id] !== false; });
+        MV.picked = {};
+        if (mAllOn) mrows.forEach(function (it) { MV.picked[it.id] = false; });
+        render();
+      }
+      else if (act === "mv-apply") { applyMassMove(); }
       else if (act === "f-cat") { formDefaults.category = el.dataset.v; markChips("#fCat", el); }
       else if (act === "f-board") {
         formState.board = el.dataset.v;
@@ -3065,6 +3619,7 @@ var App = (function () {
         var q = document.getElementById("archQ");
         if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
       }
+      else if (e.target.id === "nfTitle") { nfEnsure(); NF.title = e.target.value; }
       else if (e.target.id === "mvQ") {
         MV_FILTER.q = e.target.value.trim();
         render();
@@ -3076,6 +3631,23 @@ var App = (function () {
     /* 선택조회 기간(년월) 입력 */
     document.addEventListener("change", function (e) {
       if (!e.target) return;
+      if (e.target.id === "nfPhoto" || e.target.id === "nfCam") {
+        var nfFile = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!nfFile) return;
+        toast("사진 압축 중…");
+        compressImage(nfFile, function (data, kb) {
+          nfEnsure();
+          NF.photo = data;
+          var prev = document.getElementById("nfPhotoPrev");
+          if (prev) prev.innerHTML = '<img src="' + data + '" alt="">';
+          var info = document.getElementById("nfPhotoInfo");
+          if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB";
+          toast("사진 준비 완료 (" + kb + "KB)");
+        });
+        return;
+      }
+      if (e.target.id === "nfDeadline") { nfEnsure(); NF.deadline = e.target.value || ""; return; }
       if (e.target.id === "alertFromM") {
         AZ.from = (e.target.value || "").slice(0, 7);
         if (AZ.to && AZ.to < AZ.from) AZ.to = AZ.from;
@@ -3176,6 +3748,10 @@ var App = (function () {
           document.getElementById("view").innerHTML =
             '<div class="empty-box">게시판 데이터에 연결하지 못했습니다.<br><b>' + esc(err.message) + '</b><br>인터넷 연결을 확인하고 새로고침해 주세요.</div>';
         });
+        db.ref("board/logs").limitToLast(50).on("value", function (s) {
+          setMoveLogs(s.val());
+          if (LOADED && VIEW.name === "create") render();
+        }, function () { /* 이동 기록을 읽지 못해도 화면은 그대로 쓴다 */ });
         db.ref("board/daily_alerts").on("value", function (s) {
           setAlerts(s.val());
           if (!LOADED) return;
@@ -3228,6 +3804,18 @@ var App = (function () {
       },
       setHist: function (o) { Object.keys(o || {}).forEach(function (k) { HIST[k] = o[k]; }); },
       html: function () { return renderHistory(); }
+    },
+    /* 게시물 생성·이동 검증용 */
+    create: {
+      reset: nfReset, ensure: nfEnsure, state: function () { return NF; },
+      form: function () { return nfFormHtml(); }, place: function () { return nfPlaceHtml(); },
+      list: function () { return createListHtml(true); }, targets: nfBuildTargets,
+      specText: specPlaceText, lines: lineList, toggle: togglePick
+    },
+    move: {
+      reset: mvReset, ensure: mvEnsure, state: function () { return MV; },
+      matches: mvMatches, apply: massMoveUpdates, screen: function () { return moveTabHtml(true); },
+      place: specPlaceText, hits: specHitsTarget, same: sameSpec, logs: setMoveLogs
     },
     state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION }; },
     setToday: function (d) { TODAY = d; buildIndex(); render(); }

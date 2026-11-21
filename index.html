@@ -791,6 +791,57 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .adetail-h{display:flex;align-items:flex-start;gap:8px;}
 .adetail-t{flex:1 1 auto;font-size:.9rem;font-weight:800;line-height:1.45;letter-spacing:-.2px;}
 .adetail-none{font-size:.78rem;color:var(--muted);padding:9px 2px 2px;line-height:1.65;}
+
+/* ---------- 게시물 생성 · 이동 ---------- */
+.nf{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 2px rgba(18,35,54,.05);}
+.nf-h{display:flex;align-items:baseline;gap:7px;margin-bottom:9px;flex-wrap:wrap;}
+.nf-h h3{font-size:.88rem;font-weight:800;letter-spacing:-.2px;}
+.nf-tag{font-size:.64rem;color:var(--muted);font-weight:700;}
+.nf-shot{display:flex;gap:10px;align-items:flex-start;}
+.nf-shot .photo-ctl{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.nf-row{display:flex;gap:8px;padding:8px 0;border-top:1px dashed var(--line);align-items:flex-start;}
+.nf-row:first-of-type{border-top:0;padding-top:0;}
+.nf-row.off{opacity:.7;}
+.nf-lab{flex:0 0 46px;font-size:.72rem;font-weight:800;color:var(--ink-2);padding-top:8px;letter-spacing:-.3px;}
+.nf-body,.nf-chips{flex:1 1 auto;min-width:0;}
+.nf-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.nf-chips .f-chip{padding:7px 10px;font-size:.75rem;min-height:34px;}
+.nf-line{display:flex;gap:6px;align-items:flex-start;}
+.nf-line .nf-chips{flex:1 1 auto;}
+.f-chip.sm{padding:6px 9px;font-size:.7rem;min-height:32px;flex:0 0 auto;}
+.nf-numrow{display:flex;gap:6px;align-items:center;margin-top:6px;}
+.nf-numlab{flex:0 0 30px;font-size:.66rem;font-weight:800;color:var(--muted);}
+.nf-num{flex:1 1 auto;grid-template-columns:repeat(6,1fr);}
+.nf-num .f-chip{padding:7px 0;font-size:.7rem;min-height:34px;}
+.nf-fixed{display:inline-block;font-size:.82rem;font-weight:800;color:var(--navy);background:#eef3f9;border-radius:8px;padding:7px 10px;}
+.nf-save{margin:2px 0 14px;}
+.ctable{width:100%;border-collapse:collapse;font-size:.74rem;min-width:520px;}
+.ctable thead th{font-size:.66rem;color:var(--muted);font-weight:800;text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;}
+.ctable tbody td{padding:9px 6px;border-bottom:1px solid #f0f3f7;vertical-align:top;line-height:1.4;}
+.ctable tbody tr:last-child td{border-bottom:0;}
+.ctable tbody tr.sel{background:#f4f8ff;}
+.ctable th.ck,.ctable td.ck{width:34px;text-align:center;}
+.ckbox{width:24px;height:24px;border:1px solid var(--line);border-radius:7px;background:#fff;color:#fff;font-size:.8rem;font-weight:800;line-height:1;padding:0;}
+.ckbox.on{background:var(--navy);border-color:var(--navy);}
+.ctable td.ct{white-space:nowrap;font-weight:800;color:var(--navy);font-size:.7rem;}
+.ctable td.cn{font-weight:700;color:var(--ink);min-width:118px;}
+.clink{border:0;background:transparent;padding:0;text-align:left;font-weight:700;color:var(--ink);font-size:.76rem;line-height:1.35;}
+.clink:active{color:var(--blue);}
+.ctable td.cp{color:var(--ink-2);font-size:.7rem;min-width:148px;word-break:keep-all;}
+.ctable td.cd{white-space:nowrap;color:var(--muted);font-size:.7rem;font-weight:700;}
+.csub{display:block;font-size:.64rem;color:var(--muted);font-weight:600;margin-top:2px;}
+.mvpanels{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px;}
+.mvpanel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;box-shadow:0 1px 2px rgba(18,35,54,.05);}
+.mvph{font-size:.82rem;font-weight:800;color:var(--navy);margin-bottom:7px;letter-spacing:-.2px;}
+.mvpanel .nf-lab{flex:0 0 40px;font-size:.68rem;padding-top:8px;}
+.mvsum{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:.68rem;font-weight:700;color:var(--ink-2);line-height:1.45;}
+.mvgo-wrap{display:flex;justify-content:center;}
+.mvgo{width:100%;max-width:320px;}
+@media (min-width:640px){
+  .mvpanels{grid-template-columns:1fr 96px 1fr;align-items:start;}
+  .mvgo-wrap{align-self:center;}
+  .mvgo{width:auto;}
+}
 .lightbox.with-dl img{max-height:72vh;}
 .lb-actions{display:flex;gap:8px;margin-top:12px;}
 .lb-dl{
@@ -836,6 +887,6 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261121a"></script>
+<script src="app.js?v=20261121b"></script>
 </body>
 </html>
