@@ -44,6 +44,7 @@ var App = (function () {
   var HIST = { tab: "cum", from: "", to: "", month: "", day: "" };
   var CONNECTED = false;
   var LOADED = false;
+  var NOTICES_READY = false;            // 게시물 응답이 한 번이라도 왔는지
   var db = null;
   var lastRenderKey = "";
 
@@ -193,6 +194,7 @@ var App = (function () {
     INDEX = Object.create(null);
     PLACE = Object.create(null);
     BSTAT = {};
+    if (!FAC) return;                    // 시설 데이터 도착 전에는 도면 인덱스를 만들지 않는다
     FAC.buildings.forEach(function (b) { BSTAT[b.no] = { ids: {}, urgent: {}, sheets: 0, pending: 0 }; });
 
     NOTICES.forEach(function (n) {
@@ -2098,7 +2100,7 @@ var App = (function () {
     if (img) {
       h += '<button class="acard" data-act="zoom" data-src="' + img + '" data-dl="' + esc(fname) + '" data-cap="' +
         esc(a.date + " " + (shiftLabel(a) ? shiftLabel(a) + " " : "") + title) + '">' +
-        '<img src="' + img + '" alt="' + esc(title) + '" loading="lazy">' +
+        '<img src="' + img + '" alt="' + esc(title) + '">' +
         '<span class="acard-tag">눌러서 크게 보기 · 저장</span></button>';
     }
     if (msg) h += '<div class="aitem-msg">' + esc(msg) + "</div>";
@@ -3240,6 +3242,15 @@ var App = (function () {
       document.body.classList.toggle("bg-sub", VIEW.name !== "home" && VIEW.name !== "info");
     }
   }
+  /* 시설 데이터와 게시물 응답이 모두 준비되면 첫 화면을 그린다
+     (느린 회선에서 게시물이 먼저 오고 data.json 이 늦게 오면 첫 화면이 멈추지 않도록) */
+  function tryBoot() {
+    if (LOADED || !FAC || !NOTICES_READY) return false;
+    LOADED = true;
+    VIEW = parseHash();
+    route();
+    return true;
+  }
   function render() {
     if (!FAC || !LOADED) return;
     var view = document.getElementById("view");
@@ -3738,9 +3749,11 @@ var App = (function () {
           if (LOADED) render();
         }, function (err) { toast("설정을 읽지 못했습니다: " + err.message); });
         db.ref("board/notices").on("value", function (s) {
+          var wasLoaded = LOADED;
           setNotices(s.val());
-          if (!LOADED) { LOADED = true; VIEW = parseHash(); route(); }
-          else {
+          NOTICES_READY = true;
+          tryBoot();
+          if (wasLoaded) {
             var form = document.querySelector('.sheet[data-form="1"]');
             if (!form) render();
           }
@@ -3772,7 +3785,7 @@ var App = (function () {
       }
       bind();
       syncWho();
-      if (LOADED) route();
+      if (!tryBoot() && LOADED) route();
     });
   }
 

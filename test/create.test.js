@@ -199,6 +199,15 @@ console.log("\n[9] [이동] 화면 — 좌우 패널 · 이동 버튼 · 목록"
   ok("최근 이동 기록 표시", has(h2, "최근 이동 기록") && has(h2, "게시판 03번"));
 }
 
+/* ---------- 10. 느린 회선: 시설 데이터보다 게시물이 먼저 와도 멈추지 않는다 ---------- */
+console.log("\n[10] 시설 데이터보다 게시물이 먼저 도착");
+{
+  var threw = false;
+  try { O.load(clone(LIVE), null); } catch (e) { threw = true; }
+  ok("시설 데이터 없이 게시물이 와도 예외 없음", !threw);
+  O.load(clone(LIVE), FAC);
+}
+
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");
 globalThis.__BOARD_TEST_FAIL = (globalThis.__BOARD_TEST_FAIL || 0) + fail;
 })();
