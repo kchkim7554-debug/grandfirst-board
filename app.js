@@ -1402,7 +1402,7 @@ var App = (function () {
       }).join("") + "</div></div>";
     /* 게시판 */
     h += '<div class="nf-row' + (NF.lobbyOn ? " on" : " off") + '"><div class="nf-lab">게시판</div><div class="nf-body">' +
-      '<div class="nf-line"><button class="f-chip sm' + (NF.lobbyOn ? " on" : "") + '" data-act="nf-lobby-on">' + (NF.lobbyOn ? "게시 ✓" : "게시 넣기") + "</button>" +
+      '<div class="nf-line"><button class="f-chip sm' + (NF.lobbyOn ? " on" : "") + '" data-act="nf-lobby-on">' + (NF.lobbyOn ? "게시 ✓" : "넣기") + "</button>" +
       (NF.lobbyOn ? '<div class="nf-chips">' +
         '<button class="f-chip' + (NF.floors === "all" ? " on" : "") + '" data-act="nf-floor" data-v="all">전체</button>' +
         allFloorNames().map(function (f) {
@@ -1413,7 +1413,7 @@ var App = (function () {
       "</div></div>";
     /* E/V */
     h += '<div class="nf-row' + (NF.evOn ? " on" : " off") + '"><div class="nf-lab">E/V</div><div class="nf-body">' +
-      '<div class="nf-line"><button class="f-chip sm' + (NF.evOn ? " on" : "") + '" data-act="nf-ev-on">' + (NF.evOn ? "게시 ✓" : "게시 넣기") + "</button>" +
+      '<div class="nf-line"><button class="f-chip sm' + (NF.evOn ? " on" : "") + '" data-act="nf-ev-on">' + (NF.evOn ? "게시 ✓" : "넣기") + "</button>" +
       (NF.evOn ? '<div class="nf-chips">' +
         '<button class="f-chip' + (NF.elevators === "all" ? " on" : "") + '" data-act="nf-elev" data-v="all">전체</button>' +
         allElevKeys().map(function (k) {
@@ -1479,7 +1479,7 @@ var App = (function () {
     h += "</div>";
     if (!list.length) return h + '<div class="empty-box">등록된 게시물이 없습니다.</div>';
     h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable"><thead><tr>' +
-      (isA ? '<th class="ck"></th>' : "") +
+      (isA ? '<th class="ck">선택</th>' : "") +
       "<th>구분</th><th>게시물</th><th>생성일자</th><th>게시장소</th><th>게시 기한</th></tr></thead><tbody>";
     list.forEach(function (n) {
       var gen = n.postedAt || ymdOfTs(n.createdAt) || "";
@@ -1707,7 +1707,7 @@ var App = (function () {
       h += '<div class="empty-box">현재 위치에 게시 중인 게시물이 없습니다.<br>왼쪽에서 위치를, 오른쪽에서 옮길 곳을 고르세요.</div>';
     } else {
       h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
-        (isA ? '<th class="ck"></th>' : "") +
+        (isA ? '<th class="ck">선택</th>' : "") +
         "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
       items.forEach(function (it) {
         var on = MV.picked[it.id] !== false;
@@ -1728,8 +1728,8 @@ var App = (function () {
       h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
         "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
       MLOGS.forEach(function (m) {
-        h += "<tr><td class=\"ct\">" + esc(m.count ? m.count + "건" : "-") + "</td>" +
-          '<td class="cn">' + esc((m.titles || []).slice(0, 2).join(" · ") || "-") + "</td>" +
+        h += "<tr><td class=\"ct\">" + esc(m.count ? m.count + "건" : (m.noticeId ? "1건" : "-")) + "</td>" +
+          '<td class="cn">' + esc((m.titles && m.titles.length ? m.titles.slice(0, 2).join(" · ") : (m.title || "-"))) + "</td>" +
           '<td class="cp">' + esc(m.to || "") + '<span class="csub">← ' + esc(m.from || "") + "</span></td>" +
           '<td class="cd">' + esc(m.date || ymdOfTs(m.at) || "") + "</td></tr>";
       });
