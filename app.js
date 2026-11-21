@@ -1507,8 +1507,8 @@ var App = (function () {
     }
     h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
       "같은 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 게시 체크를 해야 도면에 나타납니다.</div>";
-    h += nfFormHtml();
-    h += createListHtml(true);
+    h += '<div id="nfBody">' + nfFormHtml() + "</div>";
+    h += '<div id="nfList">' + createListHtml(true) + "</div>";
     return h;
   }
   /* 작성 상태 → 저장할 대상(target) 목록 */
@@ -1737,6 +1737,24 @@ var App = (function () {
     }
     return h;
   }
+  function mvPanelsHtml() {
+    return '<div class="mvpanels">' + mvSideHtml("from") +
+      '<div class="mvgo-wrap"><button class="btn solid mvgo" data-act="mv-apply">이동 →</button></div>' +
+      mvSideHtml("to") + "</div>";
+  }
+  /* 화면 전체를 다시 그리지 않고 폼·목록만 갱신 (칩을 눌러도 스크롤·제목이 유지된다) */
+  function refreshCreate() {
+    var b = document.getElementById("nfBody"), l = document.getElementById("nfList");
+    if (!b && !l) { render(); return; }
+    if (b) b.innerHTML = nfFormHtml();
+    if (l) l.innerHTML = createListHtml(SESSION.role === "admin");
+  }
+  function refreshMove() {
+    var b = document.getElementById("mvBody"), l = document.getElementById("mvList");
+    if (!b && !l) { render(); return; }
+    if (b) b.innerHTML = mvPanelsHtml();
+    if (l) l.innerHTML = mvListHtml(SESSION.role === "admin");
+  }
   function moveTabHtml(isA) {
     mvEnsure();
     var h = "";
@@ -1747,10 +1765,8 @@ var App = (function () {
     }
     h += '<div class="warnbox">왼쪽 <b>현재 위치</b>에 게시된 게시물을 골라 오른쪽 <b>이동할 곳</b>으로 한 번에 옮깁니다. ' +
       "옮긴 게시물은 이동한 날짜와 함께 기록에 남습니다.</div>";
-    h += '<div class="mvpanels">' + mvSideHtml("from") +
-      '<div class="mvgo-wrap"><button class="btn solid mvgo" data-act="mv-apply">이동 →</button></div>' +
-      mvSideHtml("to") + "</div>";
-    h += mvListHtml(true);
+    h += '<div id="mvBody">' + mvPanelsHtml() + "</div>";
+    h += '<div id="mvList">' + mvListHtml(true) + "</div>";
     return h;
   }
   function applyMassMove() {
@@ -3460,7 +3476,7 @@ var App = (function () {
       /* ---------- [생성] 탭 ---------- */
       else if (act === "nf-photo") { var npi = document.getElementById("nfPhoto"); if (npi) npi.click(); }
       else if (act === "nf-cam") { var nci = document.getElementById("nfCam"); if (nci) nci.click(); }
-      else if (act === "nf-photo-clear") { nfEnsure(); NF.photo = null; render(); toast("사진을 지웠습니다"); }
+      else if (act === "nf-photo-clear") { nfEnsure(); NF.photo = null; refreshCreate(); toast("사진을 지웠습니다"); }
       else if (act === "nf-bld") {
         nfEnsure();
         var nbv = el.dataset.v;
@@ -3470,24 +3486,24 @@ var App = (function () {
           var nno = Number(nbv), nx = NF.buildings.indexOf(nno);
           if (nx >= 0) NF.buildings.splice(nx, 1); else NF.buildings.push(nno);
         }
-        render();
+        refreshCreate();
       }
-      else if (act === "nf-line") { nfEnsure(); NF.lines = togglePick(NF.lines, allLineKeys(), el.dataset.v); render(); }
-      else if (act === "nf-lobby-on") { nfEnsure(); NF.lobbyOn = !NF.lobbyOn; render(); }
-      else if (act === "nf-ev-on") { nfEnsure(); NF.evOn = !NF.evOn; render(); }
-      else if (act === "nf-floor") { nfEnsure(); NF.floors = togglePick(NF.floors, allFloorNames(), el.dataset.v); render(); }
-      else if (act === "nf-elev") { nfEnsure(); NF.elevators = togglePick(NF.elevators, allElevKeys(), el.dataset.v); render(); }
-      else if (act === "nf-lslot") { nfEnsure(); NF.lobbySlot = el.dataset.v; render(); }
-      else if (act === "nf-eslot") { nfEnsure(); NF.evSlot = el.dataset.v; render(); }
-      else if (act === "nf-nodeadline") { nfEnsure(); NF.noDeadline = !NF.noDeadline; render(); }
+      else if (act === "nf-line") { nfEnsure(); NF.lines = togglePick(NF.lines, allLineKeys(), el.dataset.v); refreshCreate(); }
+      else if (act === "nf-lobby-on") { nfEnsure(); NF.lobbyOn = !NF.lobbyOn; refreshCreate(); }
+      else if (act === "nf-ev-on") { nfEnsure(); NF.evOn = !NF.evOn; refreshCreate(); }
+      else if (act === "nf-floor") { nfEnsure(); NF.floors = togglePick(NF.floors, allFloorNames(), el.dataset.v); refreshCreate(); }
+      else if (act === "nf-elev") { nfEnsure(); NF.elevators = togglePick(NF.elevators, allElevKeys(), el.dataset.v); refreshCreate(); }
+      else if (act === "nf-lslot") { nfEnsure(); NF.lobbySlot = el.dataset.v; refreshCreate(); }
+      else if (act === "nf-eslot") { nfEnsure(); NF.evSlot = el.dataset.v; refreshCreate(); }
+      else if (act === "nf-nodeadline") { nfEnsure(); NF.noDeadline = !NF.noDeadline; refreshCreate(); }
       else if (act === "nf-save") { saveNewNotice(); }
-      else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; render(); }
+      else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; refreshCreate(); }
       else if (act === "nf-pick-all") {
         nfEnsure();
         var allOn = activeSorted().every(function (n) { return !!NF.picked[n.id]; });
         NF.picked = {};
         if (!allOn) activeSorted().forEach(function (n) { NF.picked[n.id] = true; });
-        render();
+        refreshCreate();
       }
       else if (act === "nf-delete") { deleteSelected(); }
       /* ---------- [이동] 탭 ---------- */
@@ -3513,7 +3529,7 @@ var App = (function () {
           else ms.elevators = togglePick(ms.elevators, allElevKeys(), mvv);
         }
         MV.picked = {};
-        render();
+        refreshMove();
       }
       else if (act === "mv-lslot" || act === "mv-eslot") {
         mvEnsure();
@@ -3522,13 +3538,13 @@ var App = (function () {
         if (act === "mv-lslot") { ls.type = "lobby"; ls.slot = el.dataset.v; }
         else { ls.type = "elevator"; ls.slot = el.dataset.v; }
         MV.picked = {};
-        render();
+        refreshMove();
       }
       else if (act === "mv-pick") {
         mvEnsure();
         var mpk = el.dataset.id;
         MV.picked[mpk] = MV.picked[mpk] === false;
-        render();
+        refreshMove();
       }
       else if (act === "mv-all") {
         mvEnsure();
@@ -3536,7 +3552,7 @@ var App = (function () {
         var mAllOn = mrows.every(function (it) { return MV.picked[it.id] !== false; });
         MV.picked = {};
         if (mAllOn) mrows.forEach(function (it) { MV.picked[it.id] = false; });
-        render();
+        refreshMove();
       }
       else if (act === "mv-apply") { applyMassMove(); }
       else if (act === "f-cat") { formDefaults.category = el.dataset.v; markChips("#fCat", el); }
