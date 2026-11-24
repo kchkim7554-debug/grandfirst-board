@@ -77,8 +77,17 @@ console.log("\n[3] 외부업체로 기록된 칸");
   ok("외부업체 칸은 주황 켜짐 표시", has(cell, 'class="chk ext"') && has(cell, "☑") && has(cell, "외부업체"));
   var aCell = D.chk(N_EXT, "attach", "front", "A");
   var bCell = D.chk(N_EXT, "attach", "front", "B");
-  ok("A조 칸은 외부업체 기록을 자기가 한 것처럼 보이지 않는다", !has(aCell, "on") && has(aCell, "외부업체"));
-  ok("B조 칸도 마찬가지", !has(bCell, "on") && has(bCell, "외부업체"));
+  ok("A조 칸은 외부업체 기록을 자기가 한 것처럼 보이지 않는다", !has(aCell, " on") && has(aCell, "외부업체"));
+  ok("B조 칸도 마찬가지", !has(bCell, " on") && has(bCell, "외부업체"));
+  ok("A조 칸에 체크(☑)가 켜지지 않는다", !has(aCell, "☑"));
+  ok("B조 칸에도 체크(☑)가 켜지지 않는다", !has(bCell, "☑"));
+  ok("A·B조 칸은 주황(ext) 표시가 아니다", !has(aCell, "chk ext") && !has(bCell, "chk ext"));
+  ok("A·B조 칸은 흐린 잠금(hold) 표시", has(aCell, "chk hold") && has(bCell, "chk hold"));
+  ok("A·B조 칸은 누를 수 있는 버튼이 아니다", !has(aCell, "data-act") && !has(bCell, "data-act"));
+  ok("외부업체 칸만 주황 체크로 켜진다", has(cell, "☑") && !has(aCell, "☑") && !has(bCell, "☑"));
+  var whole = D.card(N_EXT, "attach");
+  eq("카드에서 주황 체크는 외부업체 줄 3칸뿐", (whole.match(/class="chk ext"/g) || []).length, 3);
+  eq("카드 전체에서 ☑ 는 외부업체 3칸뿐", (whole.match(/☑/g) || []).length, 3);
 }
 
 /* ---------- 4. 담당자가 먼저 게시한 구역은 외부업체로 덮지 않는다 ---------- */

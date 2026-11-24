@@ -1195,8 +1195,9 @@ var App = (function () {
     var st = zoneCheck(n, kind, zone);
     var checkedTeam = checkTeamOf(n, zone, st);
     var gname = guardName(team, zone);
-    if (checkedTeam === EXT_TEAM) {   // 외부업체 기록은 A·B조 칸에 표시하지 않는다
-      return '<div class="chk ext"><span class="box">☑</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
+    if (checkedTeam === EXT_TEAM) {   // 외부업체 기록은 A·B조 칸에 체크로 켜지 않는다 — 흐린 안내만
+      return '<div class="chk hold" aria-label="' + esc(zoneShort(zone) + " " + EXT_LABEL + " 처리") + '">' +
+        '<span class="box">–</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
         '<span class="nm">' + esc(EXT_LABEL) + "</span></div>";
     }
     if (st && (checkedTeam === team || (!checkedTeam && team === "A"))) {
@@ -1426,8 +1427,10 @@ var App = (function () {
   /* ---------- [생성] 탭 ---------- */
   var NF = null;
   function nfReset() {
+    if (typeof ocrSeq === "number") ocrSeq++;   // 이전 사진의 OCR 결과가 새 폼에 들어오지 않게
     NF = {
       photo: null, title: "",
+      ocrState: "idle", ocrTitle: "", ocrApplied: false, ocrStage: "", ocrPct: 0,
       scope: "all", buildings: [],
       lines: "all",
       lobbyOn: true, floors: "all", lobbySlot: "01",
@@ -1457,7 +1460,7 @@ var App = (function () {
       '<div class="f-row"><button class="btn line" data-act="nf-photo">사진 선택</button>' +
       '<button class="btn line" data-act="nf-cam">카메라</button></div>' +
       '<button class="mini-btn" data-act="nf-photo-clear">사진 지우기</button>' +
-      '<div class="f-hint" id="nfPhotoInfo">' + (NF.photo ? "첫 장만 저장합니다 · 사진을 누르면 크게 보기" : "촬영하거나 앨범에서 · 자동 축소(900px) · 올린 뒤 사진을 누르면 크게 보기") + "</div>" +
+      '<div class="f-hint" id="nfPhotoInfo">' + (NF.photo ? "첫 장만 저장합니다 · 사진을 누르면 크게 보기" : "촬영하거나 앨범에서 · 자동 축소(900px) · 올리면 제목을 자동으로 읽습니다") + "</div>" +
       "</div></div>";
   }
   function nfPlaceHtml() {
@@ -1522,7 +1525,8 @@ var App = (function () {
     var h = "";
     h += '<div class="nf"><div class="nf-h"><h3>① 게시물 사진</h3><span class="nf-tag">여러 page면 첫 page만</span></div>' + nfPhotoHtml() +
       '<div class="fld" style="margin:11px 0 0"><label>게시물 제목 <span class="req">*</span></label>' +
-      '<input class="f-in" id="nfTitle" value="' + esc(NF.title) + '" placeholder="예: 승강기 정기 점검 안내"></div></div>';
+      '<input class="f-in" id="nfTitle" value="' + esc(NF.title) + '" placeholder="예: 승강기 정기 점검 안내">' +
+      nfNoteHtml() + '</div></div>';
     h += '<div class="nf"><div class="nf-h"><h3>② 게시장소</h3><span class="nf-tag">동 · 라인 · 게시판 / E/V</span></div>' + nfPlaceHtml() + "</div>";
     h += '<div class="nf"><div class="nf-h"><h3>③ 생성일자 · 게시 기한</h3></div>' +
       '<div class="nf-row"><div class="nf-lab">생성일자</div><div class="nf-body"><span class="nf-fixed">' + esc(dotDate(TODAY)) +
@@ -3057,10 +3061,274 @@ var App = (function () {
         else { w = Math.round(w * 0.85); h = Math.round(h * 0.85); q = 0.62; }
       }
       URL.revokeObjectURL(url);
-      cb(data, Math.round((data.length * 3 / 4) / 1024));
+      cb(data, Math.round((data.length * 3 / 4) / 1024), w, h);
     };
     img.onerror = function () { URL.revokeObjectURL(url); toast("사진을 읽지 못했습니다"); };
     img.src = url;
+  }
+
+  /* =========================================================
+     사진 제목 1차 OCR — Tesseract.js(무료·CDN) 로 사진에서 제목 후보를 읽는다.
+     · 사진을 올리면 자동으로 1차 추출 → 제목칸에 채우고 「확인 후 저장」 안내
+     · 사용자가 이미 제목을 적어 둔 경우에는 덮지 않고 「이 제목 넣기」 버튼만 둔다
+     · 라이브러리·언어 데이터 내려받기 실패(오프라인 등)에는 막지 않고 직접 입력으로 넘어간다
+     ========================================================= */
+  var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  var OCR_LANG_PATH = "https://tessdata.projectnaptha.com/4.0.0_fast";   // kor 1.1MB (빠른 버전)
+  var ocrLibPromise = null;
+  var ocrSeq = 0;
+
+  /* OCR 결과 줄 → 제목 후보 (DOM 없이 돌아가는 순수 함수 · 테스트 대상) */
+  function ocrClean(s) {
+    return String(s == null ? "" : s)
+      .replace(/[|｜]/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/^[\s:：·•\-–—_~^*=<>\[\]{}"'`]+/, "")
+      .replace(/[\s:：·•\-–—_~^*=<>{}"'`]+$/, "")
+      .replace(/^[ㄱ-ㅎㅏ-ㅣ\s]+/, "")      // OCR이 남기는 낱개 자모
+      .replace(/[ㄱ-ㅎㅏ-ㅣ\s]+$/, "")
+      .trim();
+  }
+  function ocrTrimTitle(s) {
+    var t = String(s || "").replace(/\s+/g, " ").trim();
+    if (t.length > 60) t = t.slice(0, 60).replace(/\s+\S*$/, "");
+    return t;
+  }
+  function ocrFlat(s) { return String(s || "").replace(/\s+/g, ""); }
+  function ocrGeneric(s) {
+    return /^(안내문|공고문?|알림마당|알림|게시문|통지문?|안내|공지|공지사항)$/.test(ocrFlat(s));
+  }
+  function ocrMostlyDigits(s) {
+    var t = String(s || "");
+    var d = (t.match(/[0-9]/g) || []).length;
+    var k = (t.match(/[가-힣A-Za-z]/g) || []).length;
+    return k < 2 && d > 0;
+  }
+  function ocrFooter(s, y, pageH) {
+    return !!pageH && y > pageH * 0.6 && /(관리사무소|아파트|APT|입주자대표|대표회의|경비실)/i.test(String(s || ""));
+  }
+  /* payload: { lines:[{text,height,top,confidence}], text, height } */
+  function ocrTitleCandidate(payload) {
+    var src = (payload && payload.lines) || [];
+    var L = [];
+    src.forEach(function (l, i) {
+      var t = ocrClean(l && l.text);
+      if (!t) return;
+      L.push({ t: t, h: Number(l.height) || 0, y: Number(l.top) || 0, c: Number(l.confidence) || 0, i: i });
+    });
+    if (!L.length && payload && payload.text) {
+      String(payload.text).split(/\r?\n/).forEach(function (ln, i) {
+        var t = ocrClean(ln);
+        if (t) L.push({ t: t, h: 0, y: i, c: 0, i: i });
+      });
+    }
+    if (!L.length) return "";
+    /* 1) 「제 목 : …」처럼 라벨이 찍힌 줄을 가장 먼저 믿는다 */
+    for (var i = 0; i < L.length; i++) {
+      var m = L[i].t.match(/^제\s*목\s*[:：]?\s*(.*)$/);
+      if (!m) continue;
+      var rest = ocrClean(m[1]);
+      if (rest.length >= 2 && !ocrMostlyDigits(rest) && !ocrGeneric(rest)) return ocrTrimTitle(rest);
+      var nx = L[i + 1];
+      if (nx && nx.t.length >= 2 && !ocrGeneric(nx.t) && !ocrMostlyDigits(nx.t)) return ocrTrimTitle(nx.t);
+    }
+    var pageH = Number(payload && payload.height) || 0;
+    var usable = L.filter(function (x) {
+      if (x.t.length < 2) return false;
+      if (ocrGeneric(x.t)) return false;
+      if (ocrMostlyDigits(x.t)) return false;
+      if (x.c && x.c < 35) return false;
+      if (pageH && x.y > pageH * 0.62) return false;
+      if (ocrFooter(x.t, x.y, pageH)) return false;
+      return true;
+    });
+    if (!usable.length) {
+      usable = L.filter(function (x) {
+        return x.t.length >= 2 && !ocrGeneric(x.t) && !ocrMostlyDigits(x.t);
+      });
+    }
+    if (!usable.length) return "";
+    var maxH = 0;
+    usable.forEach(function (x) { if (x.h > maxH) maxH = x.h; });
+    var pool = maxH > 0 ? usable.filter(function (x) { return x.h >= maxH * 0.62; }) : usable;
+    pool.sort(function (a, b) { return (b.h - a.h) || (a.y - b.y) || (a.i - b.i); });
+    var best = pool[0];
+    var out = best.t;
+    /* 같은 크기로 바로 아래 이어진 줄은 제목이 두 줄인 경우로 보고 붙인다 */
+    var after = null;
+    usable.forEach(function (x) {
+      if (x === best) return;
+      if (x.y > best.y && (!after || x.y < after.y)) after = x;
+    });
+    if (after && after.h >= Math.max(1, best.h) * 0.75 && after.h <= best.h * 1.4) {
+      var joined = out + " " + after.t;
+      if (joined.length <= 46 && !/^[0-9.\-~\s]+$/.test(after.t)) out = joined;
+    }
+    return ocrTrimTitle(out);
+  }
+  /* 이미 적어 둔 제목이 있으면 덮어쓰지 않는다 (테스트 대상) */
+  function ocrFieldDecision(typed, cand) {
+    var cur = String(typed || "").trim();
+    if (!cand) return { fill: false, state: "empty" };
+    if (!cur) return { fill: true, state: "done" };
+    return { fill: false, state: "done" };
+  }
+  /* Tesseract.js 결과 → 줄 목록 */
+  function ocrLinesFrom(data) {
+    var out = [];
+    ((data && data.blocks) || []).forEach(function (b) {
+      (b.paragraphs || []).forEach(function (p) {
+        (p.lines || []).forEach(function (l) {
+          var bb = l.bbox || {};
+          var t = String(l.text || "").replace(/\s+/g, " ").trim();
+          if (!t) return;
+          out.push({
+            text: t,
+            height: (bb.y1 || 0) - (bb.y0 || 0),
+            top: bb.y0 || 0,
+            confidence: l.confidence || 0
+          });
+        });
+      });
+    });
+    return out;
+  }
+  function ocrPageHeight(lines, data) {
+    var h = 0;
+    ((data && data.blocks) || []).forEach(function (b) {
+      var bb = b.bbox || {};
+      if ((bb.y1 || 0) > h) h = bb.y1 || 0;
+    });
+    lines.forEach(function (l) { if (l.top + l.height > h) h = l.top + l.height; });
+    return h;
+  }
+  function ocrLoadLib() {
+    var W = (typeof window !== "undefined") ? window : null;
+    if (!W) return Promise.reject(new Error("no window"));
+    if (W.Tesseract) return Promise.resolve(W.Tesseract);
+    if (ocrLibPromise) return ocrLibPromise;
+    ocrLibPromise = new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = OCR_CDN;
+      s.async = true;
+      s.onload = function () {
+        if (W.Tesseract) res(W.Tesseract);
+        else { ocrLibPromise = null; rej(new Error("OCR 라이브러리를 열지 못했습니다")); }
+      };
+      s.onerror = function () { ocrLibPromise = null; rej(new Error("OCR 라이브러리를 내려받지 못했습니다")); };
+      document.head.appendChild(s);
+      setTimeout(function () { if (!W.Tesseract) { ocrLibPromise = null; rej(new Error("OCR 라이브러리 응답 없음")); } }, 20000);
+    });
+    return ocrLibPromise;
+  }
+  function nfNoteParts() {
+    nfEnsure();
+    var st = NF.ocrState || "idle";
+    var cls = "ocr-note", html = "";
+    if (st === "reading") {
+      html = "사진에서 제목 읽는 중…" +
+        (NF.ocrStage || NF.ocrPct ? ' <span class="ocr-sub">' + esc((NF.ocrStage || "") + (NF.ocrPct ? " " + NF.ocrPct + "%" : "")) + "</span>" : "");
+    } else if (st === "done") {
+      if (NF.ocrApplied) {
+        cls += " ok";
+        html = "사진에서 읽은 제목을 넣었습니다. <b>맞으면 그대로 저장, 틀리면 고친 뒤 저장</b>하세요." +
+          (NF.ocrTitle ? '<div class="ocr-sub" style="margin-top:3px">읽은 제목: ' + esc(NF.ocrTitle) + "</div>" : "");
+      } else {
+        html = "사진에서 읽은 제목: <b>" + esc(NF.ocrTitle) + "</b>" +
+          '<div class="ocr-sub" style="margin-top:3px">이미 적어 둔 제목이 있어 그대로 두었습니다.</div>';
+      }
+      html += '<div class="ocr-btns">' +
+        (NF.ocrApplied ? "" : '<button data-act="nf-ocr-use">이 제목 넣기</button>') +
+        '<button data-act="nf-ocr-retry">다시 읽기</button></div>';
+    } else if (st === "empty") {
+      cls += " warn";
+      html = "사진에서 제목을 찾지 못했습니다. 직접 입력하세요." +
+        '<div class="ocr-btns"><button data-act="nf-ocr-retry">다시 읽기</button></div>';
+    } else if (st === "fail") {
+      cls += " warn";
+      html = "제목 자동 읽기를 하지 못했습니다(오프라인일 수 있습니다). 직접 입력하세요." +
+        '<div class="ocr-btns"><button data-act="nf-ocr-retry">다시 읽기</button></div>';
+    } else {
+      return { cls: "ocr-note", html: "", hidden: true };
+    }
+    return { cls: cls, html: html, hidden: false };
+  }
+  function nfNoteHtml() {
+    var p = nfNoteParts();
+    return '<div id="nfNote" class="' + p.cls + '"' + (p.hidden ? " style=\"display:none\"" : "") + ">" + p.html + "</div>";
+  }
+  function ocrRenderNote() {
+    var el = document.getElementById("nfNote");
+    if (!el) return;
+    var p = nfNoteParts();
+    el.className = p.cls;
+    el.style.display = p.hidden ? "none" : "";
+    el.innerHTML = p.html;
+  }
+  function nfOcrRead() {
+    nfEnsure();
+    if (!NF.photo) return;
+    var seq = ++ocrSeq;
+    NF.ocrState = "reading";
+    NF.ocrStage = ""; NF.ocrPct = 0; NF.ocrTitle = ""; NF.ocrApplied = false;
+    ocrRenderNote();
+    var worker = null;
+    ocrLoadLib().then(function (T) {
+      return T.createWorker("kor+eng", 1, {
+        langPath: OCR_LANG_PATH,
+        logger: function (m) {
+          if (seq !== ocrSeq) return;
+          if (!m) return;
+          if (m.status === "recognizing text") {
+            NF.ocrStage = "";
+            NF.ocrPct = Math.round((m.progress || 0) * 100);
+          } else if (m.status === "loading language traineddata") {
+            NF.ocrStage = "언어 데이터 준비 중";
+          } else if (m.status === "initializing api" || m.status === "initializing tesseract") {
+            NF.ocrStage = "인식기 준비 중";
+          }
+          ocrRenderNote();
+        }
+      });
+    }).then(function (w) {
+      worker = w;
+      return w.recognize(NF.photo, {}, { blocks: true, text: true });
+    }).then(function (r) {
+      var data = (r && r.data) || {};
+      var lines = ocrLinesFrom(data);
+      var pageH = ocrPageHeight(lines, data);
+      var cand = ocrTitleCandidate({ lines: lines, text: data.text || "", height: pageH });
+      if (seq !== ocrSeq) return;
+      var el = document.getElementById("nfTitle");
+      var typed = el ? el.value : (NF.title || "");
+      var dec = ocrFieldDecision(typed, cand);
+      NF.ocrTitle = cand || "";
+      NF.ocrState = dec.state;
+      NF.ocrApplied = false;
+      if (dec.fill) {
+        NF.title = cand;
+        NF.ocrApplied = true;
+        if (el) el.value = cand;
+      }
+      ocrRenderNote();
+      if (dec.fill) toast("사진에서 제목을 읽었습니다 · 확인 후 저장하세요");
+    }).catch(function () {
+      if (seq !== ocrSeq) return;
+      NF.ocrState = "fail";
+      NF.ocrStage = ""; NF.ocrPct = 0;
+      ocrRenderNote();
+    }).then(function () {
+      if (worker) { try { worker.terminate(); } catch (e) {} }
+    });
+  }
+  function nfOcrUse() {
+    nfEnsure();
+    if (!NF.ocrTitle) return;
+    NF.title = NF.ocrTitle;
+    NF.ocrApplied = true;
+    var el = document.getElementById("nfTitle");
+    if (el) el.value = NF.ocrTitle;
+    ocrRenderNote();
   }
 
   function formTarget() {
@@ -3589,7 +3857,14 @@ var App = (function () {
       /* ---------- [생성] 탭 ---------- */
       else if (act === "nf-photo") { var npi = document.getElementById("nfPhoto"); if (npi) npi.click(); }
       else if (act === "nf-cam") { var nci = document.getElementById("nfCam"); if (nci) nci.click(); }
-      else if (act === "nf-photo-clear") { nfEnsure(); NF.photo = null; refreshCreate(); toast("사진을 지웠습니다"); }
+      else if (act === "nf-photo-clear") {
+        nfEnsure(); NF.photo = null;
+        ocrSeq++;                                  // 진행 중인 OCR 결과 버리기
+        NF.ocrState = "idle"; NF.ocrTitle = ""; NF.ocrApplied = false; NF.ocrStage = ""; NF.ocrPct = 0;
+        refreshCreate(); toast("사진을 지웠습니다");
+      }
+      else if (act === "nf-ocr-use") { nfOcrUse(); }
+      else if (act === "nf-ocr-retry") { nfOcrRead(); }
       else if (act === "nf-bld") {
         nfEnsure();
         var nbv = el.dataset.v;
@@ -3788,6 +4063,7 @@ var App = (function () {
           var info = document.getElementById("nfPhotoInfo");
           if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB · 사진을 누르면 크게 보기";
           toast("사진 준비 완료 (" + kb + "KB)");
+          nfOcrRead();   // 사진에서 제목 1차 추출
         });
         return;
       }
@@ -3956,6 +4232,12 @@ var App = (function () {
       card: taskCard, chk: chkCell, ext: extCell,
       extTeam: EXT_TEAM, extLabel: EXT_LABEL,
       team: checkTeamOf, useful: function () { return renderDeploy(); }
+    },
+    /* 사진 제목 1차 OCR 검증용 */
+    ocr: {
+      title: ocrTitleCandidate, lines: ocrLinesFrom, decision: ocrFieldDecision,
+      clean: ocrClean, note: nfNoteHtml, read: nfOcrRead, use: nfOcrUse,
+      load: ocrLoadLib, cdn: OCR_CDN
     },
     /* 게시물 생성·이동 검증용 */
     create: {
