@@ -3425,7 +3425,8 @@ var App = (function () {
          입력은 상단 35% 고해상도 크롭(NF.ocrImg)을 우선 쓰고, 없으면 저장 사진으로 돌린다. */
       var src = NF.ocrImg || NF.photo;
       NF.ocrCrop = !!NF.ocrImg;
-      return w.setParameters({ tessedit_pageseg_mode: "3" }).then(function () {
+      var psm = (typeof window !== "undefined" && window.__ocrPsm) ? String(window.__ocrPsm) : "3";
+      return w.setParameters({ tessedit_pageseg_mode: psm }).then(function () {
         return w.recognize(src, {}, { blocks: true, text: true });
       });
     }).then(function (r) {
