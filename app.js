@@ -3096,7 +3096,19 @@ var App = (function () {
   }
   function ocrFlat(s) { return String(s || "").replace(/\s+/g, ""); }
   function ocrGeneric(s) {
-    return /^(안내문|공고문?|알림마당|알림|게시문|통지문?|안내|공지|공지사항)$/.test(ocrFlat(s));
+    var flat = ocrFlat(s);
+    if (/^(안내문|공고문?|알림마당|알림|게시문|통지문?|안내|공지|공지사항)$/.test(flat)) return true;
+    /* 「풍경채 안내문」처럼 머리글만 있는 줄 (「…공고」 같은 제목은 살린다) */
+    return flat.length <= 8 && /(안내문|공고문|공지사항)$/.test(flat);
+  }
+  /* 표의 한 줄(날짜·동 범위·칸 구분선)은 제목이 아니다 */
+  function ocrTableish(s) {
+    var t = String(s || "");
+    if (/[|｜ㅣ]/.test(t)) return true;
+    if (/^\s*\d{2,4}\s*[.\-/]\s*\d{1,2}/.test(t)) return true;
+    if (/\d{1,3}\s*동\s*[~\-∼]\s*\d{1,3}\s*동/.test(t)) return true;
+    if (/^[\d\s.~:()\-]+$/.test(t)) return true;
+    return false;
   }
   function ocrMostlyDigits(s) {
     var t = String(s || "");
@@ -3130,13 +3142,14 @@ var App = (function () {
       var rest = ocrClean(m[1]);
       if (rest.length >= 2 && !ocrMostlyDigits(rest) && !ocrGeneric(rest)) return ocrTrimTitle(rest);
       var nx = L[i + 1];
-      if (nx && nx.t.length >= 2 && !ocrGeneric(nx.t) && !ocrMostlyDigits(nx.t)) return ocrTrimTitle(nx.t);
+      if (nx && nx.t.length >= 2 && !ocrGeneric(nx.t) && !ocrMostlyDigits(nx.t) && !ocrTableish(nx.t)) return ocrTrimTitle(nx.t);
     }
     var pageH = Number(payload && payload.height) || 0;
     var usable = L.filter(function (x) {
       if (x.t.length < 2) return false;
       if (ocrGeneric(x.t)) return false;
       if (ocrMostlyDigits(x.t)) return false;
+      if (ocrTableish(x.t)) return false;
       if (x.c && x.c < 35) return false;
       if (pageH && x.y > pageH * 0.62) return false;
       if (ocrFooter(x.t, x.y, pageH)) return false;
@@ -3274,7 +3287,7 @@ var App = (function () {
     ocrRenderNote();
     var worker = null;
     ocrLoadLib().then(function (T) {
-      return T.createWorker("kor+eng", 1, {
+      return T.createWorker("kor", 1, {
         langPath: OCR_LANG_PATH,
         logger: function (m) {
           if (seq !== ocrSeq) return;
@@ -3292,7 +3305,11 @@ var App = (function () {
       });
     }).then(function (w) {
       worker = w;
-      return w.recognize(NF.photo, {}, { blocks: true, text: true });
+      /* 한글만으로 인식하면 「제 목 : …」 줄을 훨씬 잘 읽는다(eng를 섞으면 한글이 깨진다).
+         PSM 3(자동 페이지 분할)도 함께 지정한다. */
+      return w.setParameters({ tessedit_pageseg_mode: "3" }).then(function () {
+        return w.recognize(NF.photo, {}, { blocks: true, text: true });
+      });
     }).then(function (r) {
       var data = (r && r.data) || {};
       var lines = ocrLinesFrom(data);
