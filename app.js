@@ -1217,7 +1217,7 @@ var App = (function () {
     var st = zoneCheck(n, kind, zone);
     var on = isExtRec(st);
     var other = !!st && !on;
-    return '<button class="chk ' + (on ? "on" : other ? "na" : "off") + '" data-act="chk-ext"' +
+    return '<button class="chk ' + (on ? "ext" : other ? "na" : "off") + '" data-act="chk-ext"' +
       ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '"' +
       ' aria-label="' + esc(zoneShort(zone) + " " + EXT_LABEL + (on ? " 완료" : other ? " 불가" : "로 게시")) + '">' +
       '<span class="box">' + (on ? "☑" : other ? "☑" : "☐") + '</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +

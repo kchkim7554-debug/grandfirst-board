@@ -74,7 +74,7 @@ console.log("\n[3] 외부업체로 기록된 칸");
   O.load([N_EXT], clone(FAC));
   eq("기록 조는 EXT", D.team(N_EXT, "front", N_EXT.attach.front), "EXT");
   var cell = D.ext(N_EXT, "attach", "front");
-  ok("외부업체 칸은 켜짐 표시", has(cell, "chk on") && has(cell, "☑") && has(cell, "외부업체"));
+  ok("외부업체 칸은 주황 켜짐 표시", has(cell, 'class="chk ext"') && has(cell, "☑") && has(cell, "외부업체"));
   var aCell = D.chk(N_EXT, "attach", "front", "A");
   var bCell = D.chk(N_EXT, "attach", "front", "B");
   ok("A조 칸은 외부업체 기록을 자기가 한 것처럼 보이지 않는다", !has(aCell, "on") && has(aCell, "외부업체"));
