@@ -3431,6 +3431,10 @@ var App = (function () {
     }).then(function (r) {
       var data = (r && r.data) || {};
       var lines = ocrLinesFrom(data);
+      /* 개발자 진단용 — 브라우저 콘솔에서 window.__ocrDbg 로 OCR 원문 확인 */
+      if (typeof window !== "undefined") {
+        window.__ocrDbg = { crop: !!NF.ocrCrop, img: (NF.ocrImg || "").length, text: String(data.text || ""), lines: lines };
+      }
       var pageH = ocrPageHeight(lines, data);
       var cand = ocrTitleCandidate({ lines: lines, text: data.text || "", height: pageH, crop: !!NF.ocrCrop });
       if (seq !== ocrSeq) return;
