@@ -3074,7 +3074,7 @@ var App = (function () {
      · 라이브러리·언어 데이터 내려받기 실패(오프라인 등)에는 막지 않고 직접 입력으로 넘어간다
      ========================================================= */
   var OCR_CDN = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-  var OCR_LANG_PATH = "https://tessdata.projectnaptha.com/4.0.0_fast";   // kor 1.1MB (빠른 버전)
+  var OCR_LANG_PATH = "https://tessdata.projectnaptha.com/4.0.0_fast";   // kor 빠른 버전(1.1MB)
   var ocrLibPromise = null;
   var ocrSeq = 0;
 
@@ -3403,7 +3403,7 @@ var App = (function () {
     var worker = null;
     ocrLoadLib().then(function (T) {
       return T.createWorker("kor", 1, {
-        langPath: OCR_LANG_PATH,
+        langPath: (typeof window !== "undefined" && window.__ocrLang) ? String(window.__ocrLang) : OCR_LANG_PATH,
         logger: function (m) {
           if (seq !== ocrSeq) return;
           if (!m) return;
