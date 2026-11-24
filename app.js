@@ -3229,6 +3229,15 @@ var App = (function () {
         !ocrMostlyDigits(nx.t) && !ocrTableish(nx.t)) return ocrTrimTitle(nx.t);
     return "";
   }
+  /* OCR이 「제 목 :」을 「멕 께 목 :」처럼 흐리게 읽어도 라벨 조각을 떼어낸다 */
+  function ocrDropLabel(s) {
+    var t = String(s || "");
+    var m = t.match(/^(.{0,4}?)\s*목\s*[:：]\s*(.+)$/);
+    if (!m) return t;
+    if (ocrFlat(m[1]).length > 3) return t;   // 본문 문장(… 목적 : …)은 건드리지 않는다
+    var rest = ocrClean(m[2]);
+    return rest.length >= 2 ? rest : t;
+  }
   /* payload: { lines:[{text,height,top,confidence}], text, height, crop } */
   function ocrTitleCandidate(payload) {
     var src = (payload && payload.lines) || [];
@@ -3310,7 +3319,7 @@ var App = (function () {
       var joined = out + " " + after.t;
       if (joined.length <= 46 && !/^[0-9.\-~\s]+$/.test(after.t)) out = joined;
     }
-    return ocrTrimTitle(out);
+    return ocrTrimTitle(ocrDropLabel(out));
   }
   /* 이미 적어 둔 제목이 있으면 덮어쓰지 않는다 (테스트 대상) */
   function ocrFieldDecision(typed, cand) {
@@ -3443,7 +3452,8 @@ var App = (function () {
          입력은 상단 35% 고해상도 크롭(NF.ocrImg)을 우선 쓰고, 없으면 저장 사진으로 돌린다. */
       var src = NF.ocrImg || NF.photo;
       NF.ocrCrop = !!NF.ocrImg;
-      var psm = (typeof window !== "undefined" && window.__ocrPsm) ? String(window.__ocrPsm) : "3";
+      /* 상단 크롭 한 덩어리는 PSM 6(한 블록), 사진 전체는 PSM 3(자동 페이지) */
+      var psm = (typeof window !== "undefined" && window.__ocrPsm) ? String(window.__ocrPsm) : (NF.ocrCrop ? "6" : "3");
       return w.setParameters({ tessedit_pageseg_mode: psm }).then(function () {
         return w.recognize(src, {}, { blocks: true, text: true });
       });
@@ -4402,7 +4412,7 @@ var App = (function () {
       title: ocrTitleCandidate, lines: ocrLinesFrom, decision: ocrFieldDecision,
       clean: ocrClean, note: nfNoteHtml, read: nfOcrRead, use: nfOcrUse,
       load: ocrLoadLib, cdn: OCR_CDN, header: ocrHeader, approval: ocrApproval,
-      cropTop: OCR_CROP_TOP
+      cropTop: OCR_CROP_TOP, dropLabel: ocrDropLabel
     },
     /* 게시물 생성·이동 검증용 */
     create: {
