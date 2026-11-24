@@ -39,6 +39,7 @@ ctx.eval(read("test/order.test.js"))
 ctx.eval(read("test/stats.test.js"))
 ctx.eval(read("test/alerts.test.js"))
 ctx.eval(read("test/create.test.js"))
+ctx.eval(read("test/deploy.test.js"))
 
 print("\n".join(lines))
 fail = ctx.eval("globalThis.__BOARD_TEST_FAIL")

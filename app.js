@@ -664,8 +664,13 @@ var App = (function () {
   }
 
   /* ---------- zone check actions ---------- */
+  /* 외부업체가 직접 거는 게시물(1층 게시판 5·6번 등) — 담당자 대신 「외부업체」로 기록한다 */
+  var EXT_TEAM = "EXT";
+  var EXT_LABEL = "외부업체";
+  function isExtRec(st) { return !!st && (st.team === EXT_TEAM || st.team === "외부" || st.by === EXT_LABEL); }
   function checkTeamOf(n, zone, st) {
     if (!st) return "";
+    if (isExtRec(st)) return EXT_TEAM;
     if (st.team === "A" || st.team === "B") return st.team;
     if (st.by && guardName("A", zone) === st.by) return "A";
     if (st.by && guardName("B", zone) === st.by) return "B";
@@ -733,6 +738,48 @@ var App = (function () {
     });
   }
   function afterZoneChange(id) { /* 리스너가 갱신하므로 화면은 자동 반영 */ }
+
+  /* 외부업체 게시 체크 (담당자 선택 없이 바로 기록 · 해제는 관리자만) */
+  function toggleExternalCheck(id, kind, zone) {
+    var n = getNotice(id);
+    if (!n) return;
+    var st = zoneCheck(n, kind, zone);
+    var label = kind === "attach" ? "게시" : "제거";
+    if (st && !isExtRec(st)) {
+      toast("이미 " + (st.by || "담당자") + " 님이 " + label + " 완료했습니다 (" + EXT_LABEL + "로 바꾸려면 관리자 해제 후)");
+      return;
+    }
+    if (st && isExtRec(st)) {
+      if (SESSION.role !== "admin") { toast(EXT_LABEL + " " + label + " 기록 해제는 관리자만 가능합니다"); return; }
+      db.ref("board/notices/" + id + "/" + kind + "/" + zone).remove().then(function () {
+        writeLog({ noticeId: id, type: kind + "_undo", zone: zone, by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
+        toast(EXT_LABEL + " " + label + " 기록을 해제했습니다");
+        afterZoneChange(id);
+      }).catch(function (e) { toast("저장 실패: " + e.message); });
+      return;
+    }
+    var updates = {};
+    var rec = { by: EXT_LABEL, team: EXT_TEAM, at: nowTs() };
+    updates["board/notices/" + id + "/" + kind + "/" + zone] = rec;
+    if (kind === "attach") {
+      updates["board/notices/" + id + "/status"] = "posted";
+    } else {
+      var zs = applicableZones(n);
+      var allDone = zs.every(function (z) { return z === zone || !!zoneCheck(n, "detach", z); });
+      if (allDone) {
+        updates["board/notices/" + id + "/status"] = "archived";
+        updates["board/notices/" + id + "/archivedAt"] = TODAY;
+        var comp = compactOrders(targetsOf(n), [id]);
+        Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
+      }
+    }
+    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    fbUpdate(updates).then(function (ok) {
+      if (!ok) return;
+      writeLog({ noticeId: id, type: kind, zone: zone, by: EXT_LABEL, team: EXT_TEAM, at: nowTs(), title: n.title });
+      toast(EXT_LABEL + " " + label + " 완료 · " + zoneName(zone) + " (" + EXT_LABEL + ")");
+    });
+  }
 
   /* ---------- deadline change ---------- */
   function openDeadlineSheet(id) {
@@ -1148,6 +1195,10 @@ var App = (function () {
     var st = zoneCheck(n, kind, zone);
     var checkedTeam = checkTeamOf(n, zone, st);
     var gname = guardName(team, zone);
+    if (checkedTeam === EXT_TEAM) {   // 외부업체 기록은 A·B조 칸에 표시하지 않는다
+      return '<div class="chk ext"><span class="box">☑</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
+        '<span class="nm">' + esc(EXT_LABEL) + "</span></div>";
+    }
     if (st && (checkedTeam === team || (!checkedTeam && team === "A"))) {
       return '<button class="chk on" data-act="chk-undo" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '">' +
         '<span class="box">☑</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
@@ -1156,6 +1207,21 @@ var App = (function () {
     return '<button class="chk off" data-act="chk" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '">' +
       '<span class="box">☐</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
       '<span class="nm">' + esc(gname || "-") + "</span></button>";
+  }
+  /* 외부업체 칸 — 아직 체크가 없으면 바로 「외부업체 게시」로 기록 */
+  function extCell(n, kind, zone) {
+    var zs = applicableZones(n);
+    if (zs.indexOf(zone) < 0) {
+      return '<div class="chk na"><span class="box">–</span><span class="zn">' + esc(zoneShort(zone)) + '</span><span class="nm">대상 아님</span></div>';
+    }
+    var st = zoneCheck(n, kind, zone);
+    var on = isExtRec(st);
+    var other = !!st && !on;
+    return '<button class="chk ' + (on ? "on" : other ? "na" : "off") + '" data-act="chk-ext"' +
+      ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '"' +
+      ' aria-label="' + esc(zoneShort(zone) + " " + EXT_LABEL + (on ? " 완료" : other ? " 불가" : "로 게시")) + '">' +
+      '<span class="box">' + (on ? "☑" : other ? "☑" : "☐") + '</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
+      '<span class="nm">' + esc(on ? EXT_LABEL : other ? (st.by || "담당") : EXT_LABEL) + "</span></button>";
   }
   function taskCard(n, kind) {
     var st = statusOf(n);
@@ -1171,6 +1237,9 @@ var App = (function () {
       "</div><div class=\"task-side\">" + pill + testTag(n) + "</div></div>";
     h += '<div class="task-row"><div class="team-tag">A조</div>' + FAC.zones.map(function (z) { return chkCell(n, kind, z.id, "A"); }).join("") + "</div>";
     h += '<div class="task-row"><div class="team-tag">B조</div>' + FAC.zones.map(function (z) { return chkCell(n, kind, z.id, "B"); }).join("") + "</div>";
+    if (kind === "attach") {
+      h += '<div class="task-row"><div class="team-tag ext">외부업체</div>' + FAC.zones.map(function (z) { return extCell(n, kind, z.id); }).join("") + "</div>";
+    }
     h += '<div class="task-foot">' +
       '<button class="mini-btn" data-act="open-notice" data-id="' + esc(n.id) + '">상세</button>' +
       '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' +
@@ -1370,17 +1439,25 @@ var App = (function () {
   }
   function nfEnsure() { if (!NF) nfReset(); return NF; }
 
+  /* 업로드한 사진 미리보기 — 누르면 원본 크기로 확대(라이트박스) */
+  function nfPhotoPrevHtml() {
+    nfEnsure();
+    if (!NF.photo) return '<div class="photo-prev" id="nfPhotoPrev">사진<br>없음</div>';
+    return '<button class="photo-prev z" id="nfPhotoPrev" data-act="zoom" data-src="' + esc(NF.photo) +
+      '" data-cap="게시물 사진 미리보기"><img src="' + esc(NF.photo) + '" alt="게시물 사진 미리보기">' +
+      '<span class="z-tag">확대</span></button>';
+  }
   function nfPhotoHtml() {
     nfEnsure();
     return '<div class="nf-shot">' +
-      '<div class="photo-prev" id="nfPhotoPrev">' + (NF.photo ? '<img src="' + esc(NF.photo) + '" alt="">' : "사진<br>없음") + "</div>" +
+      nfPhotoPrevHtml() +
       '<div class="photo-ctl">' +
       '<input type="file" accept="image/*" id="nfPhoto" style="display:none">' +
       '<input type="file" accept="image/*" capture="environment" id="nfCam" style="display:none">' +
       '<div class="f-row"><button class="btn line" data-act="nf-photo">사진 선택</button>' +
       '<button class="btn line" data-act="nf-cam">카메라</button></div>' +
       '<button class="mini-btn" data-act="nf-photo-clear">사진 지우기</button>' +
-      '<div class="f-hint" id="nfPhotoInfo">' + (NF.photo ? "첫 장만 저장합니다" : "촬영하거나 앨범에서 · 자동 축소(900px)") + "</div>" +
+      '<div class="f-hint" id="nfPhotoInfo">' + (NF.photo ? "첫 장만 저장합니다 · 사진을 누르면 크게 보기" : "촬영하거나 앨범에서 · 자동 축소(900px) · 올린 뒤 사진을 누르면 크게 보기") + "</div>" +
       "</div></div>";
   }
   function nfPlaceHtml() {
@@ -2246,17 +2323,18 @@ var App = (function () {
   }
 
   /* ---------- 4. 게시물 이력 및 통계 ----------
-     집계 기준 (2026-11-20 개편 · 손그림 설계)
-     · 단위: 게시물 1건 × 구역 1곳의 게시(제거) 체크 기록 1건.
-       그 구역에서 그 게시물이 공동현관 게시판이면 「게시판」 1건, 엘리베이터(E/V)면 「E/V」 1건으로 센다.
-       (두 게시판에 모두 거는 게시물은 게시판 1 + E/V 1 = 합계 2건)
-     · 게시 = notice.attach[구역] 기록, 제거 = notice.detach[구역] 기록.
+     집계 기준 (2026-11-25 개편 · 카일 지시)
+     · 단위: 게시물 1건 = 게시 1건 / 제거 1건.
+       한 게시물을 정문·후문A·후문B 세 구역에서 각각 걸어도, 담당자가 여러 명이어도 1건으로 센다.
+       (구역 수·담당 인원 수로 곱하지 않는다 — 2026-11-20 3배 집계 문제의 원천 수정)
+     · 게시판과 E/V 두 곳에 함께 거는 게시물만 「게시판 1 + E/V 1 = 합계 2건」으로 나눠 센다.
+     · 게시 = notice.attach 기록이 있는 게시물, 제거 = notice.detach 기록이 있는 게시물.
        체크를 취소하면 기록이 지워지므로 logs(이력) 대신 현재 기록을 기준으로 센다(취소분 미집계).
      · 테스트 게시물(isTest)은 집계에서 제외.
-     · 날짜: 게시는 게시일(postedAt) — 없으면 게시 체크 시각.
-             제거는 제거 체크 시각 — 없으면 보관일(archivedAt).
+     · 날짜: 게시는 게시일(postedAt) — 없으면 가장 이른 게시 체크 시각.
+             제거는 가장 이른 제거 체크 시각 — 없으면 보관일(archivedAt).
        (시드처럼 과거 실적을 한꺼번에 입력한 게시 체크 시각은 실제 게시일이 아니므로 postedAt 을 먼저 쓴다)
-     · 조: 체크 기록에 남은 team(A/B). 기록이 없으면 「미지정」으로 합계에만 더한다.
+     · 담당(조)은 건수를 나누는 기준이 아니다. 날짜별 상세에 담당자 이름만 참고로 보여 준다.
   --------------------------------------------------------- */
   var STAT_KINDS = ["lobby", "elevator"];
   var STAT_KIND_LABEL = { lobby: "게시판", elevator: "E/V" };
@@ -2279,64 +2357,94 @@ var App = (function () {
   function ymLabel(ym) { return +ym.slice(0, 4) + "년 " + (+ym.slice(5, 7)) + "월"; }
   function statTeamOf(t) { return (t === "A" || t === "B") ? t : ""; }
 
-  /* 게시·제거 이벤트 목록 (순수 함수 — DB를 건드리지 않는다) */
+  /* 게시·제거 이벤트 목록 (순수 함수 — DB를 건드리지 않는다)
+     게시물 1건당 게시판 종류(lobby/elevator)마다 이벤트 1건. 구역 수는 곱하지 않는다. */
   function statEvents(notices, fac) {
     var list = notices || [];
-    var f = fac || FAC || { buildings: [] };
+    var f = fac || FAC || { buildings: [], zones: [] };
     var zoneOf = Object.create(null), allNos = [];
     (f.buildings || []).forEach(function (b) { zoneOf[Number(b.no)] = b.zone; allNos.push(Number(b.no)); });
+    var zoneOrder = (f.zones || []).map(function (z) { return z.id; });
+    /* 체크 기록(구역 → {by, team, at})을 구역 순서대로 모은다 */
+    function recsOf(obj) {
+      var recs = [];
+      Object.keys(obj || {}).forEach(function (z) {
+        var r = obj[z];
+        if (r) recs.push({ zone: z, rec: r });
+      });
+      recs.sort(function (a, b) {
+        var ia = zoneOrder.indexOf(a.zone), ib = zoneOrder.indexOf(b.zone);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
+      return recs;
+    }
+    function earliestAt(recs) {
+      var best = 0;
+      recs.forEach(function (x) { var v = Number(x.rec.at) || 0; if (v && (!best || v < best)) best = v; });
+      return best;
+    }
+    /* 기록된 조가 모두 같을 때만 조를 표시한다 (섞여 있으면 빈 값) */
+    function sameTeam(recs) {
+      var t = null;
+      for (var i = 0; i < recs.length; i++) {
+        var v = statTeamOf(recs[i].rec.team);
+        if (!v) return "";
+        if (t === null) t = v; else if (t !== v) return "";
+      }
+      return t || "";
+    }
+    function byText(recs) {
+      var names = [];
+      recs.forEach(function (x) {
+        var b = String(x.rec.by || "").trim();
+        if (b && names.indexOf(b) < 0) names.push(b);
+      });
+      if (!names.length) return "";
+      return names.length > 1 ? names[0] + " 외 " + (names.length - 1) + "명" : names[0];
+    }
     var out = [];
     list.forEach(function (n) {
       if (!n || n.isTest) return;                       // 테스트 건 제외
-      var zoneKinds = Object.create(null);
+      /* 이 게시물이 어느 게시판 종류에 걸리는지 (구역·동 수와 무관하게 한 번만) */
+      var kindMap = Object.create(null);
       targetsOf(n).forEach(function (t) {
         var kind = t.board === "elevator" ? "elevator" : "lobby";
         var nos = (t.buildings === "all" || !t.buildings) ? allNos : (t.buildings || []).map(Number);
-        nos.forEach(function (no) {
-          var z = zoneOf[no];
-          if (!z) return;
-          (zoneKinds[z] = zoneKinds[z] || Object.create(null))[kind] = true;
-        });
+        if (nos.some(function (no) { return !!zoneOf[no]; })) kindMap[kind] = true;
       });
+      var kinds = STAT_KINDS.filter(function (k) { return kindMap[k]; });
+      if (!kinds.length) return;
       var postDate = isYmd(n.postedAt) ? n.postedAt : "";
-      Object.keys(zoneKinds).forEach(function (z) {
-        var kinds = STAT_KINDS.filter(function (k) { return zoneKinds[z][k]; });
-        var a = (n.attach || {})[z];
-        if (a) {
-          var ad = postDate || ymdOfTs(a.at);
-          kinds.forEach(function (k) {
-            out.push({
-              type: "post", kind: k, date: ad, zone: z,
-              team: statTeamOf(a.team), by: a.by || "",
-              noticeId: n.id, title: n.title || ""
-            });
+      var att = recsOf(n.attach);
+      if (att.length) {
+        var pd = postDate || ymdOfTs(earliestAt(att));
+        var pzones = att.map(function (x) { return x.zone; });
+        kinds.forEach(function (k) {
+          out.push({
+            type: "post", kind: k, date: pd, zones: pzones, zone: pzones[0] || "",
+            team: sameTeam(att), by: byText(att),
+            noticeId: n.id, title: n.title || ""
           });
-        }
-        var r = (n.detach || {})[z];
-        if (r) {
-          var rd = ymdOfTs(r.at) || (isYmd(n.archivedAt) ? n.archivedAt : "");
-          kinds.forEach(function (k) {
-            out.push({
-              type: "remove", kind: k, date: rd, zone: z,
-              team: statTeamOf(r.team), by: r.by || "",
-              noticeId: n.id, title: n.title || ""
-            });
+        });
+      }
+      var det = recsOf(n.detach);
+      if (det.length) {
+        var rd = ymdOfTs(earliestAt(det)) || (isYmd(n.archivedAt) ? n.archivedAt : "");
+        var rzones = det.map(function (x) { return x.zone; });
+        kinds.forEach(function (k) {
+          out.push({
+            type: "remove", kind: k, date: rd, zones: rzones, zone: rzones[0] || "",
+            team: sameTeam(det), by: byText(det),
+            noticeId: n.id, title: n.title || ""
           });
-        }
-      });
+        });
+      }
     });
     return out;
   }
 
   function statBucket() {
-    return {
-      total: 0, lobby: 0, elevator: 0,
-      teams: {
-        A: { total: 0, lobby: 0, elevator: 0 },
-        B: { total: 0, lobby: 0, elevator: 0 },
-        "": { total: 0, lobby: 0, elevator: 0 }
-      }
-    };
+    return { total: 0, lobby: 0, elevator: 0 };
   }
   /* 기간(년월 from ~ to, 양끝 포함) 집계 — from/to 가 비면 전체 */
   function statAggregate(events, from, to) {
@@ -2348,9 +2456,7 @@ var App = (function () {
       if (to && ym > to) return;
       var b = e.type === "remove" ? res.remove : res.post;
       var kind = e.kind === "elevator" ? "elevator" : "lobby";
-      var t = b.teams[statTeamOf(e.team)];
       b.total++; b[kind]++;
-      t.total++; t[kind]++;
     });
     return res;
   }
@@ -2423,18 +2529,12 @@ var App = (function () {
     h += '<div class="statcard" style="padding:2px 4px 6px">';
     h += '<table class="ptable"><thead><tr><th>구분</th><th>합계</th><th>게시판</th><th>E/V</th></tr></thead><tbody>';
     h += histTableRow("게시", "grp post", agg.post);
-    h += histTableRow("(A조)", "sub", agg.post.teams.A);
-    h += histTableRow("(B조)", "sub", agg.post.teams.B);
-    if (agg.post.teams[""].total) h += histTableRow("(미지정)", "sub", agg.post.teams[""]);
     h += histTableRow("제거", "grp remove", agg.remove);
-    h += histTableRow("(A조)", "sub", agg.remove.teams.A);
-    h += histTableRow("(B조)", "sub", agg.remove.teams.B);
-    if (agg.remove.teams[""].total) h += histTableRow("(미지정)", "sub", agg.remove.teams[""]);
     h += "</tbody></table></div>";
 
     h += '<p class="note">기간은 게시일·제거일이 속한 <b>년월</b> 기준입니다. ' +
-      "한 게시물을 한 구역에 게시하면 그 구역 <b>게시판 종류(공동현관 / E/V)에 1건</b>으로 잡히고, " +
-      "두 곳에 함께 거는 게시물은 양쪽에 각각 잡힙니다. 테스트 게시물은 빠집니다.</p>";
+      "<b>게시물 1건은 게시 1건 / 제거 1건</b>으로 셉니다 — 정문·후문A·후문B 세 구역에 걸어도, 담당자가 여러 명이어도 늘리지 않습니다. " +
+      "게시판과 E/V에 <b>함께 거는 게시물만</b> 게시판 1 + E/V 1로 나눠 잡힙니다. 테스트 게시물은 빠집니다.</p>";
     return h;
   }
 
@@ -2479,16 +2579,14 @@ var App = (function () {
     var s = data.sum;
     h += '<div class="calsum">' +
       '<div class="csrow"><b class="post">게시 ' + num(s.post.total) + '건</b>' +
-      '<span>A조 ' + num(s.post.teams.A.total) + '건</span>' +
-      '<span>B조 ' + num(s.post.teams.B.total) + '건</span>' +
-      (s.post.teams[""].total ? '<span>미지정 ' + num(s.post.teams[""].total) + '건</span>' : "") +
+      '<span>게시판 ' + num(s.post.lobby) + '건</span>' +
+      '<span>E/V ' + num(s.post.elevator) + '건</span>' +
       "</div>" +
       '<div class="csrow"><b class="remove">제거 ' + num(s.remove.total) + '건</b>' +
-      '<span>A조 ' + num(s.remove.teams.A.total) + '건</span>' +
-      '<span>B조 ' + num(s.remove.teams.B.total) + '건</span>' +
-      (s.remove.teams[""].total ? '<span>미지정 ' + num(s.remove.teams[""].total) + '건</span>' : "") +
+      '<span>게시판 ' + num(s.remove.lobby) + '건</span>' +
+      '<span>E/V ' + num(s.remove.elevator) + '건</span>' +
       "</div></div>";
-    h += '<p class="note" style="padding:4px 4px 0">파란색은 게시, 붉은색은 제거 건수입니다. 날짜를 누르면 그날 내역이 아래에 나옵니다.</p>';
+    h += '<p class="note" style="padding:4px 4px 0">파란색은 게시, 붉은색은 제거 건수입니다. 게시물 1건은 1건으로 셉니다(구역·담당 인원 수로 늘리지 않음). 날짜를 누르면 그날 내역이 아래에 나옵니다.</p>';
     h += "</div>";
 
     if (HIST.day) h += renderHistoryDay(data, HIST.day);
@@ -2506,16 +2604,19 @@ var App = (function () {
     }
     var items = day.items.slice().sort(function (a, b) {
       if (a.type !== b.type) return a.type === "post" ? -1 : 1;
-      if (a.zone !== b.zone) return a.zone < b.zone ? -1 : 1;
+      if (a.title !== b.title) return a.title < b.title ? -1 : 1;
       return a.kind === b.kind ? 0 : (a.kind === "lobby" ? -1 : 1);
     });
     h += '<div class="evlist">';
     items.forEach(function (e) {
+      var zs = (e.zones || []).map(zoneName);
+      var where = zs.length > 1 ? zs[0] + " 외 " + (zs.length - 1) + "곳" : (zs[0] || "");
       h += '<div class="ev-row">' +
         '<span class="ev-badge ' + (e.type === "post" ? "post" : "remove") + '">' +
         (e.type === "post" ? "게시" : "제거") + "</span>" +
         '<span class="ev-main"><b>' + esc(e.title || e.noticeId) + "</b>" +
-        '<small>' + esc(STAT_KIND_LABEL[e.kind]) + " · " + esc(zoneName(e.zone)) +
+        '<small>' + esc(STAT_KIND_LABEL[e.kind]) +
+        (where ? " · " + esc(where) : "") +
         (e.by ? " · " + esc(e.by) : "") +
         (e.team ? " (" + esc(e.team) + "조)" : "") + "</small></span>" +
         "</div>";
@@ -3419,6 +3520,9 @@ var App = (function () {
       else if (act === "chk") {
         toggleZoneCheck(el.dataset.id, el.dataset.kind, el.dataset.zone, el.dataset.team);
       }
+      else if (act === "chk-ext") {
+        toggleExternalCheck(el.dataset.id, el.dataset.kind, el.dataset.zone);
+      }
       else if (act === "chk-undo") {
         toggleZoneCheck(el.dataset.id, el.dataset.kind, el.dataset.zone, el.dataset.team);
       }
@@ -3676,9 +3780,13 @@ var App = (function () {
           nfEnsure();
           NF.photo = data;
           var prev = document.getElementById("nfPhotoPrev");
-          if (prev) prev.innerHTML = '<img src="' + data + '" alt="">';
+          if (prev) {
+            var nb = document.createElement("div");
+            nb.innerHTML = nfPhotoPrevHtml();
+            prev.parentNode.replaceChild(nb.firstChild, prev);
+          }
           var info = document.getElementById("nfPhotoInfo");
-          if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB";
+          if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB · 사진을 누르면 크게 보기";
           toast("사진 준비 완료 (" + kb + "KB)");
         });
         return;
@@ -3842,6 +3950,12 @@ var App = (function () {
       },
       setHist: function (o) { Object.keys(o || {}).forEach(function (k) { HIST[k] = o[k]; }); },
       html: function () { return renderHistory(); }
+    },
+    /* 게시물 배포(게시·제거 체크) 화면 검증용 */
+    deploy: {
+      card: taskCard, chk: chkCell, ext: extCell,
+      extTeam: EXT_TEAM, extLabel: EXT_LABEL,
+      team: checkTeamOf, useful: function () { return renderDeploy(); }
     },
     /* 게시물 생성·이동 검증용 */
     create: {

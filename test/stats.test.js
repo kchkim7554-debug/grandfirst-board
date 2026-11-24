@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /* 게시물 통계(누적조회 · 년월별) 집계 검증 — 실 DB에 쓰지 않고 순수 로직만 돌린다.
-   실행: python3 test/run_quickjs.py   또는   node test/stats.test.js  (board/ 폴더에서) */
+   실행: python3 test/run_quickjs.py   또는   node test/stats.test.js  (board/ 폴더에서)
+
+   집계 기준 (2026-11-25 개편): 게시물 1건 = 게시 1건 / 제거 1건.
+   구역(정문·후문A·후문B) 수나 담당 인원 수로 곱하지 않는다.
+   게시판과 E/V에 함께 거는 게시물만 게시판 1 + E/V 1 = 2건. */
 "use strict";
 (function () {
 var FAC = globalThis.__BOARD_FAC || null;
@@ -46,7 +50,7 @@ function notice(id, o) {
   Object.keys(o || {}).forEach(function (k) { n[k] = o[k]; });
   return n;
 }
-var N1 = notice("N1", {
+var N1 = notice("N1", {                                   // 구역 2곳 게시 → 그래도 게시 1건
   targets: [{ board: "lobby", buildings: "all", floors: ["1층"], slot: "03", order: 1 }],
   postedAt: "2026-11-05",
   attach: {
@@ -55,17 +59,17 @@ var N1 = notice("N1", {
   },
   detach: { front: { by: "나", team: "B", at: ts(2026, 11, 20, 7, 5) } }
 });
-var N2 = notice("N2", {                                    // E/V · 게시일 없음 → 게시 체크 시각 사용
+var N2 = notice("N2", {                                   // E/V · 게시일 없음 → 게시 체크 시각 사용
   targets: [{ board: "elevator", buildings: [101], elevators: "all", slot: "05", order: 1 }],
   attach: { front: { by: "가", team: "A", at: ts(2026, 11, 18, 23, 30) } }   // 한국시간 11-18 23:30
 });
-var N3 = notice("N3", {                                    // 테스트 건 → 집계 제외
+var N3 = notice("N3", {                                   // 테스트 건 → 집계 제외
   isTest: true,
   targets: [{ board: "lobby", buildings: "all", slot: "01", order: 1 }],
   postedAt: "2026-11-01",
   attach: { front: { team: "A", at: ts(2026, 11, 1) }, backA: { team: "B", at: ts(2026, 11, 1) } }
 });
-var N4 = notice("N4", {                                    // 게시판 + E/V 동시 → 합계 2건
+var N4 = notice("N4", {                                   // 게시판 + E/V 동시 → 합계 2건 (유일한 2건 예외)
   targets: [
     { board: "lobby", buildings: [101], floors: ["1층"], slot: "02", order: 1 },
     { board: "elevator", buildings: [101], elevators: "all", slot: "02", order: 1 }
@@ -73,7 +77,7 @@ var N4 = notice("N4", {                                    // 게시판 + E/V �
   postedAt: "2026-10-31",
   attach: { front: { by: "가", team: "A", at: ts(2026, 11, 2) } }
 });
-var N5 = notice("N5", {                                    // 제거 체크 시각 없음 → 보관일 사용
+var N5 = notice("N5", {                                   // 제거 체크 시각 없음 → 보관일 사용
   targets: [{ board: "lobby", buildings: [109], floors: ["1층"], slot: "04", order: 1 }],
   postedAt: "2026-09-10",
   attach: { backA: { by: "나", team: "B", at: ts(2026, 9, 10) } },
@@ -84,82 +88,83 @@ var FIX = [N1, N2, N3, N4, N5];
 var EV = S.events(clone(FIX), F2);
 
 /* ---------- 1. 게시·제거 이벤트 계산 ---------- */
-console.log("\n[1] 게시·제거 이벤트 계산");
+console.log("\n[1] 게시·제거 이벤트 계산 (게시물 1건 = 1건)");
 {
   var posts = EV.filter(function (e) { return e.type === "post"; });
   var removes = EV.filter(function (e) { return e.type === "remove"; });
-  eq("게시 이벤트 6건 (N1 2 + N2 1 + N4 2 + N5 1 · 테스트 N3 제외)", posts.length, 6);
+  eq("게시 이벤트 5건 (N1 1 + N2 1 + N4 2 + N5 1 · 테스트 N3 제외)", posts.length, 5);
   eq("제거 이벤트 2건 (N1 1 + N5 1)", removes.length, 2);
   ok("테스트 게시물(N3) 은 이벤트에 없음", posts.every(function (e) { return e.noticeId !== "N3"; }));
 
   var n1 = posts.filter(function (e) { return e.noticeId === "N1"; });
-  eq("N1 은 구역 2곳 → 게시 2건", n1.length, 2);
-  ok("N1 게시일은 postedAt(2026-11-05) 우선", n1.every(function (e) { return e.date === "2026-11-05"; }),
-    JSON.stringify(n1.map(function (e) { return e.date; })));
-  eq("N1 조는 체크 기록의 team", n1.map(function (e) { return e.team; }).sort(), ["A", "B"]);
+  eq("N1 은 구역 2곳에 걸어도 게시 1건", n1.length, 1);
+  eq("N1 게시일은 postedAt(2026-11-05) 우선", n1[0].date, "2026-11-05");
+  eq("N1 구역 목록은 두 곳을 남긴다", n1[0].zones, ["front", "backA"]);
+  eq("N1 조가 A·B로 섞이면 조 표시 없음('')", n1[0].team, "");
+  eq("N1 담당자는 이름 + 외 N명", n1[0].by, "가 외 1명");
 
   var n2 = posts.filter(function (e) { return e.noticeId === "N2"; })[0];
   eq("N2 게시일은 게시 체크 시각(한국시간 2026-11-18)", n2.date, "2026-11-18");
   eq("N2 는 E/V 1건", n2.kind, "elevator");
+  eq("N2 담당자 한 명", n2.by, "가");
 
   var n4 = posts.filter(function (e) { return e.noticeId === "N4"; });
-  eq("N4 는 게시판 1 + E/V 1", n4.map(function (e) { return e.kind; }).sort(), ["elevator", "lobby"]);
+  eq("N4 는 게시판 1 + E/V 1 (함께 거는 게시물만 2건)", n4.map(function (e) { return e.kind; }).sort(), ["elevator", "lobby"]);
+
+  var n5 = posts.filter(function (e) { return e.noticeId === "N5"; });
+  eq("N5 는 게시 1건 (구역 1곳)", n5.length, 1);
 
   var n5r = removes.filter(function (e) { return e.noticeId === "N5"; })[0];
   eq("N5 제거일은 보관일(archivedAt)", n5r.date, "2026-11-19");
   eq("N5 조 기록이 없으면 미지정('')", n5r.team, "");
 
   var n1r = removes.filter(function (e) { return e.noticeId === "N1"; })[0];
-  eq("N1 제거는 제거 체크 구역(정문) 1건 · B조", [n1r.zone, n1r.team, n1r.date], ["front", "B", "2026-11-20"]);
+  eq("N1 제거는 1건 · B조 · 2026-11-20", [n1r.team, n1r.date, n1r.zones], ["B", "2026-11-20", ["front"]]);
+  eq("제거도 구역 수로 곱하지 않는다 (N1 정문 1곳만 제거해도 1건)", removes.filter(function (e) { return e.noticeId === "N1"; }).length, 1);
 }
 
 /* ---------- 2. 기간(년월) 집계 ---------- */
 console.log("\n[2] 누적조회 — 기간 집계");
 {
   var all = S.aggregate(EV, "", "");
-  eq("전체 게시 합계 (N1 2 + N2 1 + N4 2 + N5 1)", all.post.total, 6);
+  eq("전체 게시 합계 5건 (N1 1 + N2 1 + N4 2 + N5 1)", all.post.total, 5);
   eq("전체 게시 = 게시판 + E/V", all.post.lobby + all.post.elevator, all.post.total);
-  eq("전체 제거 합계", all.remove.total, 2);
-  eq("게시 A조 4건 (N1 정문 + N2 + N4 2건)", all.post.teams.A.total, 4);
-  eq("게시 B조 2건 (N1 후문A + N5 후문A)", all.post.teams.B.total, 2);
+  eq("전체 게시판 3건 (N1 · N4 · N5)", all.post.lobby, 3);
+  eq("전체 E/V 2건 (N2 · N4)", all.post.elevator, 2);
+  eq("전체 제거 합계 2건", all.remove.total, 2);
+  ok("집계 결과에 조별 항목(teams)이 없다 — 사람 수로 나누지 않는다", all.post.teams === undefined && all.remove.teams === undefined);
 
   var oct = S.aggregate(EV, "2026-10", "2026-10");
   eq("2026-10 게시 2건 (N4 게시판·E/V, postedAt 10-31)", [oct.post.total, oct.post.lobby, oct.post.elevator], [2, 1, 1]);
   eq("2026-10 제거 0건", oct.remove.total, 0);
 
   var nov = S.aggregate(EV, "2026-11", "2026-11");
-  eq("2026-11 게시 3건 (N1 2 + N2 1)", nov.post.total, 3);
+  eq("2026-11 게시 2건 (N1 + N2)", nov.post.total, 2);
   eq("2026-11 제거 2건 (N1 + N5 보관일)", nov.remove.total, 2);
 
+  var sep = S.aggregate(EV, "2026-09", "2026-09");
+  eq("2026-09 게시 1건 (N5)", sep.post.total, 1);
+
   var wide = S.aggregate(EV, "2026-09", "2026-11");
-  eq("2026-09 ~ 2026-11 은 전체와 같음(양끝 포함)", [wide.post.total, wide.remove.total], [6, 2]);
+  eq("2026-09 ~ 2026-11 은 전체와 같음(양끝 포함)", [wide.post.total, wide.remove.total], [5, 2]);
 
   var none = S.aggregate(EV, "2025-01", "2025-12");
   eq("기간 밖은 0건", [none.post.total, none.remove.total], [0, 0]);
 
   var bad = S.aggregate(EV, "2026-12", "2026-01");
   eq("from > to 여도 계산은 유지(빈 결과)", bad.post.total, 0);
-
-  /* 조별 합 = 전체 합 */
-  ["post", "remove"].forEach(function (k) {
-    var b = all[k];
-    var t = b.teams.A.total + b.teams.B.total + b.teams[""].total;
-    eq(k + ": A + B + 미지정 = 합계", t, b.total);
-    eq(k + ": A조 항목 = 게시판 + E/V",
-      b.teams.A.lobby + b.teams.A.elevator, b.teams.A.total);
-  });
 }
 
 /* ---------- 3. 년월별 (날짜별) 집계 ---------- */
 console.log("\n[3] 년월별 — 날짜별 집계");
 {
   var m11 = S.byDay(EV, "2026-11");
-  eq("2026-11-05 게시 2건 (N1 정문·후문A)", m11.days["2026-11-05"].post, 2);
+  eq("2026-11-05 게시 1건 (N1 두 구역 → 1건)", m11.days["2026-11-05"].post, 1);
   eq("2026-11-18 게시 1건 (N2 E/V)", m11.days["2026-11-18"].post, 1);
   eq("2026-11-20 제거 1건", m11.days["2026-11-20"].remove, 1);
   eq("2026-11-19 제거 1건 (N5 보관일)", m11.days["2026-11-19"].remove, 1);
   ok("2026-11-06 은 기록 없음", !m11.days["2026-11-06"]);
-  eq("월 합계 = 날짜별 합", m11.sum.post.total, 3);
+  eq("월 합계 = 날짜별 합", m11.sum.post.total, 2);
   eq("날짜별 items 합 = 월 합계",
     Object.keys(m11.days).reduce(function (a, d) { return a + m11.days[d].items.length; }, 0),
     m11.sum.post.total + m11.sum.remove.total);
@@ -179,21 +184,26 @@ console.log("\n[4] 실 DB 스냅샷 집계");
   var liveNotices = Object.keys(LIVE).map(function (k) { return LIVE[k]; });
   var liveEv = S.events(liveNotices, FAC);
   var attached = liveNotices.filter(function (n) { return n.attach && Object.keys(n.attach).length; });
-  var lobbyN = attached.filter(function (n) { return (n.targets[0].board || "lobby") === "lobby"; }).length;
-  var elevN = attached.length - lobbyN;
+  function kindOf(n) { return (n.targets[0].board || "lobby") === "elevator" ? "elevator" : "lobby"; }
+  var lobbyN = attached.filter(function (n) { return kindOf(n) === "lobby"; }).length;
+  var elevN = attached.filter(function (n) { return kindOf(n) === "elevator"; }).length;
   var agg = S.aggregate(liveEv, "", "");
-  eq("게시 건수 = 게시된 게시물 × 구역 3곳", agg.post.total, attached.length * 3);
-  eq("게시판 건수 = 공동현관 게시물 × 3", agg.post.lobby, lobbyN * 3);
-  eq("E/V 건수 = 엘리베이터 게시물 × 3", agg.post.elevator, elevN * 3);
+  eq("게시 건수 = 게시된 게시물 수 (구역 3곳으로 곱하지 않음)", agg.post.total, attached.length);
+  eq("게시판 건수 = 공동현관 게시물 수", agg.post.lobby, lobbyN);
+  eq("E/V 건수 = 엘리베이터 게시물 수", agg.post.elevator, elevN);
+  eq("구역 3곳을 곱한 옛 값과 다름", agg.post.total === attached.length * 3, false);
   eq("스냅샷에는 제거 기록이 없음", agg.remove.total, 0);
   ok("모든 이벤트에 날짜가 있음", liveEv.every(function (e) { return /^\d{4}-\d{2}-\d{2}$/.test(e.date); }));
-  ok("모든 이벤트에 구역·분류가 있음", liveEv.every(function (e) {
+  ok("모든 이벤트에 분류·구역이 있음", liveEv.every(function (e) {
     return (e.kind === "lobby" || e.kind === "elevator") && ["front", "backA", "backB"].indexOf(e.zone) >= 0;
   }));
-  var byTeam = {};
-  liveEv.forEach(function (e) { if (e.type === "post") byTeam[e.team || "?"] = (byTeam[e.team || "?"] || 0) + 1; });
+  ok("게시물 하나당 이벤트는 게시판 종류 수(1~2) 이하", (function () {
+    var byId = {};
+    liveEv.forEach(function (e) { if (e.type === "post") byId[e.noticeId] = (byId[e.noticeId] || 0) + 1; });
+    return Object.keys(byId).every(function (id) { return byId[id] <= 2; });
+  })());
   console.log("    실 스냅샷 게시: 합계 " + agg.post.total + " (게시판 " + agg.post.lobby + " / E/V " + agg.post.elevator +
-    ") · A조 " + (byTeam.A || 0) + " · B조 " + (byTeam.B || 0));
+    ") · 게시된 게시물 " + attached.length + "건");
 }
 
 /* ---------- 5. 화면 렌더 (탭·달력·요약) ---------- */
@@ -203,7 +213,9 @@ console.log("\n[5] 화면 렌더");
   var cum = S.html();
   ok("누적조회 탭: 탭 3개", ["누적조회", "년월별", "처리 이력"].every(function (t) { return cum.indexOf(t) >= 0; }));
   ok("누적조회 탭: 표 머리 구분/합계/게시판/E-V", ["<th>구분</th>", "합계", "게시판", "E/V"].every(function (t) { return cum.indexOf(t) >= 0; }));
-  ok("누적조회 탭: 게시·제거 행과 조별 행", cum.indexOf("(A조)") >= 0 && cum.indexOf("(B조)") >= 0 && cum.indexOf(">게시<") >= 0);
+  ok("누적조회 탭: 게시·제거 행", cum.indexOf(">게시<") >= 0 && cum.indexOf(">제거<") >= 0);
+  ok("누적조회 탭: A조·B조 하위 행 없음 (사람 수로 나누지 않음)", cum.indexOf("(A조)") < 0 && cum.indexOf("(B조)") < 0 && cum.indexOf("(미지정)") < 0);
+  ok("누적조회 탭: 1건=1건 안내 문구", cum.indexOf("게시물 1건은 게시 1건") >= 0);
   ok("누적조회 탭: 년월 입력 2개", (cum.match(/type="month"/g) || []).length === 2);
   ok("용어는 게시/제거 (부착/탈착 없음)", cum.indexOf("부착") < 0 && cum.indexOf("탈착") < 0);
 
@@ -213,11 +225,13 @@ console.log("\n[5] 화면 렌더");
   ok("년월별 탭: 요일 머리", ["일", "월", "화", "수", "목", "금", "토"].every(function (w) { return mon.indexOf(">" + w + "<") >= 0; }));
   eq("년월별 탭: 날짜 셀 30개", (mon.match(/data-act="hist-day"/g) || []).length, 30);
   ok("년월별 탭: 파란 게시 · 붉은 제거 표기", mon.indexOf("cal-p") >= 0 && mon.indexOf("cal-r") >= 0);
-  ok("년월별 탭: 하단 요약(게시 · A조/B조)", /게시 [0-9,]+건/.test(mon) && /A조 [0-9,]+건/.test(mon) && /B조 [0-9,]+건/.test(mon));
+  ok("년월별 탭: 하단 요약(게시 · 게시판/E/V)", /게시 [0-9,]+건/.test(mon) && /게시판 [0-9,]+건/.test(mon) && /E\/V [0-9,]+건/.test(mon));
+  ok("년월별 탭: A조·B조 요약 없음", !/A조 [0-9,]+건/.test(mon) && !/B조 [0-9,]+건/.test(mon));
 
   S.setHist({ day: "2026-11-05" });
   var dayHtml = S.html();
   ok("날짜 선택 시 그날 상세 표시", dayHtml.indexOf("2026년 11월 5일") >= 0 && dayHtml.indexOf("ev-row") >= 0);
+  ok("날짜 상세에 구역 표시(정문 외 N곳)", dayHtml.indexOf("정문 외") >= 0);
   S.setHist({ day: "" });
 }
 

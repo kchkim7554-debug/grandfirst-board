@@ -83,6 +83,12 @@ console.log("\n[5] [생성] 화면 — 사진 · 동/라인/게시판/E/V · 생
   var h = C.form();
   ok("사진 선택·카메라 입력", has(h, 'id="nfPhoto"') && has(h, 'id="nfCam"') && has(h, "카메라"));
   ok("첫 page만 안내", has(h, "첫 page만"));
+  ok("사진이 없을 때는 사진 없음 안내", has(h, "사진<br>없음"));
+  C.state().photo = "data:image/jpeg;base64,AAAA";
+  var hp = C.form();
+  ok("올린 사진을 누르면 확대(라이트박스 zoom)", has(hp, 'data-act="zoom"') && has(hp, 'data-src="data:image/jpeg;base64,AAAA"') && has(hp, "확대"));
+  ok("확대 안내 문구", has(hp, "누르면 크게 보기"));
+  C.state().photo = null;
   ok("동 전체 칩 + 24동", has(h, "전체 " + FAC.buildings.length + "동") && has(h, ">101<") && has(h, ">124<"));
   ok("라인 전체 + 3개 라인", has(h, "1·2라인") && has(h, "3·5라인") && has(h, "1·2·3라인"));
   ok("게시판 전체 + 3개 층", has(h, ">전체<") && has(h, ">1층<") && has(h, ">지하1층<") && has(h, ">지하2층<"));

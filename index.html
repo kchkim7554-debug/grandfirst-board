@@ -300,7 +300,10 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .chk.on .zn,.chk.on .nm{color:var(--green);}
 .chk.na{background:#f6f8fa;border-style:dashed;opacity:.65;}
 .chk.na .box{color:#c3ccd6;}
-.chk.undone .box{color:var(--orange);}
+.team-tag.ext{background:#fdf1e3;color:#9a5b12;}
+.chk.ext{background:#fdf1e3;border-color:#f0cf9e;}
+.chk.ext .box{color:#b4661a;}
+.chk.ext .zn,.chk.ext .nm{color:#9a5b12;}
 .task-foot{display:flex;gap:6px;margin-top:8px;}
 
 /* ---------- forms ---------- */
@@ -331,6 +334,14 @@ html.fs-lg .slot-title{font-size:.62rem;}
   font-size:.6rem;color:var(--muted);text-align:center;line-height:1.3;padding:0;
 }
 .photo-prev img{width:100%;height:100%;object-fit:cover;display:block;}
+/* 업로드 사진 미리보기 — 누르면 확대 */
+button.photo-prev{position:relative;cursor:zoom-in;padding:0;font-family:inherit;}
+button.photo-prev:active{opacity:.85;}
+button.photo-prev.z{border-color:var(--blue-line);}
+button.photo-prev .z-tag{
+  position:absolute;right:3px;bottom:3px;background:rgba(9,18,30,.72);color:#fff;
+  font-size:.52rem;font-weight:800;border-radius:5px;padding:2px 4px;letter-spacing:.02em;
+}
 .photo-ctl{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px;}
 .form-actions{display:flex;gap:8px;margin-top:14px;}
 .form-actions .btn{flex:1 1 0;}
@@ -887,6 +898,6 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261121g"></script>
+<script src="app.js?v=20261125a"></script>
 </body>
 </html>
