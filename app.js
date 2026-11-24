@@ -1429,7 +1429,7 @@ var App = (function () {
   function nfReset() {
     if (typeof ocrSeq === "number") ocrSeq++;   // 이전 사진의 OCR 결과가 새 폼에 들어오지 않게
     NF = {
-      photo: null, title: "",
+      photo: null, ocrImg: "", title: "",
       ocrState: "idle", ocrTitle: "", ocrApplied: false, ocrStage: "", ocrPct: 0,
       scope: "all", buildings: [],
       lines: "all",
@@ -3078,6 +3078,69 @@ var App = (function () {
   var ocrLibPromise = null;
   var ocrSeq = 0;
 
+  /* OCR 입력용 사진 — 저장용(900px)과 따로, 원본에서 **상단 35%(머리글+제목 영역)**만
+     가로 1600px 이상으로 잘라 그레이스케일·대비 보정한 JPEG를 만든다.
+     (작은 「제 목 :」 글씨가 뭉개지지 않고, 아래 표를 읽지 않아 오히려 빠르고 정확하다) */
+  var OCR_CROP_TOP = 0.35;
+  var OCR_CROP_MINW = 1600;
+  var OCR_CROP_MAXW = 2200;
+  function ocrCropImage(file, cb) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    var done = false;
+    function finish(data) {
+      if (done) return;
+      done = true;
+      try { URL.revokeObjectURL(url); } catch (e) {}
+      cb(data || "");
+    }
+    img.onload = function () {
+      try {
+        var W = img.width || 0, H = img.height || 0;
+        if (!W || !H) { finish(""); return; }
+        var scale = Math.min(OCR_CROP_MAXW, Math.max(OCR_CROP_MINW, W)) / W;
+        var cw = Math.max(1, Math.round(W * scale));
+        var ch = Math.max(1, Math.round(H * OCR_CROP_TOP));
+        var oh = Math.max(1, Math.round(ch * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = cw; canvas.height = oh;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, oh);
+        ctx.drawImage(img, 0, 0, W, ch, 0, 0, cw, oh);
+        /* 그레이스케일 + 대비 보정: 형광등 아래 휴대폰 사진의 회색 배경을 흰색에 가깝게 */
+        var id = ctx.getImageData(0, 0, cw, oh);
+        var d = id.data, p, v;
+        var hist = new Uint32Array(256);
+        for (p = 0; p < d.length; p += 4) {
+          v = (d[p] * 0.299 + d[p + 1] * 0.587 + d[p + 2] * 0.114) | 0;
+          d[p] = d[p + 1] = d[p + 2] = v;
+          hist[v]++;
+        }
+        var total = cw * oh;
+        function pct(q) {
+          var acc = 0, t = total * q;
+          for (var i = 0; i < 256; i++) { acc += hist[i]; if (acc >= t) return i; }
+          return 255;
+        }
+        var lo = pct(0.02), hi = pct(0.98);
+        if (hi - lo < 16) { lo = 0; hi = 255; }
+        var lut = new Uint8Array(256);
+        for (var u = 0; u < 256; u++) {
+          var x = (u - lo) * 255 / (hi - lo);
+          x = (x - 120) * 1.35 + 120;            // 가운데 기준 대비 — 글자는 진하게, 종이는 흰색으로
+          lut[u] = x < 0 ? 0 : (x > 255 ? 255 : x);
+        }
+        for (p = 0; p < d.length; p += 4) { var g = lut[d[p]]; d[p] = d[p + 1] = d[p + 2] = g; }
+        ctx.putImageData(id, 0, 0);
+        finish(canvas.toDataURL("image/jpeg", 0.9));
+      } catch (e) {
+        finish("");
+      }
+    };
+    img.onerror = function () { finish(""); };
+    img.src = url;
+  }
+
   /* OCR 결과 줄 → 제목 후보 (DOM 없이 돌아가는 순수 함수 · 테스트 대상) */
   function ocrClean(s) {
     return String(s == null ? "" : s)
@@ -3095,6 +3158,22 @@ var App = (function () {
     return t;
   }
   function ocrFlat(s) { return String(s || "").replace(/\s+/g, ""); }
+  /* 머리글 — 단지 이름·「안 내 문」·「공 고 문」은 제목이 아니다(무조건 제외) */
+  function ocrHeader(s) {
+    var flat = ocrFlat(s);
+    if (!flat) return false;
+    if (/(풍경채|풍경재|제일풍경채)/.test(flat)) return true;
+    if (/(안내문|공고문|공지사항|알림마당)/.test(flat)) return true;
+    return false;
+  }
+  /* 결재란(담당·과장·소장 …)의 짧은 단어·숫자는 제목이 아니다 */
+  function ocrApproval(s) {
+    var flat = ocrFlat(s);
+    if (!flat) return false;
+    if (/^(담당|담당자|과장|소장|팀장|주임|기사|반장|책임|결재|결재란|시설과장|관리과장|관리소장|입주자대표회의|대표회의|관리사무소)$/.test(flat)) return true;
+    if (flat.length <= 8 && /(담당|과장|소장|결재)/.test(flat)) return true;
+    return false;
+  }
   function ocrGeneric(s) {
     var flat = ocrFlat(s);
     if (/^(안내문|공고문?|알림마당|알림|게시문|통지문?|안내|공지|공지사항)$/.test(flat)) return true;
@@ -3119,53 +3198,89 @@ var App = (function () {
   function ocrFooter(s, y, pageH) {
     return !!pageH && y > pageH * 0.6 && /(관리사무소|아파트|APT|입주자대표|대표회의|경비실)/i.test(String(s || ""));
   }
-  /* payload: { lines:[{text,height,top,confidence}], text, height } */
+  /* 「제 목 :」 라벨이 있으면 그 뒤 문구를, 라벨만 있으면 바로 다음 줄을 제목으로 본다 */
+  function ocrLabelTitle(L, i) {
+    var t = L[i] && L[i].t;
+    if (!t) return "";
+    var m = t.match(/^제\s*목\s*[:：]?\s*(.*)$/) || t.match(/제\s*목\s*[:：]\s*(.*)$/);
+    if (!m) return "";
+    var rest = ocrClean(m[1]);
+    if (rest.length >= 2 && !ocrMostlyDigits(rest) && !ocrGeneric(rest)) return ocrTrimTitle(rest);
+    var nx = L[i + 1];
+    if (nx && nx.t.length >= 2 && !ocrGeneric(nx.t) && !ocrHeader(nx.t) && !ocrApproval(nx.t) &&
+        !ocrMostlyDigits(nx.t) && !ocrTableish(nx.t)) return ocrTrimTitle(nx.t);
+    return "";
+  }
+  /* payload: { lines:[{text,height,top,confidence}], text, height, crop } */
   function ocrTitleCandidate(payload) {
     var src = (payload && payload.lines) || [];
     var L = [];
-    src.forEach(function (l, i) {
+    src.forEach(function (l) {
       var t = ocrClean(l && l.text);
       if (!t) return;
-      L.push({ t: t, h: Number(l.height) || 0, y: Number(l.top) || 0, c: Number(l.confidence) || 0, i: i });
+      L.push({ t: t, h: Number(l.height) || 0, y: Number(l.top) || 0, c: Number(l.confidence) || 0, k: L.length });
     });
     if (!L.length && payload && payload.text) {
-      String(payload.text).split(/\r?\n/).forEach(function (ln, i) {
+      String(payload.text).split(/\r?\n/).forEach(function (ln) {
         var t = ocrClean(ln);
-        if (t) L.push({ t: t, h: 0, y: i, c: 0, i: i });
+        if (t) L.push({ t: t, h: 0, y: L.length, c: 0, k: L.length });
       });
     }
     if (!L.length) return "";
-    /* 1) 「제 목 : …」처럼 라벨이 찍힌 줄을 가장 먼저 믿는다 */
-    for (var i = 0; i < L.length; i++) {
-      var m = L[i].t.match(/^제\s*목\s*[:：]?\s*(.*)$/);
-      if (!m) continue;
-      var rest = ocrClean(m[1]);
-      if (rest.length >= 2 && !ocrMostlyDigits(rest) && !ocrGeneric(rest)) return ocrTrimTitle(rest);
-      var nx = L[i + 1];
-      if (nx && nx.t.length >= 2 && !ocrGeneric(nx.t) && !ocrMostlyDigits(nx.t) && !ocrTableish(nx.t)) return ocrTrimTitle(nx.t);
-    }
     var pageH = Number(payload && payload.height) || 0;
-    var usable = L.filter(function (x) {
+    var crop = !!(payload && payload.crop);   // 위쪽만 잘라 넣은 입력: 하단(0.62·관리사무소) 규칙은 쓰지 않는다
+    /* 0) 머리글(「안 내 문」·단지 이름) 위치 — 그 줄은 건너뛰고 그 아래부터 찾는다 */
+    var anchor = -1;
+    for (var ai = 0; ai < L.length; ai++) {
+      if (!ocrHeader(L[ai].t)) continue;
+      if (pageH && L[ai].y > pageH * 0.5) continue;    // 본문 가운데의 같은 낱말은 머리글로 보지 않는다
+      anchor = ai;
+      break;
+    }
+    /* 1) 「제 목 : …」 라벨 — 머리글 아래를 먼저, 없으면 나머지 줄 */
+    var order = [];
+    for (var oi = anchor + 1; oi < L.length; oi++) order.push(oi);
+    for (var oj = 0; oj <= anchor; oj++) order.push(oj);
+    for (var ok = 0; ok < order.length; ok++) {
+      var got = ocrLabelTitle(L, order[ok]);
+      if (got) return got;
+    }
+    /* 2) 라벨이 없으면 머리글 아래의 실질 제목 줄(표·날짜·결재란·머리글 제외) */
+    function keep(x) {
       if (x.t.length < 2) return false;
+      if (ocrHeader(x.t)) return false;
       if (ocrGeneric(x.t)) return false;
+      if (ocrApproval(x.t)) return false;
       if (ocrMostlyDigits(x.t)) return false;
       if (ocrTableish(x.t)) return false;
       if (x.c && x.c < 35) return false;
-      if (pageH && x.y > pageH * 0.62) return false;
-      if (ocrFooter(x.t, x.y, pageH)) return false;
+      if (!crop && pageH && x.y > pageH * 0.62) return false;
+      if (!crop && ocrFooter(x.t, x.y, pageH)) return false;
       return true;
-    });
+    }
+    var usable = L.filter(keep);
     if (!usable.length) {
       usable = L.filter(function (x) {
-        return x.t.length >= 2 && !ocrGeneric(x.t) && !ocrMostlyDigits(x.t);
+        return x.t.length >= 2 && !ocrHeader(x.t) && !ocrGeneric(x.t) && !ocrMostlyDigits(x.t) && !ocrApproval(x.t);
       });
     }
     if (!usable.length) return "";
-    var maxH = 0;
-    usable.forEach(function (x) { if (x.h > maxH) maxH = x.h; });
-    var pool = maxH > 0 ? usable.filter(function (x) { return x.h >= maxH * 0.62; }) : usable;
-    pool.sort(function (a, b) { return (b.h - a.h) || (a.y - b.y) || (a.i - b.i); });
-    var best = pool[0];
+    var best = null;
+    var below = anchor >= 0 ? usable.filter(function (x) { return x.k > anchor; }) : [];
+    if (below.length) {
+      /* 머리글 바로 아래에서 제목 크기(가장 큰 글씨의 62% 이상)인 줄 중 맨 위 */
+      var maxB = 0;
+      below.forEach(function (x) { if (x.h > maxB) maxB = x.h; });
+      var poolB = maxB > 0 ? below.filter(function (x) { return x.h >= maxB * 0.62; }) : below;
+      poolB.sort(function (a, b) { return (a.y - b.y) || (b.h - a.h) || (a.k - b.k); });
+      best = poolB[0];
+    } else {
+      var maxH = 0;
+      usable.forEach(function (x) { if (x.h > maxH) maxH = x.h; });
+      var pool = maxH > 0 ? usable.filter(function (x) { return x.h >= maxH * 0.62; }) : usable;
+      pool.sort(function (a, b) { return (b.h - a.h) || (a.y - b.y) || (a.k - b.k); });
+      best = pool[0];
+    }
     var out = best.t;
     /* 같은 크기로 바로 아래 이어진 줄은 제목이 두 줄인 경우로 보고 붙인다 */
     var after = null;
@@ -3306,15 +3421,18 @@ var App = (function () {
     }).then(function (w) {
       worker = w;
       /* 한글만으로 인식하면 「제 목 : …」 줄을 훨씬 잘 읽는다(eng를 섞으면 한글이 깨진다).
-         PSM 3(자동 페이지 분할)도 함께 지정한다. */
+         PSM 3(자동 페이지 분할)도 함께 지정한다.
+         입력은 상단 35% 고해상도 크롭(NF.ocrImg)을 우선 쓰고, 없으면 저장 사진으로 돌린다. */
+      var src = NF.ocrImg || NF.photo;
+      NF.ocrCrop = !!NF.ocrImg;
       return w.setParameters({ tessedit_pageseg_mode: "3" }).then(function () {
-        return w.recognize(NF.photo, {}, { blocks: true, text: true });
+        return w.recognize(src, {}, { blocks: true, text: true });
       });
     }).then(function (r) {
       var data = (r && r.data) || {};
       var lines = ocrLinesFrom(data);
       var pageH = ocrPageHeight(lines, data);
-      var cand = ocrTitleCandidate({ lines: lines, text: data.text || "", height: pageH });
+      var cand = ocrTitleCandidate({ lines: lines, text: data.text || "", height: pageH, crop: !!NF.ocrCrop });
       if (seq !== ocrSeq) return;
       var el = document.getElementById("nfTitle");
       var typed = el ? el.value : (NF.title || "");
@@ -3875,7 +3993,7 @@ var App = (function () {
       else if (act === "nf-photo") { var npi = document.getElementById("nfPhoto"); if (npi) npi.click(); }
       else if (act === "nf-cam") { var nci = document.getElementById("nfCam"); if (nci) nci.click(); }
       else if (act === "nf-photo-clear") {
-        nfEnsure(); NF.photo = null;
+        nfEnsure(); NF.photo = null; NF.ocrImg = "";
         ocrSeq++;                                  // 진행 중인 OCR 결과 버리기
         NF.ocrState = "idle"; NF.ocrTitle = ""; NF.ocrApplied = false; NF.ocrStage = ""; NF.ocrPct = 0;
         refreshCreate(); toast("사진을 지웠습니다");
@@ -4068,19 +4186,25 @@ var App = (function () {
         e.target.value = "";
         if (!nfFile) return;
         toast("사진 압축 중…");
-        compressImage(nfFile, function (data, kb) {
+        nfEnsure();
+        NF.ocrImg = "";     // 새 사진 → 이전 사진의 크롭은 버림
+        ocrCropImage(nfFile, function (crop) {
           nfEnsure();
-          NF.photo = data;
-          var prev = document.getElementById("nfPhotoPrev");
-          if (prev) {
-            var nb = document.createElement("div");
-            nb.innerHTML = nfPhotoPrevHtml();
-            prev.parentNode.replaceChild(nb.firstChild, prev);
-          }
-          var info = document.getElementById("nfPhotoInfo");
-          if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB · 사진을 누르면 크게 보기";
-          toast("사진 준비 완료 (" + kb + "KB)");
-          nfOcrRead();   // 사진에서 제목 1차 추출
+          NF.ocrImg = crop || "";
+          compressImage(nfFile, function (data, kb) {
+            nfEnsure();
+            NF.photo = data;
+            var prev = document.getElementById("nfPhotoPrev");
+            if (prev) {
+              var nb = document.createElement("div");
+              nb.innerHTML = nfPhotoPrevHtml();
+              prev.parentNode.replaceChild(nb.firstChild, prev);
+            }
+            var info = document.getElementById("nfPhotoInfo");
+            if (info) info.textContent = "첫 장 저장 · 약 " + kb + "KB · 사진을 누르면 크게 보기";
+            toast("사진 준비 완료 (" + kb + "KB)");
+            nfOcrRead();   // 사진에서 제목 1차 추출
+          });
         });
         return;
       }
@@ -4254,7 +4378,8 @@ var App = (function () {
     ocr: {
       title: ocrTitleCandidate, lines: ocrLinesFrom, decision: ocrFieldDecision,
       clean: ocrClean, note: nfNoteHtml, read: nfOcrRead, use: nfOcrUse,
-      load: ocrLoadLib, cdn: OCR_CDN
+      load: ocrLoadLib, cdn: OCR_CDN, header: ocrHeader, approval: ocrApproval,
+      cropTop: OCR_CROP_TOP
     },
     /* 게시물 생성·이동 검증용 */
     create: {
