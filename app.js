@@ -3088,6 +3088,8 @@ var App = (function () {
     var img = new Image();
     var url = URL.createObjectURL(file);
     var done = false;
+    var MAXW = (typeof window !== "undefined" && window.__ocrMaxW) ? (Number(window.__ocrMaxW) || OCR_CROP_MAXW) : OCR_CROP_MAXW;
+    var MODE = (typeof window !== "undefined" && window.__ocrMode) ? String(window.__ocrMode) : "gray";
     function finish(data) {
       if (done) return;
       done = true;
@@ -3098,7 +3100,7 @@ var App = (function () {
       try {
         var W = img.width || 0, H = img.height || 0;
         if (!W || !H) { finish(""); return; }
-        var scale = Math.min(OCR_CROP_MAXW, Math.max(OCR_CROP_MINW, W)) / W;
+        var scale = Math.min(MAXW, Math.max(OCR_CROP_MINW, W)) / W;
         var cw = Math.max(1, Math.round(W * scale));
         var ch = Math.max(1, Math.round(H * OCR_CROP_TOP));
         var oh = Math.max(1, Math.round(ch * scale));
@@ -3107,6 +3109,7 @@ var App = (function () {
         var ctx = canvas.getContext("2d");
         ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, oh);
         ctx.drawImage(img, 0, 0, W, ch, 0, 0, cw, oh);
+        if (MODE === "plain") { finish(canvas.toDataURL("image/jpeg", 0.9)); return; }
         /* 그레이스케일 + 대비 보정: 형광등 아래 휴대폰 사진의 회색 배경을 흰색에 가깝게 */
         var id = ctx.getImageData(0, 0, cw, oh);
         var d = id.data, p, v;
@@ -3125,10 +3128,25 @@ var App = (function () {
         var lo = pct(0.02), hi = pct(0.98);
         if (hi - lo < 16) { lo = 0; hi = 255; }
         var lut = new Uint8Array(256);
-        for (var u = 0; u < 256; u++) {
-          var x = (u - lo) * 255 / (hi - lo);
-          x = (x - 120) * 1.35 + 120;            // 가운데 기준 대비 — 글자는 진하게, 종이는 흰색으로
-          lut[u] = x < 0 ? 0 : (x > 255 ? 255 : x);
+        if (MODE === "bw") {
+          /* Otsu 이진화 — 획을 검정/흰색으로 또렷하게 */
+          var sum = 0; for (var q = 0; q < 256; q++) sum += q * hist[q];
+          var sumB = 0, wB = 0, best = 0, thr = 128;
+          for (var t2 = 0; t2 < 256; t2++) {
+            wB += hist[t2]; if (!wB) continue;
+            var wF = total - wB; if (!wF) break;
+            sumB += t2 * hist[t2];
+            var mB = sumB / wB, mF = (sum - sumB) / wF;
+            var v2 = wB * wF * (mB - mF) * (mB - mF);
+            if (v2 > best) { best = v2; thr = t2; }
+          }
+          for (var u2 = 0; u2 < 256; u2++) lut[u2] = u2 <= thr ? 0 : 255;
+        } else {
+          for (var u = 0; u < 256; u++) {
+            var x = (u - lo) * 255 / (hi - lo);
+            x = (x - 120) * 1.35 + 120;            // 가운데 기준 대비 — 글자는 진하게, 종이는 흰색으로
+            lut[u] = x < 0 ? 0 : (x > 255 ? 255 : x);
+          }
         }
         for (p = 0; p < d.length; p += 4) { var g = lut[d[p]]; d[p] = d[p + 1] = d[p + 2] = g; }
         ctx.putImageData(id, 0, 0);
