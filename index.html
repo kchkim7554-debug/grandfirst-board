@@ -984,6 +984,11 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .msrow .bd{margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#cf3a2b;color:#fff;
   font-size:.62rem;font-weight:800;line-height:20px;text-align:center;padding:0 6px;}
 
+/* 첫 화면 섹션 사이 여백 */
+#view > section + section{margin-top:16px;}
+#view > section > .sh:first-child{margin-top:0;}
+.pt-legend b{color:var(--ink-2);font-weight:800;}
+
 /* 탭바·상단바가 가리는 부분 보정 */
 html.fs-lg .tabbar{--tabh:76px;}
 html.fs-lg .tb .l{font-size:.6rem;}
