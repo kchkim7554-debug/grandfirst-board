@@ -1000,9 +1000,141 @@ html.fs-lg .q{min-height:100px;}
   .t-head{font-size:1.2rem;}
   .pt-zones .zc .s{font-size:.7rem;}
 }
+
+/* =========================================================
+   메뉴 보더 · 눌림 효과 (2026-11-26)
+   평상시 또렷한 보더 → 호버 시 살짝 떠오르며 보더 강조 → 누르면 꾹 눌림
+   ========================================================= */
+:root{
+  --mb-line:#cbd5e1;        /* 평상시 메뉴 보더 */
+  --mb-line-ghost:#cfd8e6;  /* 점선 타일 보더 */
+  --mb-hover:#2563eb;       /* 호버 강조 */
+  --mb-press:#1d4ed8;       /* 눌림 보더 */
+  --mb-press-bg:#eff6ff;    /* 눌림 배경 */
+  --mb-ease:.14s ease;
+}
+
+/* --- 빠른 메뉴 타일 (6개) --- */
+.q{
+  border:1.5px solid var(--mb-line);
+  box-shadow:0 1px 2px rgba(15,27,43,.06),0 2px 7px rgba(18,58,99,.06);
+  transition:transform var(--mb-ease),border-color var(--mb-ease),box-shadow var(--mb-ease),background-color var(--mb-ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;
+}
+@media (hover:hover){
+  .q:hover{
+    transform:translateY(-3px);
+    border-color:var(--mb-hover);
+    background:#fbfdff;
+    box-shadow:0 10px 20px rgba(37,99,235,.18),0 0 0 3px rgba(37,99,235,.13);
+  }
+  .q.ghost:hover{border-style:solid;}
+}
+.q:focus-visible{
+  outline:none;transform:translateY(-3px);border-color:var(--mb-hover);
+  box-shadow:0 10px 20px rgba(37,99,235,.18),0 0 0 3px rgba(37,99,235,.22);
+}
+.q:active{
+  transform:translateY(1px) scale(.97);
+  background:var(--mb-press-bg);
+  border-color:var(--mb-press);
+  box-shadow:inset 0 2px 5px rgba(29,78,216,.18),0 1px 2px rgba(29,78,216,.12);
+}
+/* 글자 크게(점선 타일) — 보더 2px, 호버/눌림도 같은 결 */
+.q.ghost{border:2px dashed var(--mb-line-ghost);background:#f7f9fc;}
+.q.ghost:focus-visible{border-style:solid;}
+.q.ghost:active{
+  background:#e8f1fe;border:2px solid var(--mb-press);
+  box-shadow:inset 0 2px 6px rgba(29,78,216,.22);
+}
+
+/* --- ⚙ 설정 · 더보기 시트 메뉴 항목 --- */
+.moreSheet .msrow{
+  border:1.5px solid #dbe3ee;border-radius:13px;background:#fff;
+  padding:11px 12px;margin-bottom:8px;
+  box-shadow:0 1px 2px rgba(15,27,43,.05);
+  transition:transform var(--mb-ease),border-color var(--mb-ease),box-shadow var(--mb-ease),background-color var(--mb-ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.moreSheet .msrow:last-of-type{border-bottom:1.5px solid #dbe3ee;margin-bottom:0;}
+@media (hover:hover){
+  .moreSheet .msrow:hover{
+    transform:translateY(-2px);border-color:var(--mb-hover);background:#fbfdff;
+    box-shadow:0 6px 14px rgba(37,99,235,.15),0 0 0 3px rgba(37,99,235,.10);
+  }
+}
+.moreSheet .msrow:focus-visible{
+  outline:none;border-color:var(--mb-hover);box-shadow:0 0 0 3px rgba(37,99,235,.20);
+}
+.moreSheet .msrow:active{
+  transform:translateY(1px) scale(.985);
+  background:var(--mb-press-bg);border-color:var(--mb-press);
+  box-shadow:inset 0 2px 5px rgba(29,78,216,.18);
+}
+
+/* --- 상단 버튼 (‹ 홈 · 역할 칩 · ⚙ · 가+) --- */
+.homebtn,.fsbtn,.who{
+  transition:transform var(--mb-ease),border-color var(--mb-ease),box-shadow var(--mb-ease),background-color var(--mb-ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+@media (hover:hover){
+  .homebtn:hover,.fsbtn:hover{border-color:var(--mb-hover);background:#f7faff;box-shadow:0 3px 8px rgba(37,99,235,.16);}
+}
+.homebtn:focus-visible,.fsbtn:focus-visible,.who:focus-visible{
+  outline:none;border-color:var(--mb-hover);box-shadow:0 0 0 3px rgba(37,99,235,.20);
+}
+.homebtn:active,.fsbtn:active{
+  transform:translateY(1px) scale(.94);background:var(--mb-press-bg);border-color:var(--mb-press);
+  box-shadow:inset 0 2px 4px rgba(29,78,216,.20);
+}
+.who:active{transform:translateY(1px) scale(.96);background:#fdf0c8;border-color:#e0c069;box-shadow:inset 0 2px 4px rgba(107,77,0,.18);}
+
+/* --- 주요 액션 버튼 · 카드 --- */
+.btn{
+  transition:transform var(--mb-ease),box-shadow var(--mb-ease),border-color var(--mb-ease),filter var(--mb-ease);
+  touch-action:manipulation;
+}
+.btn:active{transform:translateY(1px) scale(.985);box-shadow:inset 0 2px 6px rgba(15,27,43,.22);}
+.btn.primary:active,.btn.solid:active{box-shadow:inset 0 2px 7px rgba(0,0,0,.30);}
+.t-cta{
+  transition:transform var(--mb-ease),box-shadow var(--mb-ease),background-color var(--mb-ease);
+  touch-action:manipulation;
+}
+@media (hover:hover){
+  .t-cta:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(18,58,99,.30);}
+}
+.t-cta:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.28),0 4px 12px rgba(18,58,99,.24);}
+.t-cta:active{transform:translateY(1px) scale(.985);box-shadow:inset 0 2px 7px rgba(0,0,0,.30);}
+.ptask{
+  border:1.5px solid #d8e1ec;
+  transition:transform var(--mb-ease),border-color var(--mb-ease),box-shadow var(--mb-ease),background-color var(--mb-ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+@media (hover:hover){
+  .ptask:hover{transform:translateY(-2px);border-color:#93b4e6;box-shadow:0 7px 16px rgba(18,58,99,.12);}
+}
+.ptask:focus-visible{outline:none;border-color:var(--mb-hover);box-shadow:0 0 0 3px rgba(37,99,235,.18);}
+.ptask:active{transform:translateY(1px) scale(.99);background:#eff6ff;border-color:#9db8e2;box-shadow:inset 0 2px 6px rgba(29,78,216,.12);}
+
+/* --- 하단 탭바 --- */
+.tb{
+  transition:transform var(--mb-ease),background-color var(--mb-ease),color var(--mb-ease);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+@media (hover:hover){
+  .tb:hover{color:var(--navy);background:#f4f8fe;}
+}
+.tb:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(37,99,235,.45);}
+.tb:active{transform:scale(.92);background:#e8f1fe;}
+
+/* 움직임 줄이기 설정을 켠 경우: 튀어오름만 끄고 눌림은 즉시 표시 */
+@media (prefers-reduced-motion:reduce){
+  .q,.moreSheet .msrow,.homebtn,.fsbtn,.who,.btn,.t-cta,.ptask,.tb{transition:none;}
+  .q:hover,.q:focus-visible,.moreSheet .msrow:hover,.t-cta:hover,.ptask:hover{transform:none;}
+}
 </style>
 </head>
-<body>
+<body ontouchstart="">
 <div class="bgwash" id="bgWash" aria-hidden="true"></div>
 
 <header class="topbar">
@@ -1103,9 +1235,10 @@ html.fs-lg .q{min-height:100px;}
 <div id="overlayRoot"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script>/* iOS 사파리에서도 버튼 :active(눌림) 효과가 즉시 뜨도록 touchstart 리스너 등록 */document.addEventListener('touchstart',function(){},{passive:true,capture:true});</script>
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261126b"></script>
+<script src="app.js?v=20261126d"></script>
 </body>
 </html>
