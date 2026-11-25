@@ -522,11 +522,13 @@ var App = (function () {
     try { localStorage.setItem("gf.session", JSON.stringify(SESSION)); } catch (e) {}
     syncWho();
   }
+  /* 상단 역할 칩 — 관리자는 개인 이름 대신 「Admin」으로 표시한다 (동료와 같이 쓰는 화면) */
+  var WHO_ICON = '<svg class="wico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5.6c0 4.4-7 8.4-7 8.4s-7-4-7-8.4V6z"/></svg>';
   function syncWho() {
     var btn = document.getElementById("whoBtn");
     if (!btn) return;
     if (SESSION.role === "admin") {
-      btn.textContent = "관리자 " + SESSION.admin;
+      btn.innerHTML = WHO_ICON + "<span>Admin</span>";
       btn.classList.add("admin");
     } else if (SESSION.role === "guard" && SESSION.name) {
       btn.textContent = SESSION.team + "조 " + zoneShort(SESSION.zone) + " " + SESSION.name;
@@ -981,58 +983,149 @@ var App = (function () {
   }
 
   /* ========================================================
-     첫 화면 — 7개 네잎클로버 메뉴 포털
+     첫 화면 — 오늘 요약 · 빠른 메뉴 · 처리할 일 (시안 A)
      ======================================================== */
-  function cloverSvg() {
-    /* 네잎클로버 — 잎은 바깥쪽이 넓고 가운데가 파인 하트 모양, 네 장으로 회전 배치 */
-    var leaf = "M12 13.4 C8.6 10.7 7.4 8.6 7.4 6.9 C7.4 5.3 8.6 4.2 10 4.2 C11 4.2 11.7 4.8 12 5.5 C12.3 4.8 13 4.2 14 4.2 C15.4 4.2 16.6 5.3 16.6 6.9 C16.6 8.6 15.4 10.7 12 13.4 Z";
-    var tf = function (deg) {
-      return ' transform="translate(12 12) rotate(' + deg + ') scale(.8) translate(-12 -12)"';
-    };
-    return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-      '<path d="M12.2 12.2c0 4.6-.7 8-1.6 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".5"/>' +
-      '<path d="' + leaf + '" fill="currentColor"' + tf(0) + "/>" +
-      '<path d="' + leaf + '" fill="currentColor"' + tf(90) + "/>" +
-      '<path d="' + leaf + '" fill="currentColor"' + tf(180) + "/>" +
-      '<path d="' + leaf + '" fill="currentColor"' + tf(270) + "/>" +
-      "</svg>";
-  }
-  function menuRow(go, title, desc, badge, id) {
-    var b = badge ? '<span class="menu-badge"' + (id ? ' id="' + id + '"' : "") + ">" + (badge > 99 ? "99+" : badge) + "</span>" : "";
-    return '<button class="menu-row" data-act="go" data-go="' + esc(go) + '">' +
-      '<span class="menu-ico">' + cloverSvg() + "</span>" +
-      '<span class="menu-main"><span class="menu-title">' + esc(title) + "</span>" +
-      '<span class="menu-desc">' + esc(desc) + "</span></span>" + b +
-      '<span class="menu-arrow">›</span></button>';
-  }
   function todayAlert() {
     var t = null;
     ALERTS.forEach(function (a) { if (a.date === TODAY) t = a; });
     return t;
   }
-  function renderPortal() {
+
+  /* ---------- 첫 화면 숫자 ---------- */
+  /* 게시 중(건) · 만료 임박(7일 이내와 기한 경과) — 홈 오늘 요약과 탭 배지가 함께 쓴다 */
+  function portalStats() {
     var s = summary();
+    var out = {
+      removeToday: s.counts.overdue + s.counts.today,
+      overdue: s.counts.overdue,
+      posted: s.posted,
+      pending: s.pending,
+      removing: s.removing,
+      soon: 0
+    };
+    NOTICES.forEach(function (n) {
+      if (isArchived(n)) return;
+      var k = statusOf(n).key;
+      if (k === "overdue" || k === "today" || k === "tomorrow" || k === "soon") out.soon++;
+    });
+    return out;
+  }
+
+  /* 빠른 메뉴 아이콘 (시안 A · 24px 선 아이콘) */
+  var QICON = {
+    create: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/>',
+    deploy: '<path d="M3.5 12.5 20 5l-6 15-3.4-5.6z"/>',
+    status: '<rect x="3.5" y="4.5" width="17" height="6" rx="1.6"/><rect x="3.5" y="13.5" width="7.5" height="6" rx="1.6"/><rect x="14" y="13.5" width="6.5" height="6" rx="1.6"/>',
+    history: '<path d="M5 20V11M12 20V4M19 20v-6"/>',
+    alerts: '<path d="M18 9.5a6 6 0 1 0-12 0c0 4.6-2 5.9-2 5.9h16s-2-1.3-2-5.9"/><path d="M10.2 19.5a2 2 0 0 0 3.6 0"/>',
+    admin: '<path d="M12 3l7 3v5.6c0 4.4-7 8.4-7 8.4s-7-4-7-8.4V6z"/><path d="M9.3 12l1.9 1.9 3.5-3.6"/>',
+    info: '<path d="M4 20V7.5L12 4l8 3.5V20"/><path d="M9 20v-5h6v5"/><path d="M8.5 10.5h1M11.5 10.5h1M14.5 10.5h1"/>',
+    font: '<path d="M4 18 9.5 6.5 15 18"/><path d="M6 14h7"/><path d="M16.5 10v8M13.5 11h6"/>'
+  };
+  function qCell(icon, label, go, badge, badgeId) {
+    var b = badge ? '<span class="bg"' + (badgeId ? ' id="' + badgeId + '"' : "") + '>' + (badge > 99 ? "99+" : badge) + "</span>" : "";
+    return '<button class="q ' + (icon === "font" ? "ghost" : icon === "status" || icon === "admin" ? "b2" : icon === "history" || icon === "info" ? "b4" : icon === "alerts" ? "b3" : "b1") + '"' +
+      (go ? ' data-act="go" data-go="' + esc(go) + '"' : ' data-act="font"') + '>' + b +
+      '<span class="ib"><svg viewBox="0 0 24 24">' + QICON[icon] + "</svg></span>" +
+      '<span class="lb">' + esc(label) + "</span></button>";
+  }
+
+  /* ---------- 지금 처리할 일 (홈 미리보기) ---------- */
+  /* 구역별 상태 — 한 구역은 한 번만 체크하면 끝난다. 완료 (A조/ B조) · 외부업체 · 미완료/대기 */
+  function zoneStateLabel(n, kind, zone) {
+    if (applicableZones(n).indexOf(zone) < 0) return null;
+    var st = zoneCheck(n, kind, zone);
+    if (!st) return { txt: kind === "attach" ? "대기" : "미완료", cls: "" };
+    var team = checkTeamOf(n, zone, st);
+    if (team === EXT_TEAM) return { txt: EXT_LABEL, cls: "ext" };
+    return { txt: "완료 (" + (team || "A") + "조)", cls: "done" };
+  }
+  function portalTasks() {
+    var out = [];
+    NOTICES.forEach(function (n) {
+      if (isArchived(n)) return;
+      if (someAttached(n) && needsRemove(n)) out.push({ n: n, kind: "detach" });
+      else if (!allAttached(n)) out.push({ n: n, kind: "attach" });
+    });
+    out.sort(function (a, b) {
+      if (a.kind !== b.kind) return a.kind === "detach" ? -1 : 1;
+      var da = a.n.deadline || "9999-12-31", db = b.n.deadline || "9999-12-31";
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+    return out;
+  }
+  function portalTaskHtml(t) {
+    var n = t.n, kind = t.kind;
+    var st = statusOf(n);
+    var pill, cls = "";
+    if (kind === "attach") {
+      var doneA = attachedZones(n).length, allA = applicableZones(n).length;
+      pill = someAttached(n) ? "게시 진행 " + doneA + "/" + allA : "게시 대기";
+      cls = "soon";
+    } else {
+      pill = st.key === "overdue" ? "기한 " + st.days + "일 경과" : "오늘 제거";
+      cls = "";
+    }
+    var dl = n.permanent ? "상시" : "기한 " + dotDate(n.deadline);
+    var bld = targetsText(n).split(" · ")[0];
+    var h = '<button class="ptask' + (cls ? " " + cls : "") + '" data-act="go" data-go="#/deploy" aria-label="' + esc(n.title) + ' 배포 화면에서 체크">' +
+      '<span class="pt-h"><span class="pt-date">' + mmdd(n.postedAt) + ' 게시</span>' +
+      '<span class="pt-pill">' + esc(pill) + "</span></span>" +
+      '<span class="pt-title">' + esc(n.title) + "</span>" +
+      '<span class="pt-meta">' + esc(bld + " · " + dl + " · " + targetsShort(n)) + "</span>" +
+      '<span class="pt-zones">';
+    FAC.zones.forEach(function (z) {
+      var zs = zoneStateLabel(n, kind, z.id);
+      if (!zs) {
+        h += '<span class="zc na"><span class="z">' + esc(zoneShort(z.id)) + '</span><span class="s">–</span></span>';
+      } else {
+        h += '<span class="zc' + (zs.cls ? " " + zs.cls : "") + '"><span class="z">' + esc(zoneShort(z.id)) +
+          '</span><span class="s">' + esc(zs.txt) + "</span></span>";
+      }
+    });
+    h += "</span></button>";
+    return h;
+  }
+
+  function renderPortal() {
+    var p = portalStats();
     var al = todayAlert();
     var nAlert = al ? alertItems(al).length : 0;
-    var removeToday = s.counts.overdue + s.counts.today;
-    var h = '<section class="pcard">' +
-      '<span class="pdot' + (CONNECTED ? "" : " off") + '"><i></i>' + (CONNECTED ? "실시간 연결됨" : "연결 중…") + "</span>" +
-      '<div class="pcard-title">게시판 관리 시스템</div>' +
-      '<div class="pcard-sub">운정 제일풍경채 그랑퍼스트 · 별하람마을 1단지</div>' +
-      '<div class="psum">' +
-      '<span' + (removeToday ? ' class="urgent"' : "") + ">오늘 제거 <b>" + removeToday + "</b>건</span>" +
-      '<span>게시 대기 <b>' + s.pending + "</b>건</span>" +
-      '<span>게시 중 <b>' + num(s.sheetsTotal) + "</b>장</span>" +
-      "</div></section>";
-    h += '<div class="menu-wrap"><div class="menu-head"><h2>메뉴</h2><span class="hint">메뉴를 누르면 열립니다</span></div><div class="menu-list">';
-    h += menuRow("#/create", "게시물 생성 및 이동", "새 게시물 등록 · 게시판 위치·슬롯·순번 이동", 0);
-    h += menuRow("#/deploy", "게시물 배포", "오늘 배포 대상 · 구역·동별 게시·제거 체크", s.pending + s.removing);
-    h += menuRow("#/status", "현재 게시물 게시 상태 조회", "동별·게시판별 게시 현황과 기한", removeToday);
-    h += menuRow("#/history", "게시물 이력 및 통계", "보관함·제거 이력 · 전체/구역별/월별 통계", 0);
-    h += menuRow("#/alerts", "제거대상 일일 알림", "매일 07:00 제거 대상 · 카드 이미지 크게 보기·저장", nAlert, "menuAlertBadge");
-    h += menuRow("#/admin", "시스템 권한 관리", "관리자 인증 · 조·구역 담당자 권한", 0);
-    h += menuRow("#/info", "풍경채 그랑퍼스트 정보", "단지·게시판 구조(E/V 01~06) · 근무조 안내", 0);
-    h += "</div></div>";
+    var removeToday = p.removeToday;
+    var h = '<section class="daysum">' +
+      '<div class="t-date">' + (+TODAY.slice(5, 7)) + "월 " + (+TODAY.slice(8, 10)) + "일 <span class=\"wk\">" + weekday(TODAY) + "요일</span></div>" +
+      '<div class="t-head">' + (removeToday ? "오늘 제거할 게시물 <b>" + removeToday + "</b>건" : "오늘 제거할 게시물 없음") + "</div>" +
+      '<div class="t-sub">' + esc(FAC.zones.map(function (z) { return zoneShort(z.id); }).join(" · ") + " " + FAC.zones.length + "곳 · 담당 " + (FAC.zones.length * 2) + "명이 함께 확인합니다") + "</div>" +
+      '<div class="t-stats">' +
+      '<div class="t-stat urgent"><span class="n">' + removeToday + '</span><span class="l">오늘 제거</span></div>' +
+      '<div class="t-stat"><span class="n">' + p.posted + '</span><span class="l">게시 중</span></div>' +
+      '<div class="t-stat soon"><span class="n">' + p.soon + '</span><span class="l">만료 임박</span></div>' +
+      "</div>" +
+      '<button class="t-cta" data-act="go" data-go="#/deploy">' +
+      (removeToday ? '<span class="k">' + removeToday + "건</span> " : "") +
+      (removeToday ? "제거 체크 하러 가기" : "게시·제거 체크 하러 가기") +
+      '<span class="arw">›</span></button></section>';
+
+    h += '<section><div class="sh"><h2>빠른 메뉴</h2><span class="cnt">핵심 5개</span></div><div class="qgrid">';
+    h += qCell("create", "게시물 생성", "#/create", 0);
+    h += qCell("deploy", "게시물 배포", "#/deploy", p.pending + p.removing, "menuDeployBadge");
+    h += qCell("status", "게시 상태", "#/status", removeToday);
+    h += qCell("history", "이력·통계", "#/history", 0);
+    h += qCell("alerts", "일일 알림", "#/alerts", nAlert, "menuAlertBadge");
+    h += qCell("font", "글자 크게", "", 0);
+    h += "</div></section>";
+
+    var tasks = portalTasks();
+    h += '<section><div class="sh"><h2>지금 처리할 일</h2><span class="cnt">' + tasks.length + "건</span>" +
+      (tasks.length > 3 ? '<button class="more" data-act="go" data-go="#/deploy">전체 보기 ›</button>' : "") + "</div>";
+    if (!tasks.length) {
+      h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">지금 처리할 게시물이 없습니다.<br><span style="font-size:.76rem;font-weight:600;opacity:.85">게시·제거가 모두 끝났습니다.</span></div>';
+    } else {
+      h += '<div class="ptasks">' + tasks.slice(0, 3).map(portalTaskHtml).join("") + "</div>";
+      h += '<p class="pt-legend">구역마다 A조·B조·외부업체 중 <b>한 곳만 체크하면 그 구역은 완료</b>입니다.</p>';
+    }
+    h += "</section>";
+
     h += '<p class="note">게시물·담당자 정보는 Firebase에 실시간 저장됩니다. 등록·수정·이동은 관리자 인증(PIN) 후 가능합니다.' +
       (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다." : "") + "</p>";
     return h;
@@ -1237,7 +1330,7 @@ var App = (function () {
       ? '<span class="pill pending">' + (someAttached(n) ? "게시 진행 " + attachedZones(n).length + "/" + applicableZones(n).length : "게시 대기") + "</span>"
       : statusPill(n);
     var dl = n.permanent ? "상시" : "기한 " + dotDate(n.deadline) + (st.key === "overdue" ? " (" + st.days + "일 경과)" : "");
-    var h = '<div class="task">';
+    var h = '<div class="task' + (kind === "attach" ? " is-attach" : "") + '">';
     h += '<div class="task-h"><div class="task-t">' +
       '<div class="task-date">' + mmdd(n.postedAt) + "</div>" +
       '<div class="task-title">' + esc(n.title) + "</div>" +
@@ -3797,18 +3890,24 @@ var App = (function () {
     }
     return { name: "home" };
   }
-  /* 서브 화면에서는 상단에 '← 첫 화면' 버튼을 보이고, 로고는 첫 화면에서만 보인다 */
+  /* 서브 화면에서는 상단에 '‹' 버튼을 보인다. 탭바에 있는 화면(홈·생성·배포·알림)은 탭바로 이동한다. */
+  var BACK_SCREENS = ["status", "history", "admin", "info", "building"];
   function syncChrome() {
     var hb = document.getElementById("homeBtn");
-    var br = document.getElementById("brand");
-    var sub = VIEW.name !== "home";
-    if (hb) hb.hidden = !sub;
-    if (br) br.hidden = sub;
+    if (hb) hb.hidden = BACK_SCREENS.indexOf(VIEW.name) < 0;
+    syncLive();
     if (document.body) {
       document.body.classList.toggle("bg-home", VIEW.name === "home");
       document.body.classList.toggle("bg-info", VIEW.name === "info");
       document.body.classList.toggle("bg-sub", VIEW.name !== "home" && VIEW.name !== "info");
     }
+  }
+  /* 상단 「실시간」 칩 — Firebase 연결 상태 */
+  function syncLive() {
+    var el = document.getElementById("liveChip");
+    if (!el) return;
+    el.classList.toggle("off", !CONNECTED);
+    el.innerHTML = "<i></i>" + (CONNECTED ? "실시간" : "연결 중");
   }
   /* 시설 데이터와 게시물 응답이 모두 준비되면 첫 화면을 그린다
      (느린 회선에서 게시물이 먼저 오고 data.json 이 늦게 오면 첫 화면이 멈추지 않도록) */
@@ -3836,13 +3935,60 @@ var App = (function () {
     syncChrome();
     syncWho();
     syncMenuBadges();
+    syncTabbar();
+  }
+  function setBadge(id, n) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (!n) { el.hidden = true; el.textContent = ""; }
+    else { el.hidden = false; el.textContent = n > 99 ? "99+" : String(n); }
   }
   function syncMenuBadges() {
-    var al = null;
-    ALERTS.forEach(function (a) { if (a.date === TODAY) al = a; });
+    var al = todayAlert();
     var n = al ? alertItems(al).length : 0;
-    var el = document.getElementById("menuAlertBadge");
-    if (el) { el.hidden = n === 0; el.textContent = n > 99 ? "99+" : String(n); }
+    setBadge("menuAlertBadge", n);
+    var s = summary();
+    setBadge("menuDeployBadge", s.pending + s.removing);
+  }
+  /* 하단 고정 5탭바 — 지금 보는 화면을 켜고 배지 숫자를 맞춘다 */
+  var TAB_OF = { home: "home", create: "create", deploy: "deploy", alerts: "alerts" };
+  function syncTabbar() {
+    var on = TAB_OF[VIEW.name] || "more";
+    ["home", "create", "deploy", "alerts", "more"].forEach(function (k) {
+      var el = document.getElementById("tb" + k.charAt(0).toUpperCase() + k.slice(1));
+      if (el) el.classList.toggle("on", k === on);
+    });
+    var s = summary();
+    setBadge("tbDeployBadge", s.pending + s.removing);
+    var al = todayAlert();
+    setBadge("tbAlertBadge", al ? alertItems(al).length : 0);
+  }
+  /* 더보기 바텀시트 */
+  function openMore() {
+    var m = document.getElementById("moreSheet");
+    if (!m) return;
+    m.hidden = false;
+    document.body.classList.add("no-scroll");
+  }
+  function closeMore() {
+    var m = document.getElementById("moreSheet");
+    if (!m || m.hidden) return;
+    m.hidden = true;
+    document.body.classList.remove("no-scroll");
+  }
+  /* 상단 ⚙ 설정 — 권한 관리·단지 정보 */
+  function openSettingsMenu() {
+    var m = document.getElementById("setSheet");
+    if (!m) return;
+    closeMore();
+    m.hidden = false;
+    document.body.classList.add("no-scroll");
+  }
+  function closeSettingsMenu() {
+    var m = document.getElementById("setSheet");
+    if (!m || m.hidden) return;
+    m.hidden = true;
+    document.body.classList.remove("no-scroll");
   }
   function route() {
     VIEW = parseHash();
@@ -3866,7 +4012,7 @@ var App = (function () {
       if (!el) return;
       var act = el.dataset.act;
 
-      if (act === "go") { if (el.dataset.go) go(el.dataset.go); }
+      if (act === "go") { closeMore(); closeSettingsMenu(); if (el.dataset.go) go(el.dataset.go); }
       else if (act === "home") { go("#/"); }
       else if (act === "create-tab") { go(el.dataset.v === "move" ? "#/create/move" : "#/create"); }
       else if (act === "move-open") {
@@ -3932,6 +4078,10 @@ var App = (function () {
         go(tb === "home" ? "#/" : tb === "tasks" ? "#/deploy" : tb === "archive" ? "#/history" : "#/" + tb);
       }
       else if (act === "close-sheet") { closeSheet(); }
+      else if (act === "more") { openMore(); }
+      else if (act === "close-more") { closeMore(); }
+      else if (act === "settings-menu") { openSettingsMenu(); }
+      else if (act === "close-set") { closeSettingsMenu(); }
       else if (act === "zone") { ZONE = el.dataset.zone; render(); }
       else if (act === "building") { go("#/b/" + el.dataset.no); }
       else if (act === "core") { go("#/b/" + VIEW.no + "/" + el.dataset.core + "/" + (VIEW.loc || "f1")); }
@@ -4412,6 +4562,11 @@ var App = (function () {
       card: taskCard, chk: chkCell, ext: extCell,
       extTeam: EXT_TEAM, extLabel: EXT_LABEL,
       team: checkTeamOf, useful: function () { return renderDeploy(); }
+    },
+    /* 첫 화면(시안 A) 검증용 */
+    portal: {
+      html: function () { return renderPortal(); },
+      tasks: portalTasks, zone: zoneStateLabel, stats: portalStats
     },
     /* 사진 제목 1차 OCR 검증용 */
     ocr: {
