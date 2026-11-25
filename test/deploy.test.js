@@ -57,15 +57,72 @@ console.log("\n[1] [게시] 카드 — 외부업체 줄");
   ok("체크 안 된 칸은 빈 상자", has(h, "<span class=\"box\">☐</span>"));
 }
 
-/* ---------- 2. 제거 카드에는 외부업체 줄이 없다 ---------- */
-console.log("\n[2] [제거] 카드 — 외부업체 줄 없음");
+/* ---------- 2. 제거 카드에도 외부업체 줄 ---------- */
+console.log("\n[2] [제거] 카드 — 외부업체 줄");
 {
   var n = clone(N_EXT);
   n.deadline = "2026-11-24";
   O.load([n], clone(FAC));
   var h = D.card(n, "detach");
-  ok("제거 카드에는 외부업체 줄 없음", !has(h, "team-tag ext"));
-  eq("제거 카드에 chk-ext 없음", (h.match(/data-act="chk-ext"/g) || []).length, 0);
+  ok("A조·B조 줄은 그대로", has(h, ">A조<") && has(h, ">B조<"));
+  ok("제거 카드에도 외부업체 줄이 있다", has(h, 'class="team-tag ext">외부업체<'));
+  eq("구역 3곳마다 외부업체 체크 칸", (h.match(/data-act="chk-ext"/g) || []).length, 3);
+  ok("제거 카드 칸은 data-kind=\"detach\"", has(h, 'data-act="chk-ext" data-id="T3" data-kind="detach" data-zone="front"'));
+  ok("A조·B조 아래, [상세]·[기한 변경] 위에 온다",
+    h.indexOf(">B조<") < h.indexOf('class="team-tag ext"') && h.indexOf('class="team-tag ext"') < h.indexOf('data-act="open-notice"'));
+  ok("아직 제거 체크가 없으니 빈 상자", has(h, "<span class=\"box\">☐</span>"));
+  eq("제거 전에는 체크(☑)가 하나도 없다", (h.match(/☑/g) || []).length, 0);
+  eq("게시도 외부업체였던 구역은 주황 점선 안내", (h.match(/chk off posted-ext/g) || []).length, 3);
+  ok("안내 문구는 aria-label에 담는다", has(h, "게시도 외부업체"));
+  var aCell = D.chk(n, "detach", "front", "A");
+  ok("제거 전 A조 칸은 열려 있다(담당자가 뗄 수도 있으므로)", has(aCell, 'data-act="chk"'));
+}
+
+/* ---------- 2-1. 제거 카드에서 외부업체로 체크한 뒤 ---------- */
+console.log("\n[2-1] 제거 카드 — 외부업체 체크 결과");
+{
+  var n = clone(N_EXT);
+  n.deadline = "2026-11-24";
+  n.detach = { front: { by: "외부업체", team: "EXT", at: ts(2026, 11, 26, 9, 30) } };
+  O.load([n], clone(FAC));
+  eq("제거 기록 조는 EXT", D.team(n, "front", n.detach.front), "EXT");
+  var cell = D.ext(n, "detach", "front");
+  ok("외부업체 칸은 주황 켜짐 표시", has(cell, 'class="chk ext"') && has(cell, "☑") && has(cell, "외부업체"));
+  var aCell = D.chk(n, "detach", "front", "A");
+  var bCell = D.chk(n, "detach", "front", "B");
+  ok("A조 칸은 흐린 잠금(hold)", has(aCell, "chk hold") && !has(aCell, "data-act"));
+  ok("B조 칸도 흐린 잠금(hold)", has(bCell, "chk hold") && !has(bCell, "data-act"));
+  ok("A·B조 칸에 체크(☑)가 켜지지 않는다", !has(aCell, "☑") && !has(bCell, "☑"));
+  ok("A·B조 칸은 주황(ext) 표시가 아니다", !has(aCell, "chk ext") && !has(bCell, "chk ext"));
+  var free = D.ext(n, "detach", "backA");
+  ok("남은 구역은 주황 점선 안내를 유지한 채 누를 수 있다", has(free, "chk off posted-ext") && has(free, 'data-act="chk-ext"'));
+  var whole = D.card(n, "detach");
+  eq("카드에서 주황 체크는 외부업체 1칸뿐", (whole.match(/class="chk ext"/g) || []).length, 1);
+  eq("카드 전체에서 ☑는 외부업체 1칸뿐", (whole.match(/☑/g) || []).length, 1);
+}
+
+/* ---------- 2-2. 모든 구역을 외부업체로 제거하면 보관함으로 ---------- */
+console.log("\n[2-2] 외부업체로 전 구역 제거");
+{
+  var done = clone(N_EXT);
+  done.deadline = "2026-11-24";
+  done.detach = {
+    front: { by: "외부업체", team: "EXT", at: ts(2026, 11, 26, 9, 0) },
+    backA: { by: "외부업체", team: "EXT", at: ts(2026, 11, 26, 9, 5) },
+    backB: { by: "외부업체", team: "EXT", at: ts(2026, 11, 26, 9, 10) }
+  };
+  var moving = clone(N_EXT);
+  moving.id = "T4";
+  moving.deadline = "2026-11-24";
+  O.load([done, moving], clone(FAC));
+  var h = D.useful();
+  ok("제거 전인 외부업체 게시물은 ③ 제거 필요에 나온다", has(h, "외부업체 게시 시험"));
+  ok("제거가 남은 건(T4)은 카드가 남아 있다", has(h, 'data-id="T4"'));
+  var arch = clone(done);
+  arch.status = "archived";
+  arch.archivedAt = "2026-11-26";
+  O.load([arch], clone(FAC));
+  ok("전 구역 제거로 보관함에 들어간 건은 배포 화면에서 사라진다", !has(D.useful(), "외부업체 게시 시험"));
 }
 
 /* ---------- 3. 외부업체로 기록된 칸 ---------- */

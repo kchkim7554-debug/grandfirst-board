@@ -1209,19 +1209,26 @@ var App = (function () {
       '<span class="box">☐</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
       '<span class="nm">' + esc(gname || "-") + "</span></button>";
   }
-  /* 외부업체 칸 — 아직 체크가 없으면 바로 「외부업체 게시」로 기록 */
+  /* 외부업체 칸 — 아직 체크가 없으면 바로 「외부업체 게시/제거」로 기록 */
   function extCell(n, kind, zone) {
     var zs = applicableZones(n);
+    var verb = kind === "attach" ? "게시" : "제거";
     if (zs.indexOf(zone) < 0) {
       return '<div class="chk na"><span class="box">–</span><span class="zn">' + esc(zoneShort(zone)) + '</span><span class="nm">대상 아님</span></div>';
     }
     var st = zoneCheck(n, kind, zone);
     var on = isExtRec(st);
     var other = !!st && !on;
-    return '<button class="chk ' + (on ? "ext" : other ? "na" : "off") + '" data-act="chk-ext"' +
+    /* 제거 카드: 이 구역 게시도 외부업체였다면 테두리로 알려 준다 (게시 상태를 제거 카드에서도 보이게) */
+    var postedExt = kind === "detach" && isExtRec(zoneCheck(n, "attach", zone));
+    var cls = on ? "ext" : other ? "na" : (postedExt ? "off posted-ext" : "off");
+    var tip = on ? EXT_LABEL + " " + verb + " 완료"
+      : other ? (st.by || "담당") + " " + verb + " 완료"
+        : (postedExt ? "게시도 " + EXT_LABEL + " · 누르면 " + EXT_LABEL + " " + verb : EXT_LABEL + "로 " + verb);
+    return '<button class="chk ' + cls + '" data-act="chk-ext"' +
       ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '"' +
-      ' aria-label="' + esc(zoneShort(zone) + " " + EXT_LABEL + (on ? " 완료" : other ? " 불가" : "로 게시")) + '">' +
-      '<span class="box">' + (on ? "☑" : other ? "☑" : "☐") + '</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
+      ' aria-label="' + esc(zoneShort(zone) + " " + tip) + '">' +
+      '<span class="box">' + (on || other ? "☑" : "☐") + '</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
       '<span class="nm">' + esc(on ? EXT_LABEL : other ? (st.by || "담당") : EXT_LABEL) + "</span></button>";
   }
   function taskCard(n, kind) {
@@ -1238,9 +1245,8 @@ var App = (function () {
       "</div><div class=\"task-side\">" + pill + testTag(n) + "</div></div>";
     h += '<div class="task-row"><div class="team-tag">A조</div>' + FAC.zones.map(function (z) { return chkCell(n, kind, z.id, "A"); }).join("") + "</div>";
     h += '<div class="task-row"><div class="team-tag">B조</div>' + FAC.zones.map(function (z) { return chkCell(n, kind, z.id, "B"); }).join("") + "</div>";
-    if (kind === "attach") {
-      h += '<div class="task-row"><div class="team-tag ext">외부업체</div>' + FAC.zones.map(function (z) { return extCell(n, kind, z.id); }).join("") + "</div>";
-    }
+    /* 게시·제거 카드 모두 A·B조 아래에 외부업체 줄 */
+    h += '<div class="task-row"><div class="team-tag ext">외부업체</div>' + FAC.zones.map(function (z) { return extCell(n, kind, z.id); }).join("") + "</div>";
     h += '<div class="task-foot">' +
       '<button class="mini-btn" data-act="open-notice" data-id="' + esc(n.id) + '">상세</button>' +
       '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' +
