@@ -1006,8 +1006,8 @@ html.fs-lg .q{min-height:100px;}
    평상시 또렷한 보더 → 호버 시 살짝 떠오르며 보더 강조 → 누르면 꾹 눌림
    ========================================================= */
 :root{
-  --mb-line:#cbd5e1;        /* 평상시 메뉴 보더 */
-  --mb-line-ghost:#cfd8e6;  /* 점선 타일 보더 */
+  --mb-line:#c3d0e0;        /* 평상시 메뉴 보더 */
+  --mb-line-ghost:#c8d3e2;  /* 점선 타일 보더 */
   --mb-hover:#2563eb;       /* 호버 강조 */
   --mb-press:#1d4ed8;       /* 눌림 보더 */
   --mb-press-bg:#eff6ff;    /* 눌림 배경 */
@@ -1035,17 +1035,17 @@ html.fs-lg .q{min-height:100px;}
   box-shadow:0 10px 20px rgba(37,99,235,.18),0 0 0 3px rgba(37,99,235,.22);
 }
 .q:active{
-  transform:translateY(1px) scale(.97);
-  background:var(--mb-press-bg);
+  transform:translateY(1px) scale(.96);
+  background:#dbeafe;
   border-color:var(--mb-press);
-  box-shadow:inset 0 2px 5px rgba(29,78,216,.18),0 1px 2px rgba(29,78,216,.12);
+  box-shadow:inset 0 2px 6px rgba(29,78,216,.22),0 0 0 1px rgba(29,78,216,.35);
 }
 /* 글자 크게(점선 타일) — 보더 2px, 호버/눌림도 같은 결 */
 .q.ghost{border:2px dashed var(--mb-line-ghost);background:#f7f9fc;}
 .q.ghost:focus-visible{border-style:solid;}
 .q.ghost:active{
-  background:#e8f1fe;border:2px solid var(--mb-press);
-  box-shadow:inset 0 2px 6px rgba(29,78,216,.22);
+  background:#dbeafe;border:2px solid var(--mb-press);
+  box-shadow:inset 0 2px 6px rgba(29,78,216,.26);
 }
 
 /* --- ⚙ 설정 · 더보기 시트 메뉴 항목 --- */
@@ -1067,9 +1067,9 @@ html.fs-lg .q{min-height:100px;}
   outline:none;border-color:var(--mb-hover);box-shadow:0 0 0 3px rgba(37,99,235,.20);
 }
 .moreSheet .msrow:active{
-  transform:translateY(1px) scale(.985);
-  background:var(--mb-press-bg);border-color:var(--mb-press);
-  box-shadow:inset 0 2px 5px rgba(29,78,216,.18);
+  transform:translateY(1px) scale(.975);
+  background:#dbeafe;border-color:var(--mb-press);
+  box-shadow:inset 0 2px 6px rgba(29,78,216,.22),0 0 0 1px rgba(29,78,216,.30);
 }
 
 /* --- 상단 버튼 (‹ 홈 · 역할 칩 · ⚙ · 가+) --- */
