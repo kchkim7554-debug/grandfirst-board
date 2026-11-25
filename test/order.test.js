@@ -98,7 +98,7 @@ console.log("\n[2] 신규 등록 → 기존 게시물 한 칸씩 뒤로");
   eq("다른 번호는 그대로", [after.R13.targets[0].order, after.R02.targets[0].order, after.R11.targets[0].order], [1, 2, 2]);
   eq("층이 다른 5번은 그대로", [after.R04.targets[0].order, after.R07.targets[0].order], [1, 1]);
 
-  // 한 번 더 들어오면 셋째까지 밀린다 (카일 님 표현: "또 신규가 들어오면 세번째")
+  // 한 번 더 들어오면 셋째까지 밀린다 (관리자 표현: "또 신규가 들어오면 세번째")
   O.load(clone(after), FAC);
   const r2 = O.push([tgt("lobby", "03")], "NEW02");
   eq("두 번째 신규 → 기존 3건이 밀림", r2.pushed.length, 3);

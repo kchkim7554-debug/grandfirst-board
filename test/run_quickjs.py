@@ -33,6 +33,7 @@ TEST_FILES = [
     "test/deploy.test.js",
     "test/ocr.test.js",
     "test/portal.test.js",
+    "test/sandbox.test.js",
 ]
 
 
@@ -77,6 +78,62 @@ def check_shell():
     return out, n_pass, n_fail
 
 
+SANDBOX_DIR = os.path.join(ROOT, "sandbox")
+
+
+def check_sandbox():
+    """카피본 — 🧪 배너 · <base> 공용 에셋 · 자동 Admin 설정 · 원본과 코드 동기"""
+    out, n_pass, n_fail = [], 0, 0
+
+    def ok(name, cond, extra=""):
+        nonlocal n_pass, n_fail
+        if cond:
+            n_pass += 1
+            out.append("  ✓ " + name)
+        else:
+            n_fail += 1
+            out.append("  ✗ " + name + ("  → " + extra if extra else ""))
+
+    def readp(p):
+        fp = os.path.join(ROOT, p)
+        if not os.path.exists(fp):
+            return None
+        with open(fp, encoding="utf-8") as f:
+            return f.read()
+
+    out.append("\n[sandbox] 카피본 — 배너 · DB 분리 · 자동 Admin")
+    page = readp("sandbox/index.html")
+    env = readp("sandbox/env.js")
+    ok("sandbox/index.html 있음", page is not None)
+    page = page or ""
+    env = env or ""
+    ok("🧪 테스트용 배너", "🧪 테스트용 (카피본)" in page and "sbxbar" in page)
+    ok("<base href=\"../\"> 공용 에셋", '<base href="../">' in page)
+    ok("env.js 를 app.js 보다 먼저", env and page.find("sandbox/env.js") >= 0
+       and page.find("sandbox/env.js") < page.find('src="app.js?v='))
+    ok("DB 경로 board/sandbox", 'dbRoot: "board/sandbox"' in env)
+    ok("자동 Admin", "sandbox: true" in env and 'adminLabel: "Admin"' in env)
+    ok("기기 저장 키 분리", 'lsPrefix: "gf.sandbox."' in env)
+
+    # 원본 index.html 을 고친 뒤 카피본을 다시 만들지 않았는지
+    gen_ok = False
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "scripts"))
+        import make_sandbox  # type: ignore
+        with open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
+            gen_ok = make_sandbox.build(f.read()) == page
+    except Exception as e:  # noqa: BLE001
+        gen_ok = False
+        ok("카피본 생성기 실행", False, str(e))
+    ok("원본 index.html 과 동기화", gen_ok, "python3 scripts/make_sandbox.py 실행 필요")
+
+    # 개인 닉네임이 화면·코드 어디에도 남지 않았는지
+    for f in ["index.html", "app.js", "sandbox/index.html", "sandbox/env.js", "README.md"]:
+        t = readp(f)
+        ok(f + " 에 개인 닉네임 없음", t is not None and "\uce74\uc77c" not in t)
+    return out, n_pass, n_fail
+
+
 ctx = quickjs.Context()
 lines = []
 ctx.add_callable("__log", lambda s: lines.append(str(s)))
@@ -101,4 +158,8 @@ shell_out, shell_pass, shell_fail = check_shell()
 print("\n".join(shell_out))
 print("\n  껍데기 확인 %d개 통과%s" % (shell_pass, "" if not shell_fail else ", %d개 실패" % shell_fail))
 
-sys.exit(1 if (fail or shell_fail) else 0)
+sbx_out, sbx_pass, sbx_fail = check_sandbox()
+print("\n".join(sbx_out))
+print("\n  카피본 확인 %d개 통과%s" % (sbx_pass, "" if not sbx_fail else ", %d개 실패" % sbx_fail))
+
+sys.exit(1 if (fail or shell_fail or sbx_fail) else 0)

@@ -76,7 +76,7 @@ def build():
             "attach": attach,
             "detach": None,
             "createdAt": now,
-            "createdBy": "카일",
+            "createdBy": "Admin",
             "updatedAt": now,
         }
     return out

@@ -68,7 +68,7 @@ Firebase Realtime Database(무료 Spark 요금제)에 저장되므로, 한 사�
 - **경비원 체크**: 조와 구역만 고르면 됨(이 기기에 기억됨)
   - A조: 정문 염일엽 / 후문A 성연무 / 후문B 윤주한
   - B조: 정문 황보선희 / 후문A 김기춘 / 후문B 조명수
-- **관리자**: `카일`, `관리사무소` — PIN 4자리 (**초기 PIN 7554**, 관리자 설정에서 변경)
+- **관리자**: `Admin`, `관리사무소` — PIN 4자리 (**초기 PIN 7554**, 관리자 설정에서 변경)
   - PIN은 평문이 아니라 SHA-256 해시로 DB에 저장됩니다.
 
 ## 데이터 구조
@@ -80,7 +80,24 @@ board/
                attach{구역:담당·시각} / detach{구역:담당·시각}
   logs/        누가·언제·무엇을 했는지 기록(추가 전용)
   daily_alerts/{YYYY-MM-DD}  07시 제거 알림 기록(날짜별 1건, 대상 없는 날도 남김)
+  sandbox/     🧪 테스트용 카피본 전용 데이터 (원본 config·notices·logs·alerts 와 완전 분리)
 ```
+
+## 🧪 테스트용 카피본 (`sandbox/`)
+
+원본은 그대로 두고, 사용자들이 아무거나 눌러 보는 **버림용 카피본**입니다.
+
+- 주소: <https://kchkim7554-debug.github.io/grandfirst-board/sandbox/>
+- 상단에 **`🧪 테스트용 (카피본) — 마음껏 눌러보세요`** 배너가 있고, 탭 제목도 `🧪 테스트용 (카피본)`으로 시작합니다.
+- **DB 완전 분리**: 원본은 `/board`, 카피본은 `/board/sandbox` 만 읽고 씁니다. 원본 `/board` 데이터는 카피본에서 읽기만 합니다.
+  (Firebase 보안규칙이 `/board` 아래만 열려 있어 카피본은 그 안의 별도 키를 씁니다. 원본 `notices`·`config`·`logs`·`daily_alerts` 와는 섞이지 않습니다.)
+- **자동 Admin**: 접속하면 PIN 없이 처음부터 `Admin` 권한입니다(등록·배포·삭제·기한 변경·권한 관리·설정 전부).
+- 화면 코드는 원본 `app.js`·`data.json`·`images/`·`templates/` 를 `<base href="../">` 로 그대로 공유하고,
+  `sandbox/env.js` 가 `dbRoot: "board/sandbox"`·`sandbox: true`·`lsPrefix: "gf.sandbox."` 를 넘깁니다.
+- **초기화**: 챗에서 **"카피본 초기화해"** 하면 `python3 scripts/reset_sandbox.py` 한 번으로
+  ① `sandbox/index.html` 재생성 ② 원본 `/board` 데이터 → `/board/sandbox` 덮어쓰기 ③ 확인 출력까지 끝납니다.
+  (`--dry-run` 으로 무엇을 덮어쓸지 먼저 볼 수 있습니다.)
+- `sandbox/index.html` 은 손으로 고치지 말고 `python3 scripts/make_sandbox.py` 로 다시 만듭니다(테스트가 동기 여부를 검사합니다).
 
 ## 게시물 제거 대상 일일 알림 (`제거대상 일일 알림` 메뉴)
 
@@ -154,9 +171,12 @@ board/
 - `mark_slot.py` · `slotmap.py` · `build_templates.py` — 번호판 템플릿·체크마크 생성
 - `make_removal_card.py` — 안내 문구 + 체크 배치도 + 게시물 사진을 한 장의 공지 카드로 합성
 - `seed_firebase.py` — `notices_real.json`을 Firebase `/board/notices.json`으로 PUT 하는 스크립트(설정 `config`는 보존)
-- `test/order.test.js` · `test/stats.test.js` · `test/alerts.test.js` · `test/create.test.js` · `test/deploy.test.js` · `test/ocr.test.js` · `test/portal.test.js` · `test/run_quickjs.py` —
-  겹침 순번 45 · 통계 66 · 일일 알림 34 · 생성·이동 64 · 게시·제거 배포 45 · 사진 제목 OCR 49 · 첫 화면 37 = **340개** 검증(실 DB 미사용)
+- `test/order.test.js` · `test/stats.test.js` · `test/alerts.test.js` · `test/create.test.js` · `test/deploy.test.js` · `test/ocr.test.js` · `test/portal.test.js` · `test/sandbox.test.js` · `test/run_quickjs.py` —
+  겹침 순번 45 · 통계 66 · 일일 알림 34 · 생성·이동 64 · 게시·제거 배포 45 · 사진 제목 OCR 49 · 첫 화면 37 · 카피본 환경 6 = **346개** 검증(실 DB 미사용)
   + `index.html` 껍데기(상단바·Admin 칩·⚙ 설정·5탭바·배지·캐시 버전) 13개
+  + 카피본(🧪 배너·`<base>` 공용 에셋·`board/sandbox`·자동 Admin·원본 동기·닉네임 잔존) 13개
+- `sandbox/index.html` — 🧪 테스트용 카피본 화면(생성물, 손으로 고치지 않음) · `sandbox/env.js` — 카피본 DB·권한 설정
+- `scripts/make_sandbox.py` — 카피본 화면 생성기(`--check` 로 동기 확인) · `scripts/reset_sandbox.py` — "카피본 초기화해" 한 번에(원본 데이터 → `/board/sandbox` 덮어쓰기)
 - `test/live-snapshot.json` — 2026-11-18 실 DB 게시물 21건 읽기 스냅샷(테스트 입력)
 - `robots.txt` — 검색엔진 수집 차단 (index.html에도 `noindex`)
 
@@ -178,7 +198,7 @@ board/
 
 ## 게시물 통계 집계 기준 (`#/history`)
 
-2026-11-25 개편 — 카일 지시 "게시물 1건을 3명이 배포한 것이지 게시물 3건이 아니다"에 따라 원천 수정했습니다.
+2026-11-25 개편 — 관리자 지시 "게시물 1건을 3명이 배포한 것이지 게시물 3건이 아니다"에 따라 원천 수정했습니다.
 
 - **게시물 1건 = 게시 1건 / 제거 1건.** 정문·후문A·후문B 세 구역에 각각 걸어도, 담당자가 여러 명이어도 1건으로 셉니다.
   (이전에는 구역별 체크 기록마다 이벤트를 만들어 28건이 84건으로 3배 집계됐습니다.)

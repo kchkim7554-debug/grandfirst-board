@@ -13,12 +13,23 @@ var FIREBASE_CONFIG = {
   messagingSenderId: "411291957122",
   appId: "1:411291957122:web:7d1f75d58719c447aa019b"
 };
+/* ---------- 실행 환경 ----------
+   원본은 이 파일 하나를 그대로 씁니다 (DB_ROOT="board").
+   테스트용 카피본(sandbox/)은 sandbox/env.js 가 window.GF_ENV 를 먼저 채워
+   DB_ROOT 를 "board/sandbox" 로, SANDBOX=true 로 넘겨 자동 Admin 권한으로 동작합니다.
+   원본 Firebase /board 데이터는 카피본에서 읽기만 하고 쓰지 않습니다. */
+var GF_ENV = (typeof window !== "undefined" && window.GF_ENV) ? window.GF_ENV : {};
+var DB_ROOT = GF_ENV.dbRoot || "board";
+var SANDBOX = !!GF_ENV.sandbox;
+var ADMIN_LABEL = GF_ENV.adminLabel || "Admin";
+/* 저장 키 접두어 — 카피본은 원본과 기기 저장(session·글자크기)도 섞이지 않게 따로 쓴다 */
+var LS_PREFIX = GF_ENV.lsPrefix || "gf.";
 var PIN_SALT = "grandfirst-board|";
 /* 기본 관리자 PIN 7554 의 SHA-256 (평문은 DB에 저장하지 않음) */
 var DEFAULT_PIN_HASH = "280e9599e805b04e6990ecd8a70563e485534485b97cbc93835be8a4bce7965f";
 
 var DEFAULT_CONFIG = {
-  admins: ["카일", "관리사무소"],
+  admins: ["Admin", "관리사무소"],
   pinHash: DEFAULT_PIN_HASH,
   teams: {
     A: { label: "A조", zones: { front: "염일엽", backA: "성연무", backB: "윤주한" } },
@@ -57,8 +68,15 @@ var App = (function () {
 
   /* ---------- basics ---------- */
   function pad2(v) { return String(v).padStart(2, "0"); }
+  /* 개인 닉네임은 화면 어디에도 나오지 않게 — 저장된 옛 기록(DB의 등록자·메모)까지
+     표시 단계에서 「Admin」으로 바꿔 보여 준다 (DB 원본은 건드리지 않음).
+     닉네임 글자는 소스에도 남기지 않도록 유니코드 이스케이프로 적는다. */
+  var OLD_NICK = new RegExp("\uCE74\uC77C", "g");
+  function scrubName(s) {
+    return String(s == null ? "" : s).replace(OLD_NICK, ADMIN_LABEL);
+  }
   function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return scrubName(s).replace(/[&<>"']/g, function (c) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
@@ -342,7 +360,7 @@ var App = (function () {
         var hit = newTargets.some(function (nt) { return targetOverlaps(nt, t); });
         if (!hit) return;
         var from = orderNum(t.order), to = from + 1;
-        updates["board/notices/" + n.id + "/targets/" + i + "/order"] = to;
+        updates[DB_ROOT + "/notices/" + n.id + "/targets/" + i + "/order"] = to;
         if (!moved) { pushed.push({ id: n.id, title: n.title, from: from, to: to }); moved = true; }
       });
     });
@@ -372,7 +390,7 @@ var App = (function () {
     cands.forEach(function (c, i) {
       var want = i + 1;
       if (c.order === want) return;
-      updates["board/notices/" + c.id + "/targets/" + c.idx + "/order"] = want;
+      updates[DB_ROOT + "/notices/" + c.id + "/targets/" + c.idx + "/order"] = want;
       changed.push({ id: c.id, title: c.title, from: c.order, to: want });
     });
     return { updates: updates, changed: changed };
@@ -506,7 +524,7 @@ var App = (function () {
   /* ---------- session / identity ---------- */
   function loadSession() {
     try {
-      var raw = localStorage.getItem("gf.session");
+      var raw = localStorage.getItem(LS_PREFIX + "session");
       if (raw) {
         var s = JSON.parse(raw);
         SESSION.role = s.role || null;
@@ -516,10 +534,16 @@ var App = (function () {
         SESSION.admin = s.admin || "";
       }
     } catch (e) {}
-    try { FONT_LG = localStorage.getItem("gf.fontLg") === "1"; } catch (e) {}
+    try { FONT_LG = localStorage.getItem(LS_PREFIX + "fontLg") === "1"; } catch (e) {}
+    /* 테스트용 카피본은 PIN 없이 항상 Admin — 눌러 보는 사람이 바로 모든 기능을 쓸 수 있다 */
+    if (SANDBOX) {
+      SESSION.role = "admin";
+      SESSION.admin = ADMIN_LABEL;
+      SESSION.name = "";
+    }
   }
   function saveSession() {
-    try { localStorage.setItem("gf.session", JSON.stringify(SESSION)); } catch (e) {}
+    try { localStorage.setItem(LS_PREFIX + "session", JSON.stringify(SESSION)); } catch (e) {}
     syncWho();
   }
   /* 상단 역할 칩 — 관리자는 개인 이름 대신 「Admin」으로 표시한다 (동료와 같이 쓰는 화면) */
@@ -550,6 +574,7 @@ var App = (function () {
   }
   function requireAdmin(cb) {
     if (SESSION.role === "admin") { cb(); return; }
+    if (SANDBOX) { SESSION.role = "admin"; SESSION.admin = ADMIN_LABEL; saveSession(); render(); cb(); return; }
     openAdminLogin(cb);
   }
   function openWhoSheet(onDone) {
@@ -596,7 +621,7 @@ var App = (function () {
   }
 
   function openAdminLogin(onDone) {
-    var html = '<p class="f-hint" style="margin:0 2px 6px">관리자(카일·관리사무소)만 등록·수정·삭제할 수 있습니다. PIN 4자리를 입력하세요.</p>';
+    var html = '<p class="f-hint" style="margin:0 2px 6px">관리자(' + esc(((CFG && CFG.admins) || []).join("·")) + ')만 등록·수정·삭제할 수 있습니다. PIN 4자리를 입력하세요.</p>';
     html += '<div class="f-chips" style="margin:8px 0 6px">';
     (CFG.admins || []).forEach(function (a) {
       html += '<button class="f-chip' + (a === SESSION.admin ? " on" : "") + '" data-act="pick-admin" data-name="' + esc(a) + '">' + esc(a) + "</button>";
@@ -662,7 +687,7 @@ var App = (function () {
       .catch(function (e) { toast("저장 실패: " + (e && e.message ? e.message : e)); return false; });
   }
   function writeLog(entry) {
-    try { db.ref("board/logs").push(entry); } catch (e) {}
+    try { db.ref(DB_ROOT + "/logs").push(entry); } catch (e) {}
   }
 
   /* ---------- zone check actions ---------- */
@@ -690,7 +715,7 @@ var App = (function () {
           : "이미 " + (existing.by || "담당자") + " 님이 제거 완료했습니다 (해제는 관리자만)");
         return;
       }
-      var path = "board/notices/" + id + "/" + kind + "/" + zone;
+      var path = DB_ROOT + "/notices/" + id + "/" + kind + "/" + zone;
       fbUpdate({}).then(function () {});
       db.ref(path).remove().then(function () {
         writeLog({ noticeId: id, type: kind + "_undo", zone: zone, by: actor() ? actor().name : "", at: nowTs(), title: n.title });
@@ -707,26 +732,26 @@ var App = (function () {
       var recTeam = (SESSION.role === "admin" && (team === "A" || team === "B")) ? team : (a.team || team);
       var recBy = (SESSION.role === "admin" && (team === "A" || team === "B")) ? (guardName(team, zone) || a.name) : a.name;
       var updates = {};
-      updates["board/notices/" + id + "/" + kind + "/" + zone] =
+      updates[DB_ROOT + "/notices/" + id + "/" + kind + "/" + zone] =
         { by: recBy, team: recTeam, at: nowTs() };
       var status = n.status;
       var attachState = Object.assign({}, n.attach || {});
       var detachState = Object.assign({}, n.detach || {});
       if (kind === "attach") {
         attachState[zone] = { by: recBy, team: recTeam, at: nowTs() };
-        updates["board/notices/" + id + "/status"] = "posted";
+        updates[DB_ROOT + "/notices/" + id + "/status"] = "posted";
       } else {
         detachState[zone] = { by: recBy, team: recTeam, at: nowTs() };
         var zs = applicableZones(n);
         var allDone = zs.every(function (z) { return !!detachState[z]; });
         if (allDone) {
-          updates["board/notices/" + id + "/status"] = "archived";
-          updates["board/notices/" + id + "/archivedAt"] = TODAY;
+          updates[DB_ROOT + "/notices/" + id + "/status"] = "archived";
+          updates[DB_ROOT + "/notices/" + id + "/archivedAt"] = TODAY;
         }
       }
-      updates["board/notices/" + id + "/updatedAt"] = nowTs();
+      updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
       // 제거 완료로 보관함에 들어가면 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
-      if (updates["board/notices/" + id + "/status"] === "archived") {
+      if (updates[DB_ROOT + "/notices/" + id + "/status"] === "archived") {
         var comp = compactOrders(targetsOf(n), [id]);
         Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
       }
@@ -753,7 +778,7 @@ var App = (function () {
     }
     if (st && isExtRec(st)) {
       if (SESSION.role !== "admin") { toast(EXT_LABEL + " " + label + " 기록 해제는 관리자만 가능합니다"); return; }
-      db.ref("board/notices/" + id + "/" + kind + "/" + zone).remove().then(function () {
+      db.ref(DB_ROOT + "/notices/" + id + "/" + kind + "/" + zone).remove().then(function () {
         writeLog({ noticeId: id, type: kind + "_undo", zone: zone, by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
         toast(EXT_LABEL + " " + label + " 기록을 해제했습니다");
         afterZoneChange(id);
@@ -762,20 +787,20 @@ var App = (function () {
     }
     var updates = {};
     var rec = { by: EXT_LABEL, team: EXT_TEAM, at: nowTs() };
-    updates["board/notices/" + id + "/" + kind + "/" + zone] = rec;
+    updates[DB_ROOT + "/notices/" + id + "/" + kind + "/" + zone] = rec;
     if (kind === "attach") {
-      updates["board/notices/" + id + "/status"] = "posted";
+      updates[DB_ROOT + "/notices/" + id + "/status"] = "posted";
     } else {
       var zs = applicableZones(n);
       var allDone = zs.every(function (z) { return z === zone || !!zoneCheck(n, "detach", z); });
       if (allDone) {
-        updates["board/notices/" + id + "/status"] = "archived";
-        updates["board/notices/" + id + "/archivedAt"] = TODAY;
+        updates[DB_ROOT + "/notices/" + id + "/status"] = "archived";
+        updates[DB_ROOT + "/notices/" + id + "/archivedAt"] = TODAY;
         var comp = compactOrders(targetsOf(n), [id]);
         Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
       }
     }
-    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
     fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ noticeId: id, type: kind, zone: zone, by: EXT_LABEL, team: EXT_TEAM, at: nowTs(), title: n.title });
@@ -806,10 +831,10 @@ var App = (function () {
     if (!val) { toast("새 기한을 선택하세요"); return; }
     requireGuard(function (a) {
       var updates = {};
-      updates["board/notices/" + id + "/deadline"] = val;
-      updates["board/notices/" + id + "/permanent"] = false;
-      updates["board/notices/" + id + "/updatedAt"] = nowTs();
-      updates["board/notices/" + id + "/deadlineChanged"] = { by: a.name, at: nowTs(), from: n.deadline || "", to: val, note: note };
+      updates[DB_ROOT + "/notices/" + id + "/deadline"] = val;
+      updates[DB_ROOT + "/notices/" + id + "/permanent"] = false;
+      updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
+      updates[DB_ROOT + "/notices/" + id + "/deadlineChanged"] = { by: a.name, at: nowTs(), from: n.deadline || "", to: val, note: note };
       fbUpdate(updates).then(function (ok) {
         if (!ok) return;
         writeLog({ noticeId: id, type: "deadline", by: a.name, team: a.team, at: nowTs(), note: note, from: n.deadline, to: val, title: n.title });
@@ -1682,7 +1707,7 @@ var App = (function () {
     var h = "";
     if (!isA) {
       h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
-        "새 게시물 등록·삭제는 관리자(카일·관리사무소)가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
+        "새 게시물 등록·삭제는 관리자(" + esc(((CFG && CFG.admins) || []).join("·")) + ")가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
       return h + createListHtml(false);
     }
     h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
@@ -1726,7 +1751,7 @@ var App = (function () {
     var placeTxt = targetsPlaceText({ targets: targets });
     var push = pushOrdersForNew(targets, id);
     var updates = push.updates;
-    updates["board/notices/" + id] = payload;
+    updates[DB_ROOT + "/notices/" + id] = payload;
     var btn = document.querySelector('[data-act="nf-save"]');
     if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
     fbUpdate(updates).then(function (ok) {
@@ -1751,7 +1776,7 @@ var App = (function () {
     var updates = {}, removed = [];
     ids.forEach(function (id) {
       var n = getNotice(id);
-      updates["board/notices/" + id] = null;
+      updates[DB_ROOT + "/notices/" + id] = null;
       targetsOf(n).forEach(function (t) { removed.push(t); });
     });
     var comp = compactOrders(removed, ids);
@@ -1864,8 +1889,8 @@ var App = (function () {
       t.order = destCount + k + 1;
       var arr = targetsOf(it.notice).slice();
       arr[it.idx] = t;
-      updates["board/notices/" + it.id + "/targets"] = arr;
-      updates["board/notices/" + it.id + "/updatedAt"] = nowTs();
+      updates[DB_ROOT + "/notices/" + it.id + "/targets"] = arr;
+      updates[DB_ROOT + "/notices/" + it.id + "/updatedAt"] = nowTs();
       olds.push(it.t);
     });
     var comp = compactOrders(olds, items.map(function (it) { return it.id; }));
@@ -2109,20 +2134,20 @@ var App = (function () {
       list.splice(at - 1, 0, self);
       list.forEach(function (d, i) {
         var to = i + 1;
-        if (d.self) { selfTarget.order = to; updates["board/notices/" + id + "/targets"] = [selfTarget]; }
-        else if (orderNum(d.order) !== to) updates["board/notices/" + d.id + "/targets/" + d.idx + "/order"] = to;
+        if (d.self) { selfTarget.order = to; updates[DB_ROOT + "/notices/" + id + "/targets"] = [selfTarget]; }
+        else if (orderNum(d.order) !== to) updates[DB_ROOT + "/notices/" + d.id + "/targets/" + d.idx + "/order"] = to;
       });
     } else {
       var at2 = Math.min(Math.max(1, want), dest.length + 1);
       dest.forEach(function (d, i) {
-        if (i + 1 >= at2) updates["board/notices/" + d.id + "/targets/" + d.idx + "/order"] = orderNum(d.order) + 1;
+        if (i + 1 >= at2) updates[DB_ROOT + "/notices/" + d.id + "/targets/" + d.idx + "/order"] = orderNum(d.order) + 1;
       });
       selfTarget.order = at2;
-      updates["board/notices/" + id + "/targets"] = [selfTarget];
+      updates[DB_ROOT + "/notices/" + id + "/targets"] = [selfTarget];
       var comp = compactOrders(olds, [id]);
       Object.keys(comp.updates).forEach(function (k) { if (!(k in updates)) updates[k] = comp.updates[k]; });
     }
-    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
     var newZones = [];
     buildingsOfTarget(newTarget).forEach(function (no) {
       var z = zoneOfBuilding(no);
@@ -2426,7 +2451,7 @@ var App = (function () {
   }
 
   /* ---------- 4. 게시물 이력 및 통계 ----------
-     집계 기준 (2026-11-25 개편 · 카일 지시)
+     집계 기준 (2026-11-25 개편 · 관리자 지시)
      · 단위: 게시물 1건 = 게시 1건 / 제거 1건.
        한 게시물을 정문·후문A·후문B 세 구역에서 각각 걸어도, 담당자가 여러 명이어도 1건으로 센다.
        (구역 수·담당 인원 수로 곱하지 않는다 — 2026-11-20 3배 집계 문제의 원천 수정)
@@ -3671,7 +3696,7 @@ var App = (function () {
       updates = shift.updates;
       pushed = shift.pushed;
     }
-    updates["board/notices/" + id] = Object.assign({}, existing || {}, payload);
+    updates[DB_ROOT + "/notices/" + id] = Object.assign({}, existing || {}, payload);
     return { updates: updates, pushed: pushed };
   }
 
@@ -3723,7 +3748,7 @@ var App = (function () {
       if (!pinHash) { toast("이 브라우저에서는 PIN을 저장할 수 없습니다"); return; }
     }
     var next = Object.assign({}, CFG, { admins: admins, teams: teams, pinHash: pinHash, updatedAt: nowTs() });
-    fbSet("board/config", next).then(function (ok) {
+    fbSet(DB_ROOT + "/config", next).then(function (ok) {
       if (!ok) return;
       closeSheet();
       toast(p1 ? "설정과 PIN을 저장했습니다" : "설정을 저장했습니다");
@@ -3738,7 +3763,7 @@ var App = (function () {
     // 삭제로 비워진 자리의 남은 게시물 순번을 1,2,3… 으로 다시 이어 붙인다
     var comp = compactOrders(targetsOf(n), [id]);
     var updates = comp.updates;
-    updates["board/notices/" + id] = null;
+    updates[DB_ROOT + "/notices/" + id] = null;
     fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ noticeId: id, type: "delete", by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
@@ -3757,10 +3782,10 @@ var App = (function () {
     // 보관함으로 옮긴 뒤 남은 게시물의 순번을 1,2,3… 으로 이어 붙인다
     var comp = compactOrders(targetsOf(n), [id]);
     var updates = comp.updates;
-    updates["board/notices/" + id + "/detach"] = detach;
-    updates["board/notices/" + id + "/status"] = "archived";
-    updates["board/notices/" + id + "/archivedAt"] = TODAY;
-    updates["board/notices/" + id + "/updatedAt"] = nowTs();
+    updates[DB_ROOT + "/notices/" + id + "/detach"] = detach;
+    updates[DB_ROOT + "/notices/" + id + "/status"] = "archived";
+    updates[DB_ROOT + "/notices/" + id + "/archivedAt"] = TODAY;
+    updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
     fbUpdate(updates).then(function (ok) {
       if (!ok) return;
       writeLog({ noticeId: id, type: "force_archive", by: SESSION.admin || "관리자", at: nowTs(), title: n.title });
@@ -3773,7 +3798,7 @@ var App = (function () {
     if (!tests.length) { toast("테스트 데이터가 없습니다"); return; }
     if (!confirm("테스트 게시물 " + tests.length + "건을 모두 삭제할까요?\n실제 게시물은 남습니다.")) return;
     var updates = {};
-    tests.forEach(function (n) { updates["board/notices/" + n.id] = null; });
+    tests.forEach(function (n) { updates[DB_ROOT + "/notices/" + n.id] = null; });
     // 테스트 게시물이 덮고 있던 자리의 순번도 다시 이어 붙인다
     var removed = [], ids = [];
     tests.forEach(function (n) { ids.push(n.id); targetsOf(n).forEach(function (t) { removed.push(t); }); });
@@ -4048,6 +4073,7 @@ var App = (function () {
       else if (act === "mv-order") { moveState.order = Number(el.dataset.v); refreshMoveBits(); }
       else if (act === "mv-save") { saveMove(el.dataset.id); }
       else if (act === "admin-logout") {
+        if (SANDBOX) { toast("🧪 테스트용 카피본은 항상 Admin 권한입니다"); return; }
         SESSION.role = null; SESSION.admin = "";
         saveSession(); render(); toast("관리자 권한을 해제했습니다");
       }
@@ -4092,10 +4118,11 @@ var App = (function () {
       else if (act === "font") {
         FONT_LG = !FONT_LG;
         document.documentElement.classList.toggle("fs-lg", FONT_LG);
-        try { localStorage.setItem("gf.fontLg", FONT_LG ? "1" : "0"); } catch (err) {}
+        try { localStorage.setItem(LS_PREFIX + "fontLg", FONT_LG ? "1" : "0"); } catch (err) {}
       }
       else if (act === "who") { openWhoSheet(); }
       else if (act === "who-logout") {
+        if (SANDBOX) { toast("🧪 테스트용 카피본은 항상 Admin 권한입니다"); return; }
         SESSION.role = null; SESSION.name = ""; SESSION.admin = "";
         saveSession(); closeSheet(); render(); toast("조회 모드로 돌아왔습니다");
       }
@@ -4476,18 +4503,20 @@ var App = (function () {
           CONNECTED = !!s.val();
           if (LOADED) render();
         });
-        db.ref("board/config").on("value", function (s) {
+        db.ref(DB_ROOT + "/config").on("value", function (s) {
           var v = s.val();
           if (!v) {
             CFG = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-            db.ref("board/config").set(CFG).catch(function () {});
+            db.ref(DB_ROOT + "/config").set(CFG).catch(function () {});
           } else {
             CFG = Object.assign({}, DEFAULT_CONFIG, v);
             if (!CFG.teams || !CFG.teams.A) CFG.teams = DEFAULT_CONFIG.teams;
+            /* 예전 설정에 남아 있는 개인 닉네임은 표시 전에 Admin 으로 바꾼다 (DB는 그대로) */
+            CFG.admins = (CFG.admins || []).map(function (a) { return scrubName(a).trim(); });
           }
           if (LOADED) render();
         }, function (err) { toast("설정을 읽지 못했습니다: " + err.message); });
-        db.ref("board/notices").on("value", function (s) {
+        db.ref(DB_ROOT + "/notices").on("value", function (s) {
           var wasLoaded = LOADED;
           setNotices(s.val());
           NOTICES_READY = true;
@@ -4500,11 +4529,11 @@ var App = (function () {
           document.getElementById("view").innerHTML =
             '<div class="empty-box">게시판 데이터에 연결하지 못했습니다.<br><b>' + esc(err.message) + '</b><br>인터넷 연결을 확인하고 새로고침해 주세요.</div>';
         });
-        db.ref("board/logs").limitToLast(50).on("value", function (s) {
+        db.ref(DB_ROOT + "/logs").limitToLast(50).on("value", function (s) {
           setMoveLogs(s.val());
           if (LOADED && VIEW.name === "create") render();
         }, function () { /* 이동 기록을 읽지 못해도 화면은 그대로 쓴다 */ });
-        db.ref("board/daily_alerts").on("value", function (s) {
+        db.ref(DB_ROOT + "/daily_alerts").on("value", function (s) {
           setAlerts(s.val());
           if (!LOADED) return;
           if (VIEW.name === "alerts") renderAlertList();
@@ -4587,7 +4616,8 @@ var App = (function () {
       matches: mvMatches, apply: massMoveUpdates, screen: function () { return moveTabHtml(true); },
       place: specPlaceText, hits: specHitsTarget, same: sameSpec, logs: setMoveLogs
     },
-    state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION }; },
+    state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION,
+      env: { dbRoot: DB_ROOT, sandbox: SANDBOX, adminLabel: ADMIN_LABEL, lsPrefix: LS_PREFIX } }; },
     setToday: function (d) { TODAY = d; buildIndex(); render(); }
   };
   if (typeof document !== "undefined" && document.getElementById("view")) {
