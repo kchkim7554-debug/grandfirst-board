@@ -2509,7 +2509,6 @@ var App = (function () {
       '<div class="adetail-acts">' +
       '<button class="mini-btn on" data-act="alert-copy-day" data-date="' + esc(a.date) + '">' +
       (isToday ? "오늘 제거 목록 복사" : "이 날 제거 목록 복사") + "</button>" +
-      '<button class="mini-btn" data-act="alert-list">목록으로</button>' +
       "</div>" +
       '<div class="adetail aview">' + alertDetailBodyHtml(a) + "</div></div>";
     return h;
