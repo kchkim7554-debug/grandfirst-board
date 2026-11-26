@@ -33,9 +33,10 @@
   --blue-bg:#eaf2fd; --blue-line:#c3d8f6;
   --radius:16px;
   --tabh:70px;
-  /* 안드로이드 3버튼/제스처 내비게이션 바가 화면 아래를 덮는 edge-to-edge 환경에서도
-     탭바 아이콘·글자가 가려지지 않도록 항상 최소 50px 을 확보한다. (env() 가 0px 인 기기 대비) */
-  --sab:max(50px, env(safe-area-inset-bottom, 0px));
+  /* 탭바 아래 여백 = 기기 안전영역(env)만. 예전에는 env() 가 0px 인 크롬·모바일 브라우저에서도
+     최소 50px 을 강제해 탭바 밑에 흰 여백이 크게 남았다(2026-11-26 사용자 지적)
+     → 실제 안전영역이 없으면 6px 만 두고 탭바를 화면 맨 아래에 밀착시킨다. */
+  --sab:max(6px, env(safe-area-inset-bottom, 0px));
   /* 상태바가 화면 위를 덮는 경우에도 상단바 내용이 가려지지 않게 최소 여백 확보 */
   --sat:max(30px, calc(8px + env(safe-area-inset-top, 0px)));
   --r-lg:16px;
@@ -996,24 +997,25 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 /* ---------- 하단 고정 5탭바 ---------- */
 .tabbar{
   /* 높이 = 아이콘·라벨 영역(--tabh) + 아래 안전 여백(--sab)
-     → 안드로이드 내비게이션 바(. 약 48px)가 화면을 덮어도 홈·생성·배포·알림·더보기가 그 위로 올라온다. */
+     → 안전영역이 있는 기기에서는 그만큼만 띄우고, 없으면 화면 맨 아래에 붙는다. */
   position:fixed;left:0;right:0;bottom:0;z-index:45;height:calc(var(--tabh) + var(--sab));
-  background:rgba(255,255,255,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  /* 본문 카드와 경계를 뚜렷하게 */
-  border-top:1.5px solid #bcc9da;box-shadow:0 -14px 34px rgba(15,23,42,.20),0 -3px 10px rgba(15,23,42,.14);
+  /* 2026-11-26 사용자 요청 — 탭바 바탕을 파랑 계열(네이비 그라데이션)로 */
+  background:linear-gradient(180deg,#1c4a7c 0%,#123a63 55%,#0d2e52 100%);
+  /* 본문 카드와 경계를 뚜렷하게: 밝은 하늘색 상단선 + 진한 그림자 */
+  border-top:1.5px solid #7fb2e4;box-shadow:0 -14px 34px rgba(8,22,42,.30),0 -3px 10px rgba(8,22,42,.22);
   display:grid;grid-template-columns:repeat(5,1fr);align-items:stretch;
   padding:0 4px var(--sab);
 }
 .tabbar::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;pointer-events:none;
-  background:linear-gradient(90deg,rgba(18,58,99,0),rgba(18,58,99,.10) 22%,rgba(18,58,99,.10) 78%,rgba(18,58,99,0));}
+  background:linear-gradient(90deg,rgba(125,196,255,0),rgba(125,196,255,.55) 22%,rgba(125,196,255,.55) 78%,rgba(125,196,255,0));}
 .tb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  color:#93a0b3;padding:0;border:0;background:none;border-radius:12px;}
+  color:#bcd3ea;padding:0;border:0;background:none;border-radius:12px;}
 .tb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;}
 .tb .l{font-size:.62rem;font-weight:700;letter-spacing:-.3px;}
-.tb.on{color:var(--navy);}
-.tb.on .l{font-weight:800;}
-.tb.on::before{content:"";position:absolute;top:4px;width:22px;height:3px;border-radius:99px;background:var(--navy);}
-.tb .bdg{position:absolute;top:7px;right:calc(50% - 21px);min-width:16px;height:16px;border-radius:999px;background:#cf3a2b;
+.tb.on{color:#fff;background:rgba(125,196,255,.14);}
+.tb.on .l{font-weight:800;color:#fff;}
+.tb.on::before{content:"";position:absolute;top:4px;width:22px;height:3px;border-radius:99px;background:#7dc4ff;}
+.tb .bdg{position:absolute;top:7px;right:calc(50% - 21px);min-width:16px;height:16px;border-radius:999px;background:#e04334;
   color:#fff;font-size:.58rem;font-weight:800;line-height:16px;text-align:center;padding:0 4px;border:1.5px solid #fff;}
 .tb .bdg[hidden]{display:none;}
 
@@ -1174,10 +1176,10 @@ html.fs-lg .q{min-height:100px;}
   touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 @media (hover:hover){
-  .tb:hover{color:var(--navy);background:#f4f8fe;}
+  .tb:hover{color:#fff;background:rgba(255,255,255,.13);}
 }
-.tb:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(37,99,235,.45);}
-.tb:active{transform:scale(.92);background:#e8f1fe;}
+.tb:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(125,196,255,.85);}
+.tb:active{transform:scale(.92);background:rgba(255,255,255,.20);}
 
 /* 움직임 줄이기 설정을 켠 경우: 튀어오름만 끄고 눌림은 즉시 표시 */
 @media (prefers-reduced-motion:reduce){
