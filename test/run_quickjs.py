@@ -76,7 +76,7 @@ def check_shell():
     # 배경 — 2026-11-26 사용자 요청: 화면 전체 기본 배경을 민트색으로
     ok("민트색 기본 배경(--bg)", "--bg:#e5f6f1" in html)
     ok("배경 워시(단지 사진 위 채색)도 민트 톤",
-       "linear-gradient(180deg,#f1fbf8 0%,#e5f6f1 58%,#dcf2ea 100%)" in html)
+       "linear-gradient(180deg,#ecfaf5 0%,#e3f6ef 52%,#d9f1e8 100%)" in html)
     ok("예전 회색 바탕(#f2f5fa)이 기본 배경에서 빠졌다",
        "--bg:#f2f5fa" not in html and "linear-gradient(180deg,#f4f8fc" not in html)
     ok("theme-color 도 민트", 'name="theme-color" content="#e5f6f1"' in html)
