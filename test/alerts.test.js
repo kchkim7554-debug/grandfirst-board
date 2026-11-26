@@ -74,8 +74,9 @@ console.log("\n[2] 표 — 년월일 | 내용 | 제거건수 | 담당");
 {
   reset();
   var h = A.table(A.rows());
-  ok("표 머리 4칸", has(h, "<th>년월일</th>") && has(h, "<th>내용</th>") &&
-    has(h, 'class="ac">제거건수') && has(h, 'class="ac">담당'));
+  ok("표 머리 4칸 + 우측 화살표 칸", has(h, "<th>년월일</th>") && has(h, "<th>내용</th>") &&
+    has(h, 'class="ac">제거건수') && has(h, 'class="ac">담당') && has(h, 'class="ac ago"'));
+  ok("행 오른쪽 › 화살표", (h.match(/class="ac ago" aria-hidden="true">›/g) || []).length === 3);
   ok("행마다 누를 수 있는 data-act=alert-open", (h.match(/data-act="alert-open"/g) || []).length === 3);
   ok("년월일은 점 표기 + 요일", has(h, "2026.11.20") && has(h, "(금)"));
   ok("제거건수 2건", has(h, ">2건<"));
@@ -90,13 +91,19 @@ console.log("\n[2] 표 — 년월일 | 내용 | 제거건수 | 담당");
   ok("용어는 게시/제거 (부착/탈착 없음)", !has(h, "부착") && !has(h, "탈착"));
 }
 
-/* ---------- 3. 행을 누르면 상세 (카드 이미지 · 안내 문구 · 내려받기) ---------- */
-console.log("\n[3] 상세 — 카드 이미지 · 안내 문구 · 저장");
+/* ---------- 3. 날짜 행 → 별도 상세 화면 (목록을 가리고 전환) ---------- */
+console.log("\n[3] 행을 누르면 별도 상세 화면");
 {
-  reset({ open: "2026-11-20" });
-  var body = A.body();
-  ok("상세 패널 열림", has(body, 'id="alertDetail"'));
-  ok("상세 날짜·담당", has(body, "2026년 11월 20일") && has(body, "B조"));
+  reset({});
+  var list = A.screen();
+  ok("목록 화면에는 상세가 함께 나오지 않는다", has(list, 'id="alertBody"') && !has(list, 'id="alertDetail"'));
+  ok("목록 안내 문구도 '별도 화면'", has(list, "별도 화면"));
+
+  var body = A.screen("2026-11-20");
+  ok("날짜 상세 화면은 목록을 가린다", has(body, 'id="alertDetail"') && !has(body, 'id="alertBody"') &&
+    !has(body, "<th>년월일</th>"));
+  ok("상세 제목 = 날짜·담당·건수", has(body, "📅 2026.11.20 (금)") && has(body, "B조") && has(body, "제거 대상 2건"));
+  ok("맨 위 뒤로 가기(‹ 일일 알림 목록)", has(body, 'data-act="alert-list"') && has(body, "‹ 일일 알림 목록"));
   ok("카드 이미지 2장", (body.match(/class="acard"/g) || []).length === 2 &&
     has(body, "templates/cards/2026-11-20_R01.jpg") && has(body, "templates/cards/2026-11-20_R15.jpg"));
   ok("안내 문구 표시", has(body, "[승강기 정기 점검] 오늘 제거 바랍니다."));
@@ -104,10 +111,72 @@ console.log("\n[3] 상세 — 카드 이미지 · 안내 문구 · 저장");
   ok("카드 저장(내려받기) 링크", has(body, 'download="2026-11-20_R01.jpg"'));
   ok("확대 보기(zoom)", has(body, 'data-act="zoom"'));
 
-  reset({ open: "2026-11-19" });
-  var none = A.body();
+  reset({});
+  var none = A.screen("2026-11-19");
   ok("제거 없는 날 상세", has(none, "제거 대상 게시물이 없었습니다") && !has(none, 'class="acard"'));
+  ok("없는 날짜는 안내", has(A.screen("2026-12-25"), "07시 알림 기록이 없습니다"));
   eq("없는 날짜 상세는 빈 문자열", A.detail("2026-12-25"), "");
+}
+
+/* ---------- 3-0. 해시 라우트 — 행 클릭이 날짜 화면으로 전환 ---------- */
+console.log("\n[3-0] 해시 라우트 #/alerts/날짜");
+{
+  var B = globalThis.__boardTest;
+  var hv = B.hash("#/alerts/2026-11-20");
+  ok("#/alerts/날짜 → 상세 화면", hv.name === "alerts" && hv.date === "2026-11-20", JSON.stringify(hv));
+  var hl = B.hash("#/alerts");
+  ok("#/alerts → 목록", hl.name === "alerts" && !hl.date);
+  ok("날짜가 아닌 해시는 목록", !B.hash("#/alerts/xyz").date);
+  ok("다른 해시는 그대로", B.hash("#/deploy").name === "deploy");
+}
+
+/* ---------- 3-2. 상세 화면 순서 — ① 오늘 일어날 일 → ② 오늘 제거 대상 ---------- */
+console.log("\n[3-2] 상세 화면 순서 — 게시물 주요 일정이 먼저");
+{
+  reset({});
+  var d = A.screen("2026-11-20");
+  ok("'일어날 일' 섹션이 제거 대상 섹션보다 위", d.indexOf("일어날 일") > 0 && d.indexOf("🗑️") > 0 &&
+    d.indexOf("일어날 일") < d.indexOf("🗑️"),
+    "일정 " + d.indexOf("일어날 일") + " / 제거 " + d.indexOf("🗑️"));
+  ok("일정 섹션 제목", has(d, "📅 그날 일어날 일") && has(d, "(게시물 주요 일정)"));
+  ok("events 없으면 빈 상태", has(d, "등록된 주요 일정 없음"));
+
+  var withEv = clone(FIX);
+  withEv["2026-11-20"].events = [
+    { title: "승강기 정기 점검", time: "10:00~16:00", detail: "동별 순차 점검(101~121동)", noticeId: "R01" },
+    "입주민 의견서 마감 18시"
+  ];
+  A.set(withEv); A.setUi({ tab: "list", sort: "desc", from: "", to: "", shift: "all", open: "" });
+  var de = A.screen("2026-11-20");
+  ok("일정 카드 2장", (de.match(/class="ev"/g) || []).length === 2, String((de.match(/class="ev"/g) || []).length));
+  ok("일정 시간·제목·내용", has(de, "10:00~16:00") && has(de, "승강기 정기 점검") && has(de, "동별 순차 점검"));
+  ok("문자열 일정도 표시", has(de, "입주민 의견서 마감 18시"));
+  eq("start/end → 시간", A.events({ events: [{ title: "대표회의", start: "19:00", end: "20:30" }] })[0].time, "19:00~20:30");
+
+  var pushEv = clone(withEv);
+  pushEv["2026-11-21"].events = { "-N1": { title: "소방 점검", time: "09:00" }, "-N2": { title: "단지 대표회의" } };
+  A.set(pushEv); A.setUi({ shift: "all", open: "" });
+  eq("Firebase 객체 events 도 2건", A.events(A.byDate("2026-11-21")).length, 2);
+  ok("객체 events 화면 표시", has(A.screen("2026-11-21"), "소방 점검"));
+  eq("events 없는 날은 빈 배열", A.events(A.byDate("2026-11-19")).length, 0);
+}
+
+/* ---------- 3-3. 상세 화면 [제거 목록 복사] ---------- */
+console.log("\n[3-3] 상세 화면 — 제거 목록 복사");
+{
+  reset({});
+  var d = A.screen("2026-11-20");
+  ok("제거 목록 복사 버튼", has(d, 'data-act="alert-copy-day"') && has(d, "이 날 제거 목록 복사"));
+
+  B.setToday("2026-11-20");
+  ok("오늘 날짜면 '오늘 제거 목록 복사'", has(A.screen("2026-11-20"), "오늘 제거 목록 복사"));
+  var t = A.dayCopy("2026-11-20");
+  ok("복사 문구 — 날짜·담당·건수",
+    t.indexOf("[제일풍경채 그랑퍼스트 1단지] 2026년 11월 20일 (금) B조 제거 대상 2건") === 0, t.split("\n")[0]);
+  ok("복사 문구 — 안내 2건", t.indexOf("1. ") > 0 && t.indexOf("2. ") > t.indexOf("1. "));
+  ok("복사 문구 — 게시판 바로가기", t.indexOf("👉 제거 체크하기: https://kchkim7554-debug.github.io/grandfirst-board/#/deploy") > 0);
+  eq("없는 날짜 복사 문구는 빈 문자열", A.dayCopy("2026-12-25"), "");
+  B.setToday("");
 }
 
 /* ---------- 3-1. [안내 문구 복사] — 게시판 바로가기 링크 포함 ---------- */

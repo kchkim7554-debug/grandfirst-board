@@ -2358,7 +2358,7 @@ var App = (function () {
       "</div></div>";
     return h;
   }
-  /* 표 — 년월일 | 내용 | 제거건수 | 담당 */
+  /* 표 — 년월일 | 내용 | 제거건수 | 담당 | (바로가기 화살표) */
   function alertTableHtml(rows) {
     if (!ALERTS.length) {
       return '<div class="empty-box">아직 07시 알림 기록이 없습니다.<br>매일 07:00 제거 알림이 날짜별로 이곳에 쌓입니다.</div>';
@@ -2366,33 +2366,33 @@ var App = (function () {
     if (!rows || !rows.length) {
       return '<div class="empty-box">조건에 맞는 알림이 없습니다.<br>조회 기간을 넓히거나 담당을 <b>전체</b>로 바꿔 보세요.</div>';
     }
+    var cur = VIEW.date || "";
     var h = '<div class="statcard" style="padding:2px 2px 4px"><div class="tscroll">' +
       '<table class="ptable atable"><thead><tr>' +
-      "<th>년월일</th><th>내용</th><th class=\"ac\">제거건수</th><th class=\"ac\">담당</th>" +
+      "<th>년월일</th><th>내용</th><th class=\"ac\">제거건수</th><th class=\"ac\">담당</th><th class=\"ac ago\"><span class=\"sr\">보기</span></th>" +
       "</tr></thead><tbody>";
     rows.forEach(function (a) {
       var n = alertCount(a);
-      var on = AZ.open === a.date ? " sel" : "";
-      h += '<tr class="atr' + on + '" data-act="alert-open" data-date="' + esc(a.date) + '">' +
+      var on = cur === a.date ? " sel" : "";
+      h += '<tr class="atr' + on + '" data-act="alert-open" data-date="' + esc(a.date) + '" tabindex="0" role="link" aria-label="' +
+        esc(dotDate(a.date) + " (" + (a.weekday || weekday(a.date)) + ") 일일 알림 상세 보기") + '">' +
         '<th scope="row">' + esc(dotDate(a.date)) + ' <small>(' + esc(a.weekday || weekday(a.date)) + ")</small></th>" +
         '<td class="al">' + esc(alertContent(a)) + "</td>" +
         '<td class="ac' + (n ? "" : " z") + '">' + (n ? n + "건" : "-") + "</td>" +
-        '<td class="ac">' + esc(shiftLabel(a) || "-") + "</td></tr>";
+        '<td class="ac">' + esc(shiftLabel(a) || "-") + "</td>" +
+        '<td class="ac ago" aria-hidden="true">›</td></tr>';
     });
     return h + "</tbody></table></div></div>";
   }
-  /* 상세 — 기존 카드 이미지 · 안내 문구 · 내려받기 그대로 */
-  function alertDetailHtml(date) {
+  function alertByDate(date) {
     var a = null;
     ALERTS.forEach(function (x) { if (x.date === date) a = x; });
-    if (!a) return "";
+    return a;
+  }
+  /* 상세 본문 — 카드 이미지 · 안내 문구 · 내려받기 (머리글 없이) */
+  function alertDetailBodyHtml(a) {
     var items = alertItems(a);
-    var h = '<div class="adetail" id="alertDetail">' +
-      '<div class="adetail-h"><div class="adetail-t">' + esc(korDate(a.date)) +
-      " (" + esc(a.weekday || weekday(a.date)) + ")" +
-      (shiftLabel(a) ? ' <span class="pill soon">' + esc(shiftLabel(a)) + "</span>" : "") +
-      ' <span class="pill ' + (items.length ? "overdue" : "removed") + '">제거 대상 ' + items.length + "건</span></div>" +
-      '<button class="mini-btn" data-act="alert-close">닫기</button></div>';
+    var h = "";
     if (a.summary) h += '<div class="aday-sum">' + esc(a.summary) + "</div>";
     if (!items.length) {
       h += '<div class="adetail-none">이 날은 제거 대상 게시물이 없었습니다.<br>' +
@@ -2401,7 +2401,120 @@ var App = (function () {
       if (a.memo) h += '<div class="aday-sum">' + esc(a.memo) + "</div>";
       h += '<div>' + items.map(function (it, i) { return alertItemHtml(a, it, i); }).join("") + "</div>";
     }
-    return h + "</div>";
+    return h;
+  }
+  /* 상세 — 기존 카드 이미지 · 안내 문구 · 내려받기 그대로 */
+  function alertDetailHtml(date) {
+    var a = alertByDate(date);
+    if (!a) return "";
+    var items = alertItems(a);
+    return '<div class="adetail" id="alertDetail">' +
+      '<div class="adetail-h"><div class="adetail-t">' + esc(korDate(a.date)) +
+      " (" + esc(a.weekday || weekday(a.date)) + ")" +
+      (shiftLabel(a) ? ' <span class="pill soon">' + esc(shiftLabel(a)) + "</span>" : "") +
+      ' <span class="pill ' + (items.length ? "overdue" : "removed") + '">제거 대상 ' + items.length + "건</span></div>" +
+      "</div>" + alertDetailBodyHtml(a) + "</div>";
+  }
+  /* 그날 제거 목록 복사 문구 — 게시물별 안내 문구 + 게시판 바로가기 링크 */
+  function alertDayCopyText(date) {
+    var a = alertByDate(date);
+    if (!a) return "";
+    var items = alertItems(a);
+    var s = shiftLabel(a);
+    var lines = [];
+    lines.push("[제일풍경채 그랑퍼스트 1단지] " + korDate(a.date) + " (" + (a.weekday || weekday(a.date)) + ")" +
+      (s ? " " + s : "") + " 제거 대상 " + items.length + "건");
+    lines.push("");
+    if (!items.length) lines.push("- 제거 대상 없음");
+    items.forEach(function (it, i) {
+      lines.push((i + 1) + ". " + (it.message || it.desc || it.text ||
+        ((it.location ? it.location + " " : "") + "게시판 게시물 [" + (it.title || it.name || "") + "] 오늘 제거 바랍니다.")));
+    });
+    lines.push("");
+    lines.push(boardLink());
+    return lines.join("\n");
+  }
+  /* 그날의 주요 일정(events) — 배열·Firebase 객체·문자열 모두 받는다 */
+  function alertEvents(a) {
+    var src = a && a.events;
+    if (!src) return [];
+    var list = [];
+    if (typeof src === "string") { if (src.trim()) list.push(src); }
+    else if (Object.prototype.toString.call(src) === "[object Array]") list = src;
+    else if (typeof src === "object") Object.keys(src).forEach(function (k) { list.push(src[k]); });
+    var out = [];
+    list.forEach(function (e) {
+      if (e === null || e === undefined) return;
+      if (typeof e === "string") { if (e.trim()) out.push({ title: e.trim(), time: "", detail: "" }); return; }
+      if (typeof e !== "object") return;
+      var time = e.time || e.when || "";
+      if (!time && e.start) time = String(e.start) + (e.end ? "~" + e.end : "");
+      var title = e.title || e.name || e.text || e.summary || "";
+      var detail = e.detail || e.desc || e.message || e.memo || "";
+      if (!title && !time && !detail) return;
+      out.push({ title: title, time: time, detail: detail, noticeId: e.noticeId || e.id || "" });
+    });
+    return out;
+  }
+  /* 1) 게시물 주요 일정 섹션 — 오늘 일어날 일을 먼저 보여 준다 */
+  function alertEventsHtml(a) {
+    var evs = alertEvents(a);
+    var isToday = !!(a && a.date === TODAY);
+    var h = '<div class="asec aevsec">' +
+      '<div class="asec-h"><span class="asec-t">📅 ' + (isToday ? "오늘" : "그날") + ' 일어날 일</span>' +
+      '<span class="asec-s">(게시물 주요 일정)</span></div>';
+    if (!evs.length) {
+      return h + '<div class="asec-none">등록된 주요 일정 없음<br>' +
+        '<span>07:00 알림이 게시물에서 확인한 주요 일정이 생기면 이곳에 표시됩니다.</span></div></div>';
+    }
+    h += '<div class="evlist">';
+    evs.forEach(function (e) {
+      h += '<div class="ev">' +
+        (e.time ? '<div class="ev-time">' + esc(e.time) + "</div>" : "") +
+        '<div class="ev-main">' +
+        '<div class="ev-title">' + esc(e.title || "주요 일정") + "</div>" +
+        (e.detail ? '<div class="ev-detail">' + esc(e.detail) + "</div>" : "") +
+        "</div></div>";
+    });
+    return h + "</div></div>";
+  }
+  /* 별도 화면 — 일일 알림 날짜 상세 (목록을 가리고 이 화면만 보인다)
+     ① 오늘 일어날 일(게시물 주요 일정) → ② 오늘 제거 대상 순서 */
+  function alertDetailScreenHtml(date) {
+    var a = alertByDate(date);
+    var wd = (a && a.weekday) || weekday(date);
+    var h = '<div class="acrumb">' +
+      '<button class="back" data-act="alert-list" aria-label="일일 알림 목록으로">' +
+      '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>' +
+      '<div class="acrumb-txt"><div class="acrumb-t">일일 알림</div>' +
+      '<div class="acrumb-s">' + esc(dotDate(date)) + " (" + esc(wd) + ") 상세</div></div>" +
+      '<button class="mini-btn acrumb-back" data-act="alert-list">‹ 일일 알림 목록</button></div>';
+    if (!a) {
+      return h + '<div class="empty-box">이 날짜의 07시 알림 기록이 없습니다.<br>' +
+        "목록으로 돌아가 다른 날짜를 눌러 주세요.</div>";
+    }
+    var items = alertItems(a);
+    var s = shiftLabel(a);
+    var isToday = a.date === TODAY;
+    var meta = [];
+    if (s) meta.push(esc(s));
+    meta.push("제거 대상 " + items.length + "건");
+    h += '<div class="aview-top" id="alertDetail">' +
+      '<div class="aview-date">📅 ' + esc(dotDate(a.date)) + " (" + esc(wd) + ")" +
+      '<span class="aview-meta"> · ' + meta.join(" · ") + "</span></div></div>";
+    /* ① 오늘 일어날 일 */
+    h += alertEventsHtml(a);
+    /* ② 오늘 제거 대상 */
+    h += '<div class="asec aremsec">' +
+      '<div class="asec-h"><span class="asec-t">🗑️ ' + (isToday ? "오늘" : "그날") + ' 제거 대상</span>' +
+      '<span class="asec-s">' + items.length + "건" + (s ? " · " + esc(s) : "") + "</span></div>" +
+      '<div class="adetail-acts">' +
+      '<button class="mini-btn on" data-act="alert-copy-day" data-date="' + esc(a.date) + '">' +
+      (isToday ? "오늘 제거 목록 복사" : "이 날 제거 목록 복사") + "</button>" +
+      '<button class="mini-btn" data-act="alert-list">목록으로</button>' +
+      "</div>" +
+      '<div class="adetail aview">' + alertDetailBodyHtml(a) + "</div></div>";
+    return h;
   }
   function alertQueryHtml() {
     alertEnsureRange();
@@ -2427,21 +2540,18 @@ var App = (function () {
       alertCountText(rows) + "</span>" +
       '<button class="mini-btn" data-act="alert-sort">' + (AZ.sort === "asc" ? "오래된순 ↑" : "최신순 ↓") + "</button></div>";
     h += alertTableHtml(rows);
-    if (AZ.open) {
-      var keep = rows.some(function (a) { return a.date === AZ.open; });
-      if (keep) h += alertDetailHtml(AZ.open);
-      else AZ.open = "";
-    }
     return h;
   }
   function renderAlerts() {
+    /* 날짜를 눌러 들어온 상세는 목록을 가리고 그 화면만 보여 준다 */
+    if (VIEW.date) return alertDetailScreenHtml(VIEW.date);
     var h = '<div class="sec-title"><h2>게시물 제거 대상 일일 알림</h2><span class="hint">매일 07:00 · 제거 대상</span></div>';
     h += '<div class="seg-tabs" role="tablist" aria-label="알림·선택조회">' +
       '<button class="seg-tab' + (AZ.tab === "query" ? "" : " on") + '" data-act="alert-tab" data-v="list" role="tab" aria-selected="' + (AZ.tab !== "query") + '">알림</button>' +
       '<button class="seg-tab' + (AZ.tab === "query" ? " on" : "") + '" data-act="alert-tab" data-v="query" role="tab" aria-selected="' + (AZ.tab === "query") + '">선택조회</button>' +
       "</div>";
     h += '<div id="alertBody">' + alertBodyHtml() + "</div>";
-    h += '<p class="note">표의 행을 누르면 <b>그날의 제거 대상 게시물</b>과 카드 이미지·안내 문구가 아래에 나타납니다. ' +
+    h += '<p class="note">표의 날짜를 누르면 <b>그날 제거 대상 게시물</b>과 카드 이미지·안내 문구가 <b>별도 화면</b>으로 열립니다. ' +
       "<b>제거건수</b>는 그날 제거 대상 게시물 수, <b>담당</b>은 07:00 근무조입니다.</p>";
     return h;
   }
@@ -3923,8 +4033,8 @@ var App = (function () {
   }
 
   /* ---------- routing ---------- */
-  function parseHash() {
-    var raw = (location.hash || "").replace(/^#\/?/, "");
+  function parseHash(rawIn) {
+    var raw = (typeof rawIn === "string" ? rawIn : (typeof location !== "undefined" && location.hash ? location.hash : "")).replace(/^#\/?/, "");
     var p = raw.split("/").filter(Boolean);
     if (!p.length) return { name: "home" };
     var k = p[0];
@@ -3932,7 +4042,11 @@ var App = (function () {
     if (k === "deploy" || k === "tasks") return { name: "deploy" };
     if (k === "status") return { name: "status" };
     if (k === "history" || k === "archive" || k === "stats") return { name: "history" };
-    if (k === "alerts") return { name: "alerts" };
+    if (k === "alerts") {
+      /* #/alerts/2026-11-26 — 날짜 상세 화면 */
+      var adDate = /^\d{4}-\d{2}-\d{2}$/.test(p[1] || "") ? p[1] : "";
+      return { name: "alerts", date: adDate };
+    }
     if (k === "admin") return { name: "admin" };
     if (k === "info") return { name: "info" };
     if (k === "b") {
@@ -3942,9 +4056,14 @@ var App = (function () {
   }
   /* 서브 화면에서는 상단에 '‹' 버튼을 보인다. 탭바에 있는 화면(홈·생성·배포·알림)은 탭바로 이동한다. */
   var BACK_SCREENS = ["status", "history", "admin", "info", "building"];
+  /* 일일 알림 날짜 상세도 서브 화면으로 본다 (목록은 탭 화면) */
+  function isBackScreen(v) {
+    if (!v) return false;
+    return BACK_SCREENS.indexOf(v.name) >= 0 || (v.name === "alerts" && !!v.date);
+  }
   function syncChrome() {
     var hb = document.getElementById("homeBtn");
-    if (hb) hb.hidden = BACK_SCREENS.indexOf(VIEW.name) < 0;
+    if (hb) hb.hidden = !isBackScreen(VIEW);
     syncLive();
     if (document.body) {
       document.body.classList.toggle("bg-home", VIEW.name === "home");
@@ -4209,16 +4328,17 @@ var App = (function () {
       }
       else if (act === "alert-sort") { AZ.sort = AZ.sort === "asc" ? "desc" : "asc"; render(); }
       else if (act === "alert-open") {
-        var ad = el.dataset.date;
-        AZ.open = AZ.open === ad ? "" : ad;
-        var ab = document.getElementById("alertBody");
-        if (ab) ab.innerHTML = alertBodyHtml(); else render();
+        /* 날짜 행 → 목록을 가리는 별도 상세 화면 (해시 라우트 · 뒤로 가기 지원) */
+        var ad = el.dataset.date || "";
+        if (ad) go("#/alerts/" + ad);
+      }
+      else if (act === "alert-list") {
+        go("#/alerts");
       }
       else if (act === "alert-close") {
-        AZ.open = "";
-        var ab2 = document.getElementById("alertBody");
-        if (ab2) ab2.innerHTML = alertBodyHtml(); else render();
+        go("#/alerts");
       }
+      else if (act === "alert-copy-day") { copyPlain(alertDayCopyText(el.dataset.date)); }
       else if (act === "alert-shift") {
         AZ.shift = (el.dataset.v === "A" || el.dataset.v === "B") ? el.dataset.v : "all";
         AZ.open = "";
@@ -4585,11 +4705,22 @@ var App = (function () {
   var api = {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,
-    boardUrl: boardUrl, boardLink: boardLink, alertCopyText: alertCopyText,
+    boardUrl: boardUrl, boardLink: boardLink, alertCopyText: alertCopyText, hash: parseHash,
     /* 07시 알림 검증용 */
     alerts: {
       set: setAlerts, rows: alertFiltered, hit: alertHit, table: alertTableHtml,
-      detail: alertDetailHtml, body: alertBodyHtml, screen: function () { return renderAlerts(); },
+      detail: alertDetailHtml, body: alertBodyHtml,
+      screen: function (date) {
+        var save = VIEW.date;
+        VIEW.date = date || "";
+        var h = renderAlerts();
+        VIEW.date = save;
+        return h;
+      },
+      screenHtml: alertDetailScreenHtml, events: alertEvents, eventsHtml: alertEventsHtml,
+      dayCopy: alertDayCopyText, byDate: alertByDate,
+      view: function () { return VIEW; },
+      setView: function (o) { Object.keys(o || {}).forEach(function (k) { VIEW[k] = o[k]; }); },
       ui: function () { return AZ; }, setUi: function (o) { Object.keys(o || {}).forEach(function (k) { AZ[k] = o[k]; }); },
       state: function () { return ALERTS; }
     },
