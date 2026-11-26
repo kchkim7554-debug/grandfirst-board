@@ -32,8 +32,9 @@
   --violet:#4d3fb0; --violet-bg:#f0eeff; --violet-line:#c9bef7;
   --blue-bg:#eaf2fd; --blue-line:#c3d8f6;
   --radius:16px;
-  /* 2026-11-26 사용자 요청 — 하단 탭바 높이를 절반으로(70px → 38px) */
-  --tabh:38px;
+  /* 2026-11-26 사용자 요청 — 너무 작다는 지적("조금만 키워")으로 절반(38px)에서
+     중간 크기(70px 와 38px 의 사이)인 49px 로 살짝 키웠다. 탭바 전체 = 49px + --sab */
+  --tabh:49px;
   /* 탭바 아래 여백 = 기기 안전영역(env)만. 예전에는 env() 가 0px 인 크롬·모바일 브라우저에서도
      최소 50px 을 강제해 탭바 밑에 흰 여백이 크게 남았다(2026-11-26 사용자 지적)
      → 실제 안전영역이 없으면 6px 만 두고 탭바를 화면 맨 아래에 밀착시킨다. */
@@ -63,46 +64,47 @@ a{color:var(--blue);text-decoration:none;}
   position:sticky;top:0;z-index:40;
   background:linear-gradient(180deg,#1c4a7c 0%,#123a63 55%,#0d2e52 100%);
   color:#fff;
-  padding:var(--sat) 13px 5px;
+  /* 높이 ≈ --sat 8px + 버튼 32px + 아래 10px = 50px (이전 40px · 원래 72px 의 중간값) */
+  padding:var(--sat) 13px 10px;
   border-bottom:1px solid rgba(125,196,255,.45);
   box-shadow:0 5px 16px rgba(8,22,42,.22),0 1px 0 rgba(125,196,255,.14);
 }
 .topbar-in{display:flex;align-items:center;gap:8px;max-width:760px;margin:0 auto;}
 .brand{display:flex;align-items:center;gap:7px;min-width:0;}
-.brand .mk{width:22px;height:22px;flex:0 0 auto;display:block;}
+.brand .mk{width:26px;height:26px;flex:0 0 auto;display:block;}
 .brand .bd{min-width:0;}
-.brand .bd-t{font-size:.85rem;font-weight:800;letter-spacing:-.6px;line-height:1.06;color:#fff;white-space:nowrap;}
-.brand .bd-s{font-size:.58rem;font-weight:700;color:#a6c9e9;letter-spacing:-.2px;margin-top:0;line-height:1.2;white-space:nowrap;}
+.brand .bd-t{font-size:.95rem;font-weight:800;letter-spacing:-.6px;line-height:1.06;color:#fff;white-space:nowrap;}
+.brand .bd-s{font-size:.65rem;font-weight:700;color:#a6c9e9;letter-spacing:-.2px;margin-top:1px;line-height:1.2;white-space:nowrap;}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:5px;flex:0 0 auto;}
 .live{
-  display:inline-flex;align-items:center;gap:3px;font-size:.6rem;font-weight:800;color:#cdf7e2;
-  background:rgba(18,160,101,.26);border:1px solid rgba(110,231,183,.45);border-radius:999px;padding:2px 6px;
+  display:inline-flex;align-items:center;gap:4px;font-size:.67rem;font-weight:800;color:#cdf7e2;
+  background:rgba(18,160,101,.26);border:1px solid rgba(110,231,183,.45);border-radius:999px;padding:3px 7px;
   white-space:nowrap;line-height:1.35;
 }
-.live i{width:5px;height:5px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px rgba(74,222,128,.2);}
+.live i{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px rgba(74,222,128,.2);}
 .live.off{color:#b7c6d8;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.24);}
 .live.off i{background:#93a6bb;box-shadow:none;}
 .homebtn{
   flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
   border:1px solid rgba(160,205,245,.38);background:rgba(255,255,255,.10);color:#dbeafe;
-  border-radius:8px;width:26px;height:26px;font-size:.8rem;font-weight:800;
+  border-radius:9px;width:32px;height:32px;font-size:.98rem;font-weight:800;
 }
 .homebtn:active{background:rgba(255,255,255,.22);}
 .who{
   flex:0 0 auto;max-width:6.6em;border:1px solid rgba(240,180,90,.55);background:rgba(240,180,90,.18);color:#ffe2ab;
-  border-radius:999px;padding:2px 7px;font-size:.62rem;font-weight:800;letter-spacing:-.2px;
+  border-radius:999px;padding:3px 8px;font-size:.69rem;font-weight:800;letter-spacing:-.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;
 }
 .who.admin{background:rgba(240,180,90,.18);border-color:rgba(240,180,90,.55);color:#ffe2ab;}
 .fsbtn{
-  flex:0 0 auto;width:26px;height:26px;border:1px solid rgba(160,205,245,.38);background:rgba(255,255,255,.10);
-  color:#e8f1fb;border-radius:8px;font-size:.66rem;font-weight:800;
+  flex:0 0 auto;width:32px;height:32px;border:1px solid rgba(160,205,245,.38);background:rgba(255,255,255,.10);
+  color:#e8f1fb;border-radius:9px;font-size:.72rem;font-weight:800;
   display:flex;align-items:center;justify-content:center;padding:0;
 }
-.who svg.wico{width:10px;height:10px;flex:0 0 auto;stroke:#f5c46a;margin-right:3px;vertical-align:-1px;}
+.who svg.wico{width:12px;height:12px;flex:0 0 auto;stroke:#f5c46a;margin-right:3px;vertical-align:-1px;}
 .who{display:inline-flex;align-items:center;}
-.fsbtn.gear svg{width:14px;height:14px;fill:none;stroke:#dbeafe;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-.fsbtn sup{font-size:.5rem;top:-.35em;margin-left:.5px;position:relative;}
+.fsbtn.gear svg{width:17px;height:17px;fill:none;stroke:#dbeafe;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.fsbtn sup{font-size:.56rem;top:-.35em;margin-left:.5px;position:relative;}
 .fsbtn:active,.who:active{background:rgba(255,255,255,.24);}
 
 /* ---------- layout ---------- */
@@ -650,11 +652,12 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 /* 좁은 화면(휴대폰) 상단바 여백 보정 — 슬림 상단바에 맞춰 한 단 더 조인다 */
 @media (max-width:400px){
   .topbar{padding-left:10px;padding-right:10px;}
-  .topbar-in{gap:5px;}
-  .brand .bd-t{font-size:.82rem;letter-spacing:-.5px;}
-  .brand .bd-s{font-size:.58rem;}
-  .brand .mk{width:20px;height:20px;}
-  .who{max-width:7em;padding:2px 6px;font-size:.58rem;}
+  .topbar-in{gap:6px;}
+  .brand{gap:6px;}
+  .brand .bd-t{font-size:.88rem;letter-spacing:-.5px;}
+  .brand .bd-s{font-size:.62rem;}
+  .brand .mk{width:24px;height:24px;}
+  .who{max-width:7em;padding:3px 7px;font-size:.63rem;}
 }
 .dsum{display:flex;gap:6px;flex-wrap:wrap;margin:0 2px 11px;}
 .dsum span{font-size:.72rem;font-weight:700;color:var(--ink-2);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 10px;letter-spacing:-.2px;}
@@ -1013,13 +1016,13 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
   background:linear-gradient(90deg,rgba(125,196,255,0),rgba(125,196,255,.55) 22%,rgba(125,196,255,.55) 78%,rgba(125,196,255,0));}
 .tb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
   color:#bcd3ea;padding:0;border:0;background:none;border-radius:9px;}
-.tb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-.tb .l{font-size:.56rem;font-weight:700;letter-spacing:-.3px;line-height:1.1;}
+.tb svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.tb .l{font-size:.64rem;font-weight:700;letter-spacing:-.3px;line-height:1.15;}
 .tb.on{color:#fff;background:rgba(125,196,255,.14);}
 .tb.on .l{font-weight:800;color:#fff;}
-.tb.on::before{content:"";position:absolute;top:1px;width:15px;height:2px;border-radius:99px;background:#7dc4ff;}
-.tb .bdg{position:absolute;top:1px;right:calc(50% - 15px);min-width:13px;height:13px;border-radius:999px;background:#e04334;
-  color:#fff;font-size:.5rem;font-weight:800;line-height:13px;text-align:center;padding:0 3px;border:1px solid #fff;}
+.tb.on::before{content:"";position:absolute;top:2px;width:18px;height:2px;border-radius:99px;background:#7dc4ff;}
+.tb .bdg{position:absolute;top:2px;right:calc(50% - 17px);min-width:15px;height:15px;border-radius:999px;background:#e04334;
+  color:#fff;font-size:.56rem;font-weight:800;line-height:15px;text-align:center;padding:0 3px;border:1px solid #fff;}
 .tb .bdg[hidden]{display:none;}
 
 /* 더보기 시트 */
@@ -1047,8 +1050,8 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .pt-legend b{color:var(--ink-2);font-weight:800;}
 
 /* 탭바·상단바가 가리는 부분 보정 */
-html.fs-lg .tabbar{--tabh:44px;}
-html.fs-lg .tb .l{font-size:.6rem;}
+html.fs-lg .tabbar{--tabh:54px;}
+html.fs-lg .tb .l{font-size:.68rem;}
 html.fs-lg .q .lb{font-size:.72rem;white-space:normal;}
 html.fs-lg .q{min-height:88px;}
 @media (max-width:360px){
@@ -1056,7 +1059,7 @@ html.fs-lg .q{min-height:88px;}
   .q .ib{width:36px;height:36px;}
   .t-head{font-size:1.2rem;}
   .pt-zones .zc .s{font-size:.7rem;}
-  .tb svg{width:15px;height:15px;}
+  .tb svg{width:18px;height:18px;}
 }
 
 /* =========================================================

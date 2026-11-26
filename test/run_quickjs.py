@@ -85,9 +85,17 @@ def check_shell():
        "color:#fff;white-space:nowrap;}" in html and "color:#a6c9e9" in html)
     ok("상단바 위 여백은 30px 강제 아님(슬림)",
        "--sat:max(8px, calc(4px + env(safe-area-inset-top, 0px)))" in html and "--sat:max(30px" not in html)
-    ok("하단 탭바 높이는 절반(--tabh:38px)", "--tabh:38px" in html and "--tabh:70px" not in html)
-    ok("탭바 아이콘·라벨도 슬림(16px·.56rem)",
-       ".tb svg{width:16px;height:16px" in html and ".tb .l{font-size:.56rem" in html)
+    ok("하단 탭바 높이는 중간값(--tabh:49px · 전체 55px)",
+       "--tabh:49px" in html and "--tabh:38px" not in html and "--tabh:70px" not in html)
+    ok("탭바 아이콘·라벨도 중간 크기(20px·.64rem)",
+       ".tb svg{width:20px;height:20px" in html and ".tb .l{font-size:.64rem" in html)
+    ok("탭바 배지 15px", "min-width:15px;height:15px" in html)
+    # 2026-11-26 두 번째 요청 "너무작나? 조금만 키워" — 상단바 높이 50px · 우측 버튼 32px
+    ok("상단바 높이 중간값(버튼 32px · 아래 여백 10px)",
+       "width:32px;height:32px" in html and "padding:var(--sat) 13px 10px;" in html)
+    ok("상단바 글자·칩도 한 단 키움(제목 .95rem · 부제 .65rem)",
+       ".brand .bd-t{font-size:.95rem" in html and ".brand .bd-s{font-size:.65rem" in html)
+    ok("큰 글자 모드 탭바 --tabh:54px", "html.fs-lg .tabbar{--tabh:54px;}" in html)
     ok("첫 화면 세로 간격 절반(섹션 8px · 카드 5px)",
        "#view > section + section{margin-top:8px;}" in html and ".ptasks{display:flex;flex-direction:column;gap:5px;}" in html)
     ok("본문 위 여백도 절반(main padding-top 7px)", "main{max-width:760px;margin:0 auto;padding:7px 15px 8px;}" in html)
