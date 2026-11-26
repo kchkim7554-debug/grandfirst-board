@@ -194,6 +194,9 @@ board/
 - `scripts/make_sandbox.py` — 카피본 화면 생성기(`--check` 로 동기 확인) · `scripts/reset_sandbox.py` — "카피본 초기화해" 한 번에(원본 데이터 → `/board/sandbox` 덮어쓰기)
 - `test/live-snapshot.json` — 2026-11-18 실 DB 게시물 21건 읽기 스냅샷(테스트 입력)
 - `robots.txt` — 검색엔진 수집 차단 (index.html에도 `noindex`)
+- `icons/` — 앱·홈 화면 아이콘(`icon.svg` · `icon-192.png` · `icon-512.png` · `icon-maskable-512.png` · `apple-touch-icon-180.png` · `favicon-32.png` · `favicon-16.png`)
+- `manifest.json` — 웹앱 매니페스트(이름·짧은 이름·아이콘·테마색 `#e5f6f1`·`standalone`)
+- `scripts/make_icons.py` — 아이콘 생성기(디자인 좌표 1024 · 4배 슈퍼샘플 → PNG, 같은 도안의 `icon.svg`도 함께 기록)
 
 ## 테스트 데이터
 
@@ -235,6 +238,16 @@ board/
 - 겹침 판정: 공동현관 홀은 층이 하나라도 겹칠 때, 엘리베이터는 같은 번호(호기 지정이 겹칠 때)에 밀립니다. 동이 하나도 겹치지 않으면 밀지 않습니다.
 
 로직 검증: `python3 test/run_quickjs.py` (Node 없이 QuickJS로 실행, 실 DB에 쓰지 않음)
+
+## 홈 화면 아이콘
+
+상단바 로고와 같은 톤(진한 네이비 `#123a63` 계열 + 민트)으로 만든 전용 아이콘입니다.
+
+- 도안 — 네이비 둥근 사각 바탕 위에 **흰 클립보드(게시판)** 와 **민트 체크 배지(게시·제거 체크)**, 클립보드는 민트.
+- 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 82% 안전영역) · `apple-touch-icon-180.png`(iOS, 투명도 없는 정사각) · `favicon-32/16.png`(32px 급은 흰 카드 + 굵은 체크로 간판화) · `icon.svg`(탭 아이콘).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest" href="manifest.json">`.
+- 다시 만들기 — `python3 scripts/make_icons.py` (색·모양은 스크립트 위쪽 상수에서 바꿉니다).
+- 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
 ## 배포
 
