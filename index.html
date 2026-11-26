@@ -999,7 +999,9 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
   /* 높이 = 아이콘·라벨 영역(--tabh) + 아래 안전 여백(--sab)
      → 안전영역이 있는 기기에서는 그만큼만 띄우고, 없으면 화면 맨 아래에 붙는다. */
   position:fixed;left:0;right:0;bottom:0;z-index:45;height:calc(var(--tabh) + var(--sab));
-  /* 2026-11-26 사용자 요청 — 탭바 바탕을 파랑 계열(네이비 그라데이션)로 */
+  /* 2026-11-26 사용자 요청 — 탭바 바탕을 파랑 계열(네이비 그라데이션)로
+     (산뜻한 연파랑으로 바꾸고 싶을 때: background:linear-gradient(180deg,#eaf2ff 0%,#dbe7fb 100%);
+      .tb{color:#4a6b93} .tb.on{color:var(--navy)} .tabbar{border-top-color:#a9c6ea}) */
   background:linear-gradient(180deg,#1c4a7c 0%,#123a63 55%,#0d2e52 100%);
   /* 본문 카드와 경계를 뚜렷하게: 밝은 하늘색 상단선 + 진한 그림자 */
   border-top:1.5px solid #7fb2e4;box-shadow:0 -14px 34px rgba(8,22,42,.30),0 -3px 10px rgba(8,22,42,.22);
