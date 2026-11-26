@@ -73,6 +73,11 @@ def check_shell():
     ok("더보기 시트(게시 상태·이력·통계·설정)", has(html, 'id="moreSheet"')
        and has(html, 'data-go="#/status"') and has(html, 'data-go="#/history"'))
     ok("탭바가 본문을 가리지 않도록 여백(--tabh)", "--tabh" in html and "padding-bottom:calc(var(--tabh)" in html)
+    # 2026-11-26 사용자 지적 — 탭바 아래 흰 여백 제거(50px 강제 금지) · 탭바 바탕은 파랑 계열
+    ok("탭바 아래 여백은 안전영역만(50px 강제 아님)",
+       "--sab:max(6px, env(safe-area-inset-bottom, 0px))" in html and "--sab:max(50px" not in html)
+    ok("탭바 바탕이 파랑 계열(네이비 그라데이션)",
+       "linear-gradient(180deg,#1c4a7c 0%,#123a63 55%,#0d2e52 100%)" in html)
     # 배경 — 2026-11-26 사용자 요청: 화면 전체 기본 배경을 민트색으로
     ok("민트색 기본 배경(--bg)", "--bg:#e5f6f1" in html)
     ok("배경 워시(단지 사진 위 채색)도 민트 톤",
