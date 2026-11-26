@@ -73,6 +73,13 @@ def check_shell():
     ok("더보기 시트(게시 상태·이력·통계·설정)", has(html, 'id="moreSheet"')
        and has(html, 'data-go="#/status"') and has(html, 'data-go="#/history"'))
     ok("탭바가 본문을 가리지 않도록 여백(--tabh)", "--tabh" in html and "padding-bottom:calc(var(--tabh)" in html)
+    # 배경 — 2026-11-26 사용자 요청: 화면 전체 기본 배경을 민트색으로
+    ok("민트색 기본 배경(--bg)", "--bg:#e5f6f1" in html)
+    ok("배경 워시(단지 사진 위 채색)도 민트 톤",
+       "linear-gradient(180deg,#f1fbf8 0%,#e5f6f1 58%,#dcf2ea 100%)" in html)
+    ok("예전 회색 바탕(#f2f5fa)이 기본 배경에서 빠졌다",
+       "--bg:#f2f5fa" not in html and "linear-gradient(180deg,#f4f8fc" not in html)
+    ok("theme-color 도 민트", 'name="theme-color" content="#e5f6f1"' in html)
     ver = re.search(r'app\.js\?v=(\d{8}[a-z]?)', html)
     ok("app.js 캐시 버전 쿼리", bool(ver) and ver.group(1) >= "20261126b", ver.group(1) if ver else "없음")
     return out, n_pass, n_fail

@@ -124,6 +124,20 @@ console.log("\n[4] 처리할 일 없음");
   ok("없을 때 주 버튼 문구", has(h, "게시·제거 체크 하러 가기"));
 }
 
+console.log("\n[5] 첫 화면 섹션 순서 — 빠른 메뉴를 1단 내림(2026-11-26 요청)");
+{
+  var done2 = notice("F1", { attach: allZones("담당", "A"), deadline: "2026-12-20" });
+  O.load([done2], clone(FAC));
+  var h = P.html();
+  var iHero = h.indexOf('class="daysum"');
+  var iTasks = h.indexOf("지금 처리할 일");
+  var iMenu = h.indexOf("빠른 메뉴");
+  var iNote = h.indexOf('<p class="note">');
+  ok("오늘 요약 배너가 맨 위", iHero >= 0 && iHero < iTasks);
+  ok("지금 처리할 일이 두 번째", iTasks > 0 && iTasks < iMenu, "hero=" + iHero + " tasks=" + iTasks + " menu=" + iMenu);
+  ok("빠른 메뉴는 맨 아래(안내 문구 바로 위)", iMenu > iTasks && (iNote < 0 || iMenu < iNote), "menu=" + iMenu + " note=" + iNote);
+}
+
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");
 globalThis.__BOARD_TEST_FAIL = (globalThis.__BOARD_TEST_FAIL || 0) + fail;
 })();

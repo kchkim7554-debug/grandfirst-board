@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <base href="../">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f2f5fa">
+<meta name="theme-color" content="#e5f6f1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2312395e'/%3E%3Cpath d='M7 6h7l3 3v9H7z' fill='%23fff'/%3E%3C/svg%3E">
 <title>🧪 테스트용 (카피본) · 게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
 :root{
-  --bg:#f2f5fa;
+  --bg:#e5f6f1;            /* 민트색 기본 배경 (2026-11-26 사용자 요청) */
   --card:#ffffff;
   --ink:#0f1b2b;
   --ink-2:#48586e;
@@ -569,9 +569,9 @@ button.photo-prev .z-tag{
   font-size:.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;
 }
 
-/* ---------- 배경 (단지 사진 · 은은한 채색) ---------- */
+/* ---------- 배경 (단지 사진 · 은은한 민트색 채색) ---------- */
 .bgwash{position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(180deg,#f4f8fc 0%,#f2f5fa 60%,#f2f5fa 100%);}
+  background:linear-gradient(180deg,#f1fbf8 0%,#e5f6f1 58%,#dcf2ea 100%);}
 .bgwash::before{
   content:"";position:absolute;inset:0;
   background-image:url("images/bg_complex_aerial.jpg");
@@ -580,7 +580,7 @@ button.photo-prev .z-tag{
 }
 .bgwash::after{
   content:"";position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(244,248,252,.82) 0%,rgba(242,245,250,.9) 44%,rgba(242,245,250,.96) 100%);
+  background:linear-gradient(180deg,rgba(241,251,248,.84) 0%,rgba(229,246,241,.90) 44%,rgba(220,242,234,.95) 100%);
 }
 body.bg-home .bgwash::before{opacity:1;}
 body.bg-sub .bgwash::before{
@@ -589,7 +589,7 @@ body.bg-sub .bgwash::before{
   opacity:.3;filter:blur(2px) saturate(.82) brightness(1.07);
 }
 body.bg-sub .bgwash::after{
-  background:linear-gradient(180deg,rgba(248,250,252,.9) 0%,rgba(243,246,250,.94) 55%,rgba(242,245,250,.96) 100%);
+  background:linear-gradient(180deg,rgba(244,252,249,.90) 0%,rgba(233,247,242,.94) 55%,rgba(219,241,233,.96) 100%);
 }
 @media (prefers-reduced-motion:reduce){.bgwash::before{transition:none;}}
 
@@ -602,7 +602,7 @@ body.bg-info .bgwash::before{
   opacity:.16;filter:blur(3px) saturate(.85) brightness(1.06);
 }
 body.bg-info .bgwash::after{
-  background:linear-gradient(180deg,rgba(249,251,252,.86) 0%,rgba(245,248,250,.9) 55%,rgba(242,245,250,.94) 100%);
+  background:linear-gradient(180deg,rgba(246,252,250,.86) 0%,rgba(236,248,243,.90) 55%,rgba(222,242,235,.94) 100%);
 }
 .dhgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
 .dhgrid.two{grid-template-columns:repeat(2,1fr);}
@@ -953,7 +953,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .q.b2 .ib{background:#e9f8f0;} .q.b2 .ib svg{stroke:#0f7a4d;}
 .q.b3 .ib{background:#fff3e3;} .q.b3 .ib svg{stroke:#b26a00;}
 .q.b4 .ib{background:#f0eeff;} .q.b4 .ib svg{stroke:#4d3fb0;}
-.q.ghost{background:#f7f9fc;border-style:dashed;border-color:#dde5f0;}
+.q.ghost{background:#f1faf7;border-style:dashed;border-color:#cfe8e0;}
 .q.ghost .ib{background:#fff;border:1px solid var(--line);}
 .q.ghost .ib svg{stroke:#7e8ca0;}
 .q.ghost .lb{color:var(--ink-2);}
@@ -1026,7 +1026,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .msrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 2px;border:0;border-bottom:1px solid var(--line-2);background:none;font-size:.88rem;font-weight:700;letter-spacing:-.3px;font-family:inherit;color:inherit;}
 .msrow:last-of-type{border-bottom:0;}
 .msrow:active{background:#f7fafd;}
-.msrow .si{width:34px;height:34px;border-radius:10px;background:#f2f5fa;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.msrow .si{width:34px;height:34px;border-radius:10px;background:#e9f7f2;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
 .msrow .si svg{width:18px;height:18px;fill:none;stroke:var(--ink-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .msrow .ch{margin-left:auto;color:#b9c3d1;font-size:.9rem;}
 .msrow .bd{margin-left:auto;min-width:20px;height:20px;border-radius:999px;background:#cf3a2b;color:#fff;
@@ -1298,6 +1298,6 @@ html.fs-lg .q{min-height:100px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script src="sandbox/env.js"></script>
-<script src="app.js?v=20261126j"></script>
+<script src="app.js?v=20261126k"></script>
 </body>
 </html>

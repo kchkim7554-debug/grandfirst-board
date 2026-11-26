@@ -1149,15 +1149,7 @@ var App = (function () {
       (removeToday ? "제거 체크 하러 가기" : "게시·제거 체크 하러 가기") +
       '<span class="arw">›</span></button></section>';
 
-    h += '<section><div class="sh"><h2>빠른 메뉴</h2><span class="cnt">핵심 5개</span></div><div class="qgrid">';
-    h += qCell("create", "게시물 생성", "#/create", 0);
-    h += qCell("deploy", "게시물 배포", "#/deploy", p.pending + p.removing, "menuDeployBadge");
-    h += qCell("status", "게시 상태", "#/status", removeToday);
-    h += qCell("history", "이력·통계", "#/history", 0);
-    h += qCell("alerts", "일일 알림", "#/alerts", nAlert, "menuAlertBadge");
-    h += qCell("font", "글자 크게", "", 0);
-    h += "</div></section>";
-
+    /* 2026-11-26 사용자 요청 — 빠른 메뉴를 한 단 내려 '오늘 요약 → 지금 처리할 일 → 빠른 메뉴' 순서로 */
     var tasks = portalTasks();
     h += '<section><div class="sh"><h2>지금 처리할 일</h2><span class="cnt">' + tasks.length + "건</span>" +
       (tasks.length > 3 ? '<button class="more" data-act="go" data-go="#/deploy">전체 보기 ›</button>' : "") + "</div>";
@@ -1168,6 +1160,15 @@ var App = (function () {
       h += '<p class="pt-legend">구역마다 A조·B조·외부업체 중 <b>한 곳만 체크하면 그 구역은 완료</b>입니다.</p>';
     }
     h += "</section>";
+
+    h += '<section><div class="sh"><h2>빠른 메뉴</h2><span class="cnt">핵심 5개</span></div><div class="qgrid">';
+    h += qCell("create", "게시물 생성", "#/create", 0);
+    h += qCell("deploy", "게시물 배포", "#/deploy", p.pending + p.removing, "menuDeployBadge");
+    h += qCell("status", "게시 상태", "#/status", removeToday);
+    h += qCell("history", "이력·통계", "#/history", 0);
+    h += qCell("alerts", "일일 알림", "#/alerts", nAlert, "menuAlertBadge");
+    h += qCell("font", "글자 크게", "", 0);
+    h += "</div></section>";
 
     h += '<p class="note">게시물·담당자 정보는 Firebase에 실시간 저장됩니다. 등록·수정·이동은 관리자 인증(PIN) 후 가능합니다.' +
       (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다." : "") + "</p>";
