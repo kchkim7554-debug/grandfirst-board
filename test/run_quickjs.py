@@ -131,6 +131,19 @@ def check_sandbox():
     for f in ["index.html", "app.js", "sandbox/index.html", "sandbox/env.js", "README.md"]:
         t = readp(f)
         ok(f + " 에 개인 닉네임 없음", t is not None and "\uce74\uc77c" not in t)
+
+    # 카피본에서 [안내 문구 복사] 링크가 카피본 주소로 나가는지 (env.js 와 같은 설정으로 app.js 재실행)
+    try:
+        c2 = quickjs.Context()
+        c2.eval("var document = { getElementById: function () { return null; } };"
+                "var window = globalThis;"
+                "window.GF_ENV = {dbRoot: 'board/sandbox', sandbox: true, adminLabel: 'Admin', lsPrefix: 'gf.sandbox.'};")
+        c2.eval(readp("app.js"))
+        url = c2.eval("__boardTest.boardUrl('#/deploy')")
+        ok("카피본 복사 링크는 카피본 주소",
+           url == "https://kchkim7554-debug.github.io/grandfirst-board/sandbox/#/deploy", str(url))
+    except Exception as e:  # noqa: BLE001
+        ok("카피본 복사 링크는 카피본 주소", False, str(e))
     return out, n_pass, n_fail
 
 

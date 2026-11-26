@@ -28,6 +28,24 @@ var PIN_SALT = "grandfirst-board|";
 /* 기본 관리자 PIN 7554 의 SHA-256 (평문은 DB에 저장하지 않음) */
 var DEFAULT_PIN_HASH = "280e9599e805b04e6990ecd8a70563e485534485b97cbc93835be8a4bce7965f";
 
+/* 화면 링크(카카오톡 복사 문구에 넣는 게시판 주소)
+   · 지금 열려 있는 화면 기준 — 원본 …/grandfirst-board/ , 카피본 …/grandfirst-board/sandbox/
+   · location 이 없는 테스트·미리보기에서는 저장소 기본 주소로 대체 */
+var BOARD_HOME = "https://kchkim7554-debug.github.io/grandfirst-board/";
+function boardUrl(hash) {
+  var base = "";
+  try {
+    var loc = (typeof location !== "undefined") ? location : null;
+    if (loc && loc.protocol && loc.protocol !== "file:" && loc.origin && loc.origin !== "null" && loc.pathname) {
+      base = loc.origin + String(loc.pathname).replace(/index\.html$/, "");
+    }
+  } catch (e) { base = ""; }
+  if (!base) base = BOARD_HOME + (SANDBOX ? "sandbox/" : "");
+  if (base.charAt(base.length - 1) !== "/") base += "/";
+  return base + (hash || "");
+}
+function boardLink() { return "👉 제거 체크하기: " + boardUrl("#/deploy"); }
+
 var DEFAULT_CONFIG = {
   admins: ["Admin", "관리사무소"],
   pinHash: DEFAULT_PIN_HASH,
@@ -2433,15 +2451,20 @@ var App = (function () {
     if (VIEW && VIEW.name === "alerts") render();
   }
   function syncAlertBadge() { syncMenuBadges(); }
-  function copyAlertItem(date, idx) {
+  function alertCopyText(date, idx) {
     var a = null;
     ALERTS.forEach(function (x) { if (x.date === date) a = x; });
-    if (!a) return;
+    if (!a) return "";
     var it = alertItems(a)[idx];
-    if (!it) return;
+    if (!it) return "";
     var text = it.message || it.desc || it.text ||
       ((it.location ? it.location + " " : "") + "게시판 게시물 [" + (it.title || it.name || "") + "] 오늘 제거 바랍니다.");
-    copyPlain(text);
+    /* 카카오톡에 붙여넣으면 바로 게시판으로 들어올 수 있게 바로가기 링크를 아래 줄에 붙임 */
+    return text + "\n\n" + boardLink();
+  }
+  function copyAlertItem(date, idx) {
+    var text = alertCopyText(date, idx);
+    if (text) copyPlain(text);
   }
   function copyPlain(text) {
     if (navigator.clipboard && window.isSecureContext) {
@@ -3872,6 +3895,8 @@ var App = (function () {
     lines.push("※ 현재 게시판 " + num(s.sheetsTotal) + "장 게시 중");
     lines.push("※ 상시 게시물은 별도 지시 전까지 제거하지 않습니다.");
     if (hasTest()) lines.push("※ 테스트 데이터가 포함되어 있습니다.");
+    lines.push("");
+    lines.push(boardLink());
     return lines.join("\n");
   }
   function copyFallback(text) {
@@ -4560,6 +4585,7 @@ var App = (function () {
   var api = {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,
+    boardUrl: boardUrl, boardLink: boardLink, alertCopyText: alertCopyText,
     /* 07시 알림 검증용 */
     alerts: {
       set: setAlerts, rows: alertFiltered, hit: alertHit, table: alertTableHtml,

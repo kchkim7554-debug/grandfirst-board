@@ -25,7 +25,7 @@ BANNER = (
 
 BANNER_CSS = """/* ===== 테스트용 카피본 전용 ===== */
 .sbxbar{
-  max-width:760px;margin:-2px auto 7px;padding:5px 10px;border-radius:9px;
+  max-width:760px;margin:7px auto 0;padding:5px 10px;border-radius:9px;
   background:linear-gradient(90deg,#7c3aed 0%,#c026d3 55%,#f59e0b 100%);
   color:#fff;font-size:.70rem;font-weight:800;letter-spacing:.2px;text-align:center;
   box-shadow:0 2px 8px rgba(124,58,237,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -53,10 +53,11 @@ def build(src_html: str) -> str:
     assert "</style>\n</head>" in html, "style block not found"
     html = html.replace("</style>\n</head>", "\n" + BANNER_CSS + "</style>\n</head>", 1)
 
-    # 4) 배너 — 상단바 안(스크롤해도 계속 보임) 맨 위 줄
-    assert '<header class="topbar">\n  <div class="topbar-in">' in html, "topbar not found"
-    html = html.replace('<header class="topbar">\n  <div class="topbar-in">',
-                        '<header class="topbar">\n  ' + BANNER + '\n  <div class="topbar-in">', 1)
+    # 4) 배너 — 흰색 고정 헤더(게시판 관리 / 풍경채 그랑퍼스트) 바로 아래 줄
+    #    (상태바가 화면을 덮는 edge-to-edge 기기에서도 상태바와 절대 겹치지 않는다)
+    assert '  </div>\n</header>' in html, "topbar-in end not found"
+    html = html.replace('  </div>\n</header>',
+                        '  </div>\n  ' + BANNER + '\n</header>', 1)
 
     # 5) env.js — app.js 보다 먼저 (DB 경로 board/sandbox · 자동 Admin)
     assert '<script src="app.js?v=' in html, "app.js script not found"

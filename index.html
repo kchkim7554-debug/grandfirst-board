@@ -28,6 +28,11 @@
   --blue-bg:#eaf2fd; --blue-line:#c3d8f6;
   --radius:16px;
   --tabh:70px;
+  /* 안드로이드 3버튼/제스처 내비게이션 바가 화면 아래를 덮는 edge-to-edge 환경에서도
+     탭바 아이콘·글자가 가려지지 않도록 항상 최소 50px 을 확보한다. (env() 가 0px 인 기기 대비) */
+  --sab:max(50px, env(safe-area-inset-bottom, 0px));
+  /* 상태바가 화면 위를 덮는 경우에도 상단바 내용이 가려지지 않게 최소 여백 확보 */
+  --sat:max(30px, calc(8px + env(safe-area-inset-top, 0px)));
   --r-lg:16px;
 }
 *{box-sizing:border-box;}
@@ -38,7 +43,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Helvetica Neue",Arial,sans-serif;
   font-size:1rem;line-height:1.45;letter-spacing:-.3px;
   -webkit-font-smoothing:antialiased;
-  padding-bottom:calc(var(--tabh) + 16px + env(safe-area-inset-bottom));
+  padding-bottom:calc(var(--tabh) + var(--sab) + 16px);
 }
 button{font-family:inherit;color:inherit;}
 h1,h2,h3,p{margin:0;}
@@ -50,7 +55,7 @@ a{color:var(--blue);text-decoration:none;}
   background:rgba(255,255,255,.94);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   color:var(--ink);
-  padding:calc(8px + env(safe-area-inset-top)) 15px 9px;
+  padding:var(--sat) 15px 9px;
   border-bottom:1px solid var(--line);
 }
 .topbar-in{display:flex;align-items:center;gap:8px;max-width:760px;margin:0 auto;}
@@ -664,7 +669,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
   position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--card);
   border-radius:18px 18px 0 0;max-height:90vh;display:flex;flex-direction:column;
   transform:translateY(100%);transition:transform .22s ease;
-  padding-bottom:env(safe-area-inset-bottom);
+  padding-bottom:var(--sab);
   box-shadow:0 -6px 24px rgba(12,31,51,.22);
 }
 .sheet.on{transform:translateY(0);}
@@ -697,11 +702,11 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .lightbox{position:fixed;inset:0;z-index:80;background:rgba(6,12,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;}
 .lightbox img{max-width:100%;max-height:84vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
 .lb-cap{color:#dfe7ef;font-size:.78rem;margin-top:10px;text-align:center;line-height:1.4;}
-.lb-close{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:50%;width:38px;height:38px;font-size:1rem;}
+.lb-close{position:absolute;top:max(34px, calc(10px + env(safe-area-inset-top, 0px)));right:12px;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:50%;width:38px;height:38px;font-size:1rem;}
 
 /* toast */
 .toast{
-  position:fixed;left:50%;bottom:calc(94px + env(safe-area-inset-bottom));transform:translate(-50%,16px);
+  position:fixed;left:50%;bottom:calc(var(--tabh) + var(--sab) + 16px);transform:translate(-50%,16px);
   background:rgba(18,32,48,.94);color:#fff;font-size:.8rem;font-weight:600;padding:10px 16px;border-radius:999px;
   z-index:90;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88vw;text-align:center;
 }
@@ -948,12 +953,17 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 
 /* ---------- 하단 고정 5탭바 ---------- */
 .tabbar{
-  position:fixed;left:0;right:0;bottom:0;z-index:45;height:calc(var(--tabh) + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(15,27,43,.06);
+  /* 높이 = 아이콘·라벨 영역(--tabh) + 아래 안전 여백(--sab)
+     → 안드로이드 내비게이션 바(. 약 48px)가 화면을 덮어도 홈·생성·배포·알림·더보기가 그 위로 올라온다. */
+  position:fixed;left:0;right:0;bottom:0;z-index:45;height:calc(var(--tabh) + var(--sab));
+  background:rgba(255,255,255,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  /* 본문 카드와 경계를 뚜렷하게 */
+  border-top:1.5px solid #bcc9da;box-shadow:0 -14px 34px rgba(15,23,42,.20),0 -3px 10px rgba(15,23,42,.14);
   display:grid;grid-template-columns:repeat(5,1fr);align-items:stretch;
-  padding:0 4px env(safe-area-inset-bottom);
+  padding:0 4px var(--sab);
 }
+.tabbar::after{content:"";position:absolute;left:0;right:0;top:0;height:3px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(18,58,99,0),rgba(18,58,99,.10) 22%,rgba(18,58,99,.10) 78%,rgba(18,58,99,0));}
 .tb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   color:#93a0b3;padding:0;border:0;background:none;border-radius:12px;}
 .tb svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;}
@@ -970,7 +980,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .moreWrap[hidden]{display:none;}
 .moreWrap .scrim{position:absolute;inset:0;background:rgba(9,20,33,.45);}
 .moreSheet{position:relative;width:100%;background:#fff;border-radius:22px 22px 0 0;
-  padding:8px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(9,20,33,.2);
+  padding:8px 16px calc(18px + var(--sab));box-shadow:0 -8px 30px rgba(9,20,33,.2);
   animation:mup .2s ease;}
 @keyframes mup{from{transform:translateY(18px);opacity:.6}to{transform:none;opacity:1}}
 .moreSheet .grip{width:38px;height:4px;border-radius:99px;background:#dbe2ec;margin:0 auto 10px;}
@@ -1239,6 +1249,6 @@ html.fs-lg .q{min-height:100px;}
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261126e"></script>
+<script src="app.js?v=20261126f"></script>
 </body>
 </html>

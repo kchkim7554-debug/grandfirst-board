@@ -110,6 +110,25 @@ console.log("\n[3] 상세 — 카드 이미지 · 안내 문구 · 저장");
   eq("없는 날짜 상세는 빈 문자열", A.detail("2026-12-25"), "");
 }
 
+/* ---------- 3-1. [안내 문구 복사] — 게시판 바로가기 링크 포함 ---------- */
+console.log("\n[3-1] 안내 문구 복사 — 바로가기 링크");
+{
+  var API = globalThis.__boardTest;
+  reset({ open: "2026-11-20" });
+  var msg = FIX["2026-11-20"].items[0].message;
+  var t = API.alertCopyText("2026-11-20", 0);
+  ok("복사 문구는 안내 문구 그대로 시작", t.indexOf(msg) === 0, t.slice(0, 60));
+  ok("한 줄 띄우고 바로가기 링크", t.indexOf(msg + "\n\n👉 제거 체크하기: ") === 0 && t.length > msg.length + 2, t);
+  ok("원본 게시판 주소(#/deploy)",
+    t.indexOf("https://kchkim7554-debug.github.io/grandfirst-board/#/deploy") > 0, t);
+  eq("boardUrl() 기본 = 저장소 주소", API.boardUrl(), "https://kchkim7554-debug.github.io/grandfirst-board/");
+  eq("boardUrl(hash)", API.boardUrl("#/deploy"), "https://kchkim7554-debug.github.io/grandfirst-board/#/deploy");
+  eq("없는 날짜는 빈 문자열", API.alertCopyText("2026-12-25", 0), "");
+  eq("없는 항목은 빈 문자열", API.alertCopyText("2026-11-20", 9), "");
+  var today = API.copyText("today");
+  ok("[오늘 제거 목록 복사]에도 링크", today.indexOf("👉 제거 체크하기: https://kchkim7554-debug.github.io/grandfirst-board/#/deploy") > 0, today.slice(-120));
+}
+
 /* ---------- 4. [선택조회] — 기간(년월) + 담당 + 조회 ---------- */
 console.log("\n[4] [선택조회] — 기간·담당 필터");
 {
