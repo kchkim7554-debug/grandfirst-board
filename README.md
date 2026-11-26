@@ -106,6 +106,10 @@ board/
   ① `sandbox/index.html` 재생성 ② 원본 `/board` 데이터 → `/board/sandbox` 덮어쓰기 ③ 확인 출력까지 끝납니다.
   (`--dry-run` 으로 무엇을 덮어쓸지 먼저 볼 수 있습니다.)
 - `sandbox/index.html` 은 손으로 고치지 말고 `python3 scripts/make_sandbox.py` 로 다시 만듭니다(테스트가 동기 여부를 검사합니다).
+- **홈 화면 아이콘**: 카피본도 원본과 같은 아이콘(`../icons/`)을 쓰지만, 매니페스트는 카피본 전용
+  `sandbox/manifest.json`(`name: "게시판 관리 (테스트용)"` · `start_url: "./"` = 카피본 주소)을 따로 씁니다.
+  그래서 홈 화면에 **게시판 관리** 와 **게시판 관리 (테스트용)** 이 서로 다른 아이콘 이름으로 나란히 잡힙니다.
+  `sandbox/manifest.json` 도 `scripts/make_sandbox.py` 가 원본 `manifest.json` 에서 만들어 줍니다(동기 검사 포함).
 
 ## 게시물 제거 대상 일일 알림 (`제거대상 일일 알림` 메뉴)
 
@@ -189,7 +193,7 @@ board/
 - `test/order.test.js` · `test/stats.test.js` · `test/alerts.test.js` · `test/create.test.js` · `test/deploy.test.js` · `test/ocr.test.js` · `test/portal.test.js` · `test/sandbox.test.js` · `test/run_quickjs.py` —
   겹침 순번 45 · 통계 66 · 일일 알림 42 · 생성·이동 64 · 게시·제거 배포 45 · 사진 제목 OCR 49 · 첫 화면 37 · 카피본 환경 6 = **354개** 검증(실 DB 미사용)
   + `index.html` 껍데기(상단바·Admin 칩·⚙ 설정·5탭바·배지·캐시 버전) 13개
-  + 카피본(🧪 배너·`<base>` 공용 에셋·`board/sandbox`·자동 Admin·원본 동기·닉네임 잔존·복사 링크 주소) 14개
+  + 카피본(🧪 배너·`<base>` 공용 에셋·`board/sandbox`·자동 Admin·원본 동기·닉네임 잔존·복사 링크 주소) 20개
 - `sandbox/index.html` — 🧪 테스트용 카피본 화면(생성물, 손으로 고치지 않음) · `sandbox/env.js` — 카피본 DB·권한 설정
 - `scripts/make_sandbox.py` — 카피본 화면 생성기(`--check` 로 동기 확인) · `scripts/reset_sandbox.py` — "카피본 초기화해" 한 번에(원본 데이터 → `/board/sandbox` 덮어쓰기)
 - `test/live-snapshot.json` — 2026-11-18 실 DB 게시물 21건 읽기 스냅샷(테스트 입력)

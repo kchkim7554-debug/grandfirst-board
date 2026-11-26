@@ -1,0 +1,32 @@
+{
+  "name": "게시판 관리 (테스트용)",
+  "short_name": "게시판관리 테스트",
+  "lang": "ko",
+  "description": "풍경채 그랑퍼스트 게시판 관리 — 테스트용 카피본(마음껏 눌러보기)",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e5f6f1",
+  "theme_color": "#e5f6f1",
+  "icons": [
+    {
+      "src": "../icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

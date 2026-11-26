@@ -134,6 +134,28 @@ def check_sandbox():
         ok("카피본 생성기 실행", False, str(e))
     ok("원본 index.html 과 동기화", gen_ok, "python3 scripts/make_sandbox.py 실행 필요")
 
+    # 카피본 전용 매니페스트 — 홈 화면에 "게시판 관리 (테스트용)" 으로 따로 잡힌다
+    mf = readp("sandbox/manifest.json")
+    ok("sandbox/manifest.json 있음", mf is not None)
+    try:
+        mj = json.loads(mf or "{}")
+    except ValueError:
+        mj = {}
+    ok("카피본 이름은 (테스트용)", mj.get("name") == "게시판 관리 (테스트용)", str(mj.get("name")))
+    ok("카피본 시작 주소는 카피본 안", mj.get("start_url") == "./" and mj.get("scope") == "./",
+       str(mj.get("start_url")))
+    ok("카피본 아이콘은 원본 icons/ 공용", mj.get("icons") and
+       all(i.get("src", "").startswith("../icons/") for i in mj["icons"]))
+    ok("카피본 매니페스트 연결", 'rel="manifest" href="sandbox/manifest.json"' in page
+       and 'rel="manifest" href="manifest.json"' not in page)
+    gen_mf = False
+    try:
+        with open(os.path.join(ROOT, "manifest.json"), encoding="utf-8") as f:
+            gen_mf = make_sandbox.build_manifest(f.read()) == mf
+    except Exception:  # noqa: BLE001
+        gen_mf = False
+    ok("카피본 매니페스트도 생성물과 동기", gen_mf, "python3 scripts/make_sandbox.py 실행 필요")
+
     # 개인 닉네임이 화면·코드 어디에도 남지 않았는지
     for f in ["index.html", "app.js", "sandbox/index.html", "sandbox/env.js", "README.md"]:
         t = readp(f)
