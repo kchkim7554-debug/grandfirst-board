@@ -4586,6 +4586,15 @@ var App = (function () {
       }
     });
 
+    /* 키보드로 표의 날짜 행을 고르고 Enter/스페이스로 상세 화면 열기 */
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var tr = e.target && e.target.closest ? e.target.closest('tr[data-act="alert-open"]') : null;
+      if (!tr) return;
+      e.preventDefault();
+      go("#/alerts/" + tr.dataset.date);
+    });
+
     window.addEventListener("hashchange", function () {
       var lb = document.querySelector(".lightbox");
       if (lb) lb.remove();
