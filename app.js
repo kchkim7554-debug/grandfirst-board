@@ -2484,11 +2484,9 @@ var App = (function () {
     var a = alertByDate(date);
     var wd = (a && a.weekday) || weekday(date);
     var h = '<div class="acrumb">' +
-      '<button class="back" data-act="alert-list" aria-label="일일 알림 목록으로">' +
-      '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>' +
+      '<button class="alist" data-act="alert-list" aria-label="일일 알림 목록으로 돌아가기">‹ 일일 알림 목록</button>' +
       '<div class="acrumb-txt"><div class="acrumb-t">일일 알림</div>' +
-      '<div class="acrumb-s">' + esc(dotDate(date)) + " (" + esc(wd) + ") 상세</div></div>" +
-      '<button class="mini-btn acrumb-back" data-act="alert-list">‹ 일일 알림 목록</button></div>';
+      '<div class="acrumb-s">날짜별 상세</div></div></div>';
     if (!a) {
       return h + '<div class="empty-box">이 날짜의 07시 알림 기록이 없습니다.<br>' +
         "목록으로 돌아가 다른 날짜를 눌러 주세요.</div>";
@@ -2507,7 +2505,7 @@ var App = (function () {
     /* ② 오늘 제거 대상 */
     h += '<div class="asec aremsec">' +
       '<div class="asec-h"><span class="asec-t">🗑️ ' + (isToday ? "오늘" : "그날") + ' 제거 대상</span>' +
-      '<span class="asec-s">' + items.length + "건" + (s ? " · " + esc(s) : "") + "</span></div>" +
+      '<span class="asec-s">' + items.length + "건</span></div>" +
       '<div class="adetail-acts">' +
       '<button class="mini-btn on" data-act="alert-copy-day" data-date="' + esc(a.date) + '">' +
       (isToday ? "오늘 제거 목록 복사" : "이 날 제거 목록 복사") + "</button>" +
@@ -4056,14 +4054,9 @@ var App = (function () {
   }
   /* 서브 화면에서는 상단에 '‹' 버튼을 보인다. 탭바에 있는 화면(홈·생성·배포·알림)은 탭바로 이동한다. */
   var BACK_SCREENS = ["status", "history", "admin", "info", "building"];
-  /* 일일 알림 날짜 상세도 서브 화면으로 본다 (목록은 탭 화면) */
-  function isBackScreen(v) {
-    if (!v) return false;
-    return BACK_SCREENS.indexOf(v.name) >= 0 || (v.name === "alerts" && !!v.date);
-  }
   function syncChrome() {
     var hb = document.getElementById("homeBtn");
-    if (hb) hb.hidden = !isBackScreen(VIEW);
+    if (hb) hb.hidden = BACK_SCREENS.indexOf(VIEW.name) < 0;
     syncLive();
     if (document.body) {
       document.body.classList.toggle("bg-home", VIEW.name === "home");
