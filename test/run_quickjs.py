@@ -95,7 +95,7 @@ def check_shell():
        "width:32px;height:32px" in html and "padding:var(--sat) 13px 10px;" in html)
     ok("상단바 글자·칩도 한 단 키움(제목 .95rem · 부제 .65rem)",
        ".brand .bd-t{font-size:.95rem" in html and ".brand .bd-s{font-size:.65rem" in html)
-    ok("큰 글자 모드 탭바 --tabh:54px", "html.fs-lg .tabbar{--tabh:54px;}" in html)
+    ok("큰 글자 모드 탭바 --tabh:54px", "html.fs-lg{--tabh:54px;}" in html)
     ok("첫 화면 세로 간격 절반(섹션 8px · 카드 5px)",
        "#view > section + section{margin-top:8px;}" in html and ".ptasks{display:flex;flex-direction:column;gap:5px;}" in html)
     ok("본문 위 여백도 절반(main padding-top 7px)", "main{max-width:760px;margin:0 auto;padding:7px 15px 8px;}" in html)
