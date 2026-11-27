@@ -923,7 +923,7 @@ var App = (function () {
       btns += '<button class="btn danger" data-act="del-notice" data-id="' + esc(id) + '">삭제</button>';
     } else {
       btns += '<div class="f-hint" style="width:100%;margin:0 2px 4px">기한 변경·수정·제거 완료 처리·삭제는 관리자 인증 후 사용할 수 있습니다.</div>' +
-        '<button class="btn solid wide" data-act="admin-login">관리자 인증 (암호)</button>';
+        '<button class="btn solid wide" data-act="ask-admin" data-id="' + esc(id) + '">관리자 인증 (암호)</button>';
     }
     btns += "</div>";
     if (isArchived(n) && isAdmin()) {

@@ -59,7 +59,7 @@ console.log("\n[3] 게시물 상세 — 관리 기능은 관리자만");
   ok("비관리자: [수정] 없음", !has(g, 'data-act="edit-notice"'));
   ok("비관리자: [제거 완료 처리] 없음", !has(g, 'data-act="force-archive"'));
   ok("비관리자: [삭제] 없음", !has(g, 'data-act="del-notice"'));
-  ok("비관리자: 관리자 인증 안내·버튼", has(g, "관리자 인증") && has(g, 'data-act="admin-login"'));
+  ok("비관리자: 관리자 인증 안내·버튼", has(g, "관리자 인증") && has(g, 'data-act="ask-admin"'));
   ok("비관리자도 내용·구역별 기록은 본다", has(g, "권한 시험 게시물") && has(g, "구역별 기록"));
 
   SES.role = "admin";
