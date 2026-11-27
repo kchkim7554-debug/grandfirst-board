@@ -216,7 +216,9 @@ board/
 
 - `index.html` — 화면 껍데기(스타일·시안 A 상단바·하단 5탭바·더보기/설정 시트·푸터·배경)
 - `app.js` — 앱 로직(실시간 동기화·체크·등록·보관함·첫 화면·탭바·첫 진입 팝업·이동 대기)
-- `sw.js` — PWA 서비스 워커(2026-11-27). `skipWaiting()` · `clients.claim()` + **캐시 없는 패스스루**(항상 최신 파일)
+- `sw.js` — PWA 서비스 워커(2026-11-28). 새 워커는 **대기(waiting)** 만 하고 `[지금 업데이트]` 메시지(`SKIP_WAITING`) 때만 `skipWaiting()` + `clients.claim()` · **캐시 없는 패스스루**(항상 최신 파일)
+- `pwa.js` — **원터치 앱 설치(📲 앱 설치) + 버전/업데이트 알림**(2026-11-28). `beforeinstallprompt` 로 설치 창을 잡아 두었다가 버튼 한 번으로 띄우고, 새 배포를 감지하면 `🆕 새 버전이 준비됐습니다 [지금 업데이트]` 배너를 띄웁니다. 설정 시트 맨 아래 `앱 · 버전`(현재 버전·설치·업데이트 확인)도 이 파일이 그립니다.
+- `version.json` — 지금 배포된 버전(`{"version":"20261128k", "label":"v2026.11.28k"}`). 켜 둔 화면이 낡았는지 `no-store` 로 확인하는 데 씁니다.
 - `data.json` — 시설 정보(동·코어·층·게시판 번호). 게시물은 들어 있지 않습니다.
 - `notices_real.json` — 2026-11-16~18 현장 촬영 사진 21장(11/17 A조 신규 배포 2건 포함) + 11/20 R22(입대의 정기회의 공고)을 판독해 정리한 실제 게시물 데이터 22건
 - `images/dong_ho_table_101_108.jpg` · `dong_ho_table_109_116.jpg` · `dong_ho_table_117_124.jpg` — 동·호수 배치표 3장(동 표기를 101~124동으로 수정)
@@ -226,9 +228,9 @@ board/
 - `mark_slot.py` · `slotmap.py` · `build_templates.py` — 번호판 템플릿·체크마크 생성
 - `make_removal_card.py` — 안내 문구 + 체크 배치도 + 게시물 사진을 한 장의 공지 카드로 합성
 - `seed_firebase.py` — `notices_real.json`을 Firebase `/board/notices.json`으로 PUT 하는 스크립트(설정 `config`는 보존)
-- `test/order.test.js` · `test/stats.test.js` · `test/alerts.test.js` · `test/create.test.js` · `test/deploy.test.js` · `test/ocr.test.js` · `test/portal.test.js` · `test/welcome.test.js` · `test/sandbox.test.js` · `test/run_quickjs.py` —
-  겹침 순번 45 · 통계 66 · 일일 알림 73 · 생성·이동 73 · 게시·제거 배포 59 · 사진 제목 OCR 49 · 첫 화면 40 · 첫 진입 팝업 24 · 카피본 환경 6 = **435개** 검증(실 DB 미사용)
-  + `index.html` 껍데기(상단바·상단바 파랑·절반 높이·Admin 칩·⚙ 설정·5탭바·배지·세로 간격·캐시 버전·PWA 서비스 워커·매니페스트 테마색) 36개
+- `test/order.test.js` · `test/stats.test.js` · `test/alerts.test.js` · `test/create.test.js` · `test/deploy.test.js` · `test/ocr.test.js` · `test/portal.test.js` · `test/welcome.test.js` · `test/sandbox.test.js` · `test/pwa.test.js` · `test/run_quickjs.py` —
+  겹침 순번 45 · 통계 66 · 일일 알림 73 · 생성·이동 75 · 게시·제거 배포 72 · 사진 제목 OCR 49 · 첫 화면 46 · 첫 진입 팝업 24 · 카피본 환경 6 · 설치·업데이트 41 = **529개** 검증(실 DB 미사용)
+  + `index.html` 껍데기(상단바·상단바 파랑·절반 높이·Admin 칩·⚙ 설정·5탭바·배지·세로 간격·캐시 버전·PWA 서비스 워커·매니페스트 테마색·설치/업데이트 배너·버전 일치) 55개
   + 카피본(🧪 배너·`<base>` 공용 에셋·`board/sandbox`·자동 Admin·원본 동기·닉네임 잔존·복사 링크 주소) 20개
 - `sandbox/index.html` — 🧪 테스트용 카피본 화면(생성물, 손으로 고치지 않음) · `sandbox/env.js` — 카피본 DB·권한 설정
 - `scripts/make_sandbox.py` — 카피본 화면 생성기(`--check` 로 동기 확인) · `scripts/reset_sandbox.py` — "카피본 초기화해" 한 번에(원본 데이터 → `/board/sandbox` 덮어쓰기)
@@ -290,7 +292,7 @@ board/
 - **상단바(모든 화면 왼쪽 위)** — 네이비 바탕이라 흰 글씨 버전 `icons/logo-wordmark-white.png`(흰 글씨 + 색 잎)를 높이 26px(좁은 화면 23px)로 얹고, 옆에 얇은 구분선을 둔 뒤 `게시판 관리` / `그랑퍼스트` 두 줄을 붙입니다. 로고가 이미 `풍경채`를 말하므로 보조 줄은 `그랑퍼스트`만 남겼습니다.
 - **홈 화면 아이콘** — 네이비 그라데이션(위 `#1b4a7d` → 아래 `#0a2038`, 아래쪽 민트 글로우) 위에 흰 풍경채 로고를 크게, 그 아래 민트 `게시판 관리`를 새겼습니다. 안드로이드 홈 화면(192px)에서도 글씨가 읽히도록 여백과 크기를 잡았습니다.
 - 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 0.6배로 안전영역 안) · `apple-touch-icon-180.png`(iOS) · `favicon-32.png` · `favicon-16.png`(작은 탭은 `풍` 한 글자만) · `icon.svg`(512 아이콘을 data URI로 품은 SVG) · `logo-wordmark-white.png` · `logo-wordmark-color.png`(밝은 배경용).
-- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128j`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION` 을 함께 올립니다(캐시 버스팅).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128k`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION`, `index.html` 의 `GF_APP_VERSION`, `version.json` 을 함께 올립니다(캐시 버스팅).
 - 다시 만들기 — `python3 scripts/make_brand_assets.py` (`--check` 로 최신 여부만 확인). 로고 자르기·색 보정은 `brand/logo_lib.py`, 아이콘 배치·색은 스크립트 위쪽 상수에서 바꿉니다.
 - 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
@@ -303,14 +305,41 @@ board/
    우측 상단 **`[닫기]`** 를 누르면 2번 팝업으로 이어집니다.
 2. **오늘의 일일 알림** — 오늘 날짜의 `daily_alerts` 1건을 ① 주의할 내용 → ② 제거대상 게시물 순서로 보여 주고, 우측 상단 **`[닫기]`** 로 닫습니다.
 
-## PWA — 홈 화면 단독 앱 실행 (2026-11-27)
+## PWA — 원터치 앱 설치 · 버전/업데이트 알림 (2026-11-28)
 
-- `board/sw.js` 를 추가하고 `index.html` 에서 등록합니다: `navigator.serviceWorker.register("sw.js", { scope: "./" })` + `reg.update()`.
-- 워커는 **캐시를 만들지 않습니다**. 같은 출처 GET 은 `fetch(req, { cache: "no-store" })` 로 그대로 네트워크에서 받고,
-  POST·다른 출처(Firebase RTDB·gstatic CDN)는 브라우저 기본 동작에 맡깁니다. `skipWaiting()` + `clients.claim()` 으로 구버전 워커가 화면을 붙잡지 않습니다.
-- `manifest.json` 의 `theme_color` 를 상단 네이비 바 색 **`#0d2e52`** 로 맞추고, `index.html` 의 `meta[name=theme-color]` 도 같은 값으로 통일했습니다.
-- 설치 방법(휴대폰 크롬): 주소를 연 뒤 **⋮ → 홈 화면에 추가** → 홈 화면 아이콘으로 열면 주소창·배지 없이 전체 화면으로 뜹니다.
-  이미 설치한 바로가기는 서비스 워커가 새로 등록되도록 한 번 새로고침하면 됩니다.
+### 1) 링크에서 바로 설치 — `[📲 앱 설치]` 버튼
+
+주소를 열면 화면 아래에 **`📲 앱 설치`** 배너가 뜨고, **버튼 한 번**으로 크롬 설치 창이 뜹니다(⋮ 메뉴를 찾아 들어갈 필요 없음).
+
+- 방식 — `beforeinstallprompt` 이벤트를 잡아 두었다가(`e.preventDefault()`) 버튼을 누를 때 `prompt()` 로 띄웁니다. 설치는 사용자가 창에서 `설치`를 누를 때만 됩니다.
+- 설치 후 — `appinstalled` 를 받으면 배너를 내리고 `설치했습니다 — 홈 화면의 ‘게시판 관리’ 아이콘으로 열면 주소창 없이 뜹니다` 안내를 보여 줍니다.
+- 설치 창을 띄울 수 없는 환경(아이폰 사파리·카톡/네이버 인앱브라우저·설치 창이 아직 준비되지 않은 순간)에서는 같은 버튼을 누르면 **한 줄 안내**가 나옵니다.
+  · 아이폰 — `Safari 하단 공유 → ‘홈 화면에 추가’`
+  · 카톡·네이버 — `오른쪽 위 ⋮ → ‘다른 브라우저로 열기’` 후 다시 `[📲 앱 설치]`
+  · 안드로이드 크롬 — `⋮ → ‘앱 설치’(또는 ‘홈 화면에 추가’)`
+- 이미 앱으로 실행 중이면(standalone) 배너는 뜨지 않고, 설정에는 `✅ 앱으로 실행 중입니다` 로 보입니다.
+- 테스트용 카피본(`sandbox/`)에서는 앱 설치 줄을 감춤니다(테스트 앱이 홈 화면에 섞이지 않게).
+
+### 2) 바뀌면 `[지금 업데이트]` — 시스템 버전 관리
+
+화면 버전은 **`20261128k` → 표시 `v2026.11.28k`** 처럼 날짜+알파벳으로 매기고, 배포마다 **`index.html` 의 `GF_APP_VERSION` · `sw.js` 의 `VERSION` · `version.json` · `?v=` · `manifest.json` 아이콘 `?v=`** 를 함께 올립니다(테스트가 이 다섯 곳이 같은지 검사합니다).
+
+- **새 배포 감지** — ① 서비스 워커가 새로 설치돼 `waiting` 으로 들어올 때(`updatefound` → `installed`) ② `version.json`(no-store)이 이 화면의 `GF_APP_VERSION` 과 다를 때. 확인 시점은 **앱 실행 · 화면 복귀(visibilitychange) · 5분마다 · [업데이트 확인]** 입니다.
+- **자동 새로고침은 하지 않습니다.** 대신 아래쪽에 **`🆕 새 버전이 준비됐습니다 [지금 업데이트]`** 배너가 뜹니다(닫기 ✕ 가능, 다음 확인 때 다시 뜸).
+- **[지금 업데이트]** — `reg.waiting.postMessage({ type: "SKIP_WAITING" })` → 워커가 넘겨받으면(`controllerchange`) 그때 `location.reload()`. 대기 워커 없이 `version.json` 만 새 버전이면 바로 새로고침합니다. 워커가 3초 안에 응답하지 않아도 안전하게 새로고침합니다.
+- **거짓 안내 방지** — 워커에 `GET_VERSION` 을 물어, 대기 워커의 버전이 이 화면과 같으면(패스스루라 이미 새 파일로 뜬 상태) 배너를 내립니다.
+- **설정 시트 맨 아래 `앱 · 버전`** — `현재 v2026.11.28k` + `최신`/`새 버전 v2026.11.28m` 배지, `[📲 앱 설치]`, `[🔄 업데이트 확인]`(결과를 한 줄로 알려 줌: `최신 버전입니다 (v2026.11.28k).` / `새 버전 v2026.11.28m이 준비됐습니다 — [지금 업데이트]를 누르세요.`).
+- **워커 원칙** — 캐시를 만들지 않습니다. 같은 출처 GET 은 `fetch(req, { cache: "no-store" })` 로 그대로 네트워크에서 받고, POST·다른 출처(Firebase RTDB·gstatic CDN)는 브라우저 기본 동작에 맡깁니다. `install` 때는 `skipWaiting()` 을 부르지 않습니다(그래야 화면이 알기 전에 구버전 페이지가 바뀌지 않음).
+- `manifest.json` 의 `theme_color` 는 상단 네이비 **`#0d2e52`**(`meta[name=theme-color]` 도 같음).
+- 이미 설치한 앱은 위 배너로 한 번 업데이트하면 이후부터는 새 배포마다 같은 방식으로 안내합니다.
+
+### 3) 버전 올리는 법 (배포 체크리스트)
+
+1. `index.html` — `window.GF_APP_VERSION = "날짜+알파벳"`, 모든 `?v=`, `app.js`·`pwa.js` 스크립트 주소
+2. `sw.js` — `const VERSION`
+3. `version.json` — `version` · `label` · `released` · `notes`
+4. `manifest.json` — 아이콘 `?v=`
+5. `python3 scripts/make_sandbox.py` → `python3 test/run_quickjs.py` (버전 다섯 곳 불일치·설치/업데이트 문구를 여기서 잡습니다) → 커밋·`main` 푸시
 
 ## 배포
 

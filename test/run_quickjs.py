@@ -36,6 +36,7 @@ TEST_FILES = [
     "test/welcome.test.js",
     "test/admin.test.js",
     "test/sandbox.test.js",
+    "test/pwa.test.js",
 ]
 
 
@@ -112,7 +113,14 @@ def check_shell():
     # 2026-11-27 — PWA 단독 앱 전환으로 상단 네이비 바와 theme-color 를 맞춘다
     ok("theme-color 는 상단 네이비(#0d2e52)", 'name="theme-color" content="#0d2e52"' in html)
     # 2026-11-27 — PWA 단독 앱 실행 (서비스 워커 · 매니페스트 theme_color)
-    ok("PWA 서비스 워커 등록", 'navigator.serviceWorker.register("sw.js"' in html)
+    # 2026-11-28 — 워커 등록·갱신은 pwa.js 로 옮겼다(아래 pwa 블록에서 자세히)
+    _pwa_src = ""
+    try:
+        with open(os.path.join(ROOT, "pwa.js"), encoding="utf-8") as f:
+            _pwa_src = f.read()
+    except Exception:
+        pass
+    ok("PWA 서비스 워커 등록(pwa.js)", '.serviceWorker.register("sw.js"' in _pwa_src)
     swp = os.path.join(ROOT, "sw.js")
     ok("board/sw.js 있음", os.path.exists(swp))
     sw = ""
@@ -127,6 +135,59 @@ def check_shell():
     except Exception:
         mj = {}
     ok("매니페스트 theme_color 는 상단 네이비(#0d2e52)", mj.get("theme_color") == "#0d2e52", str(mj.get("theme_color")))
+
+    # 2026-11-28 — 원터치 앱 설치 · 버전/업데이트 알림 (pwa.js)
+    pjp = os.path.join(ROOT, "pwa.js")
+    ok("board/pwa.js 있음", os.path.exists(pjp))
+    pwa = ""
+    if os.path.exists(pjp):
+        with open(pjp, encoding="utf-8") as f:
+            pwa = f.read()
+    ok("pwa.js — index.html 에서 로드", bool(re.search(r'<script src="pwa\.js\?v=\d{8}[a-z]?"', html)))
+    ok("index.html — GF_APP_VERSION 상수", 'window.GF_APP_VERSION = "' in html)
+    ok("pwa.js — beforeinstallprompt 로 설치 창 잡기",
+       "beforeinstallprompt" in pwa and "preventDefault" in pwa and "prompt()" in pwa)
+    ok("pwa.js — [📲 앱 설치] 버튼 한 번", 'data-pwa="install"' in pwa and "📲 앱 설치" in pwa)
+    ok("pwa.js — 미지원 환경 한 줄 설치 안내", "installGuide" in pwa and "홈 화면에 추가" in pwa)
+    ok("pwa.js — 새 버전 배너 문구 · [지금 업데이트]",
+       "🆕 새 버전이 준비됐습니다" in pwa and "지금 업데이트" in pwa and 'data-pwa="update"' in pwa)
+    ok("pwa.js — SKIP_WAITING 전송", 'type: "SKIP_WAITING"' in pwa)
+    ok("pwa.js — controllerchange 뒤에만 새로고침",
+       "controllerchange" in pwa and "reloadArmed" in pwa)
+    ok("pwa.js — 실행·복귀·주기로 새 배포 확인",
+       "visibilitychange" in pwa and "reg.update()" in pwa and "setInterval" in pwa)
+    ok("pwa.js — version.json 차이 확인(no-store)",
+       'fetch("version.json", { cache: "no-store" })' in pwa)
+    ok("pwa.js — 워커 파일 캐시 우회", 'updateViaCache: "none"' in pwa)
+    ok("pwa.js — 설정 시트에 현재 버전 표시", "settingsHTML" in pwa and "pwaset" in pwa)
+    ok("index.html — 배너·버전 줄 스타일", ".pwap{" in html and ".pwaset{" in html)
+
+    # sw.js — 새 워커는 waiting 으로 남고, [지금 업데이트] 메시지에만 넘긴다
+    m_inst = re.search(r'addEventListener\("install",\s*function\s*\([^)]*\)\s*\{([^}]*)\}', sw)
+    ok("sw.js — install 때 skipWaiting 하지 않는다(대기)",
+       bool(m_inst) and "skipWaiting" not in m_inst.group(1),
+       (m_inst.group(1).strip() if m_inst else "install 핸들러 없음"))
+    ok("sw.js — SKIP_WAITING 메시지로만 넘긴다",
+       "addEventListener(\"message\"" in sw and "SKIP_WAITING" in sw)
+
+    # 버전 하나로 묶기 — index.html · sw.js · version.json · ?v= · 매니페스트
+    m_appv = re.search(r'window\.GF_APP_VERSION = "([^"]+)"', html)
+    m_swv = re.search(r'const VERSION = "([^"]+)"', sw)
+    m_jsv = re.search(r'app\.js\?v=(\d{8}[a-z]?)', html)
+    try:
+        with open(os.path.join(ROOT, "version.json"), encoding="utf-8") as f:
+            vjson = json.load(f)
+    except Exception:
+        vjson = {}
+    vers = [m_appv.group(1) if m_appv else "", m_swv.group(1) if m_swv else "",
+            str(vjson.get("version", "")), m_jsv.group(1) if m_jsv else ""]
+    ok("버전 하나로 일치 — GF_APP_VERSION · sw.js VERSION · version.json · app.js ?v=",
+       len(set(vers)) == 1 and vers[0] >= "20261128k", " / ".join(vers))
+    ok("version.json — 앱 버전과 같은 label",
+       vjson.get("label") == ("v" + vers[0][:4] + "." + vers[0][4:6] + "." + vers[0][6:8] + vers[0][8:]) if len(vers[0]) >= 8 else False,
+       str(vjson.get("label")))
+    ok("매니페스트 아이콘 ?v= 도 같은 버전", bool(mj.get("icons")) and
+       all(("?v=" + vers[0]) in ic.get("src", "") for ic in mj.get("icons", [])))
 
     ver = re.search(r'app\.js\?v=(\d{8}[a-z]?)', html)
     ok("app.js 캐시 버전 쿼리", bool(ver) and ver.group(1) >= "20261126b", ver.group(1) if ver else "없음")
@@ -236,6 +297,7 @@ var document = { getElementById: function () { return null; } };
 var window = globalThis;
 """)
 ctx.eval(read("app.js"))
+ctx.eval(read("pwa.js"))   # 설치·버전 알림 — __pwaTest 노출(화면 연결은 DOM 이 없어 건너뜀)
 ctx.eval("globalThis.__BOARD_FAC = " + read("data.json") + ";\n"
          "globalThis.__BOARD_LIVE = " + read("test/live-snapshot.json") + ";")
 for f in TEST_FILES:

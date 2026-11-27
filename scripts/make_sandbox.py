@@ -3,8 +3,9 @@
 """테스트용 카피본(sandbox/index.html · sandbox/manifest.json) 생성기.
 
 원본(board/index.html)을 그대로 복제하되 카피본 전용 설정만 덧붙인다.
-  · <base href="../">        — app.js·data.json·images·templates 를 원본 그대로 공용 사용
+  · <base href="../">        — app.js·pwa.js·data.json·images·templates 를 원본 그대로 공용 사용
   · sandbox/env.js 먼저 로드 — DB 경로를 board/sandbox 로, 자동 Admin 권한으로
+                               (pwa.js 보다도 먼저 — GF_ENV.sandbox 를 읽는다)
   · 상단 🧪 배너             — 원본/카피본을 한눈에 구분
   · sandbox/manifest.json    — 홈 화면 이름은 "게시판 관리 (테스트용)", 시작 주소는 카피본
                                (아이콘은 원본 것과 같은 ../icons/ 를 그대로 쓴다)
@@ -68,8 +69,12 @@ def build(src_html: str) -> str:
                         '  </div>\n  ' + BANNER + '\n</header>', 1)
 
     # 5) env.js — app.js 보다 먼저 (DB 경로 board/sandbox · 자동 Admin)
+    #    2026-11-28 — pwa.js 도 env.js 의 GF_ENV(sandbox·lsPrefix)를 읽으므로 그보다도 먼저.
     assert '<script src="app.js?v=' in html, "app.js script not found"
-    html = html.replace('<script src="app.js?v=', ENV_TAG + '<script src="app.js?v=', 1)
+    if '<script src="pwa.js?v=' in html:
+        html = html.replace('<script src="pwa.js?v=', ENV_TAG + '<script src="pwa.js?v=', 1)
+    else:
+        html = html.replace('<script src="app.js?v=', ENV_TAG + '<script src="app.js?v=', 1)
 
     # 6) 매니페스트 — 카피본은 카피본 전용(이름·시작 주소가 다른) 매니페스트를 쓴다
     #    (원본 링크에는 캐시 무효화용 ?v= 가 붙어 있을 수 있다)

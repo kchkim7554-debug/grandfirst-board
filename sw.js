@@ -1,12 +1,28 @@
 /* =========================================================
    게시판 관리 시스템 — 서비스 워커 (2026-11-28)
    목적: 홈 화면에 단독 앱(PWA)으로 설치해 크롬 주소창·배지 없이 실행
-   원칙: 캐시를 만들지 않는 패스스루 — 항상 네트워크의 최신 app.js/index.html 을 쓴다.
-        skipWaiting() + clients.claim() 으로 구버전 워커가 화면을 붙잡지 않게 한다.
+   원칙 1: 캐시를 만들지 않는 패스스루 — 항상 네트워크의 최신 app.js/index.html 을 쓴다.
+   원칙 2: 새 워커는 화면을 가로채지 않고 **대기(waiting)** 한다.
+           화면의 [🆕 새 버전이 준비됐습니다 · 지금 업데이트] 를 눌러
+           {type:"SKIP_WAITING"} 을 보낼 때만 넘겨받는다(자동 새로고침 없음).
    ========================================================= */
-const VERSION = "20261128j";   /* 파일이 바뀔 때마다 올린다 — 워커 갱신 신호 */
-self.addEventListener("install", function () {
-  self.skipWaiting();
+const VERSION = "20261128k";   /* 배포할 때마다 올린다 — index.html 의 GF_APP_VERSION · version.json 과 같은 값 */
+
+/* 새 워커는 여기서 skipWaiting() 을 부르지 않는다 → waiting 상태로 남는다.
+   (부르면 화면이 알기도 전에 구버전 페이지가 새 워커로 바뀌어 버린다) */
+self.addEventListener("install", function () {});
+
+/* 화면에서 온 메시지 — [지금 업데이트] 를 누른 순간에만 넘긴다 */
+self.addEventListener("message", function (event) {
+  var data = event.data || {};
+  if (data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+  /* 화면이 워커 버전을 물어볼 때 (진단용) */
+  if (data.type === "GET_VERSION" && event.source && event.source.postMessage) {
+    event.source.postMessage({ type: "VERSION", version: VERSION });
+  }
 });
 
 self.addEventListener("activate", function (event) {

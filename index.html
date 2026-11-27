@@ -7,11 +7,11 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
-<link rel="icon" href="icons/icon.svg?v=20261128j" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261128j" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261128j" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128j">
-<link rel="manifest" href="manifest.json?v=20261128j">
+<link rel="icon" href="icons/icon.svg?v=20261128k" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128k" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128k" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128k">
+<link rel="manifest" href="manifest.json?v=20261128k">
 <title>게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
 :root{
@@ -852,6 +852,41 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .lb-cap{color:#dfe7ef;font-size:.78rem;margin-top:10px;text-align:center;line-height:1.4;}
 .lb-close{position:absolute;top:max(34px, calc(10px + env(safe-area-inset-top, 0px)));right:12px;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:50%;width:38px;height:38px;font-size:1rem;}
 
+/* ---------- 앱 설치 · 새 버전 배너 (pwa.js 가 만든다, 2026-11-28) ---------- */
+.pwap{
+  position:fixed;left:10px;right:10px;bottom:calc(var(--tabh) + var(--sab) + 8px);
+  z-index:46;max-width:740px;margin:0 auto;display:flex;align-items:center;gap:9px;
+  padding:9px 9px 9px 13px;border-radius:14px;color:#fff;
+  background:linear-gradient(135deg,#123a63 0%,#0d2e52 100%);
+  box-shadow:0 6px 20px rgba(6,20,40,.34);
+  animation:pwapIn .22s ease-out;
+}
+.pwap.upd{background:linear-gradient(135deg,#0f6b4f 0%,#0d3f6b 100%);}
+@keyframes pwapIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.pwap-txt{min-width:0;line-height:1.25;}
+.pwap-txt b{display:block;font-size:.85rem;font-weight:800;letter-spacing:-.3px;}
+.pwap-txt span{display:block;font-size:.68rem;font-weight:600;color:#bfe3ff;margin-top:1px;}
+.pwap-btn{flex:0 0 auto;border:0;border-radius:10px;background:#ffd166;color:#3a2600;
+  font-size:.8rem;font-weight:800;padding:8px 11px;letter-spacing:-.3px;font-family:inherit;cursor:pointer;}
+.pwap-btn:active{filter:brightness(.94);}
+.pwap-x{flex:0 0 auto;width:24px;height:24px;border:0;border-radius:8px;background:rgba(255,255,255,.14);
+  color:#dbeafe;font-size:.72rem;font-weight:800;padding:0;line-height:1;font-family:inherit;}
+@media (max-width:420px){ .pwap-txt b{font-size:.8rem;} .pwap-btn{font-size:.75rem;padding:7px 9px;} }
+
+/* 설정 시트 맨 아래 — 앱 · 버전 */
+.pwaset{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);}
+.pwaset-h{font-size:.72rem;font-weight:800;color:var(--muted);letter-spacing:.2px;margin:0 2px 5px;}
+.pwaset-ver{display:flex;align-items:center;gap:6px;margin:0 2px 7px;font-size:.8rem;font-weight:700;color:var(--ink-2);}
+.pwaset-ver b{color:var(--ink);font-weight:800;letter-spacing:-.2px;}
+.pwaset-ver i{font-style:normal;font-size:.64rem;font-weight:800;padding:2px 7px;border-radius:999px;}
+.pwaset-ver i.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-line);}
+.pwaset-ver i.new{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-line);}
+.pwaset .msrow .si{font-size:15px;line-height:1;}
+.pwaset .msrow.done{opacity:.9;}
+.pwaset-guide{margin:4px 2px 0;font-size:.7rem;line-height:1.45;color:var(--muted);word-break:keep-all;}
+.pwaset-msg{margin:5px 2px 0;font-size:.72rem;font-weight:700;color:var(--blue);line-height:1.4;}
+.pwaset-msg:empty{display:none;}
+
 /* toast */
 .toast{
   position:fixed;left:50%;bottom:calc(var(--tabh) + var(--sab) + 16px);transform:translate(-50%,16px);
@@ -1341,7 +1376,7 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128j" alt="제일풍경채" width="201" height="112">
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128k" alt="제일풍경채" width="201" height="112">
       <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
@@ -1434,14 +1469,9 @@ html.fs-lg .q{min-height:88px;}
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261128j"></script>
-<script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("sw.js", { scope: "./" }).then(function (reg) {
-      try { reg.update(); } catch (e) {}
-    }).catch(function () {});
-  });
-}</script>
+<script>/* 앱 버전 — 배포할 때마다 sw.js 의 VERSION · version.json · 아래 ?v= 와 함께 올린다 (2026-11-28) */
+window.GF_APP_VERSION = "20261128k";</script>
+<script src="pwa.js?v=20261128k"></script>
+<script src="app.js?v=20261128k"></script>
 </body>
 </html>
