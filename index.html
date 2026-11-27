@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#0d2e52">
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
-<!-- 앱 아이콘 · 홈 화면 바로가기 (2026-11-26) — 아이콘 원본은 scripts/make_icons.py -->
-<link rel="icon" href="icons/icon.svg?v=20261126n" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261126n" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261126n" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261126n">
-<link rel="manifest" href="manifest.json">
+<!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
+<link rel="icon" href="icons/icon.svg?v=20261128a" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128a" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128a" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128a">
+<link rel="manifest" href="manifest.json?v=20261128a">
 <title>게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
 :root{
@@ -71,10 +71,13 @@ a{color:var(--blue);text-decoration:none;}
 }
 .topbar-in{display:flex;align-items:center;gap:8px;max-width:760px;margin:0 auto;}
 .brand{display:flex;align-items:center;gap:7px;min-width:0;}
-.brand .mk{width:26px;height:26px;flex:0 0 auto;display:block;}
+/* 2026-11-28 — 임시 꽃 그림 대신 제일풍경채 로고(스캔 복원 PNG). 가로형이라 높이만 잡고 폭은 자동 */
+.brand .mk{height:26px;width:auto;flex:0 0 auto;display:block;}
 .brand .bd{min-width:0;}
 .brand .bd-t{font-size:.95rem;font-weight:800;letter-spacing:-.6px;line-height:1.06;color:#fff;white-space:nowrap;}
 .brand .bd-s{font-size:.65rem;font-weight:700;color:#a6c9e9;letter-spacing:-.2px;margin-top:1px;line-height:1.2;white-space:nowrap;}
+/* 로고와 이름 사이 얇은 구분선 — 로고(풍경채)와 앱 이름(게시판 관리)을 또렷하게 나눈다 */
+.brand .brd{width:1px;height:20px;background:rgba(166,201,233,.45);flex:0 0 auto;margin:0 1px;}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:5px;flex:0 0 auto;}
 .live{
   display:inline-flex;align-items:center;gap:4px;font-size:.67rem;font-weight:800;color:#cdf7e2;
@@ -656,7 +659,8 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
   .brand{gap:6px;}
   .brand .bd-t{font-size:.88rem;letter-spacing:-.5px;}
   .brand .bd-s{font-size:.62rem;}
-  .brand .mk{width:24px;height:24px;}
+  .brand .mk{height:23px;}
+  .brand .brd{height:17px;}
   .who{max-width:7em;padding:3px 7px;font-size:.63rem;}
 }
 .dsum{display:flex;gap:6px;flex-wrap:wrap;margin:0 2px 11px;}
@@ -1343,16 +1347,11 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <svg class="mk" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
-        <rect width="28" height="28" rx="8" fill="#eaf6f0"/>
-        <path d="M14 23.5c0-5.4.3-8.9 1-11.7" fill="none" stroke="#2f7d57" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M15.1 12.2C13.4 9.1 10.7 7.7 7.6 8.4c.3 3.4 3.1 5.4 7.4 4.5z" fill="#7fd3a0"/>
-        <path d="M15.7 11.5c1.3-2.9 3.6-4.4 6.4-4-.3 3.1-2.8 4.9-6.4 4.4z" fill="#4ec07f"/>
-        <path d="M16.2 8.4c.3-2 .9-3.4 2-4.3.3 1.9-.4 3.4-2 4.3z" fill="#f0b45a"/>
-      </svg>
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128a" alt="제일풍경채" width="201" height="112">
+      <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
-        <div class="bd-s">풍경채 그랑퍼스트</div>
+        <div class="bd-s">그랑퍼스트</div>
       </div>
     </div>
     <div class="hdr-right">
@@ -1441,7 +1440,7 @@ html.fs-lg .q{min-height:88px;}
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261127c"></script>
+<script src="app.js?v=20261128a"></script>
 <script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

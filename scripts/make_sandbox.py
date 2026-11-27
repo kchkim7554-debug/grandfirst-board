@@ -72,9 +72,11 @@ def build(src_html: str) -> str:
     html = html.replace('<script src="app.js?v=', ENV_TAG + '<script src="app.js?v=', 1)
 
     # 6) 매니페스트 — 카피본은 카피본 전용(이름·시작 주소가 다른) 매니페스트를 쓴다
-    assert '<link rel="manifest" href="manifest.json">' in html, "manifest link not found"
-    html = html.replace('<link rel="manifest" href="manifest.json">',
-                        '<link rel="manifest" href="sandbox/manifest.json">', 1)
+    #    (원본 링크에는 캐시 무효화용 ?v= 가 붙어 있을 수 있다)
+    import re as _re
+    m = _re.search(r'<link rel="manifest" href="manifest\.json(\?[^"]*)?">', html)
+    assert m, "manifest link not found"
+    html = html.replace(m.group(0), '<link rel="manifest" href="sandbox/manifest.json">', 1)
 
     return html
 

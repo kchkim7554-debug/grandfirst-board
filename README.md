@@ -217,9 +217,9 @@ board/
 - `scripts/make_sandbox.py` — 카피본 화면 생성기(`--check` 로 동기 확인) · `scripts/reset_sandbox.py` — "카피본 초기화해" 한 번에(원본 데이터 → `/board/sandbox` 덮어쓰기)
 - `test/live-snapshot.json` — 2026-11-18 실 DB 게시물 21건 읽기 스냅샷(테스트 입력)
 - `robots.txt` — 검색엔진 수집 차단 (index.html에도 `noindex`)
-- `icons/` — 앱·홈 화면 아이콘(`icon.svg` · `icon-192.png` · `icon-512.png` · `icon-maskable-512.png` · `apple-touch-icon-180.png` · `favicon-32.png` · `favicon-16.png` · `icon-bg.jpg`(아이콘 배경 사진 크롭))
+- `icons/` — 앱·홈 화면 아이콘과 상단 로고(`icon.svg` · `icon-192.png` · `icon-512.png` · `icon-maskable-512.png` · `apple-touch-icon-180.png` · `favicon-32.png` · `favicon-16.png` · `logo-wordmark-white.png` · `logo-wordmark-color.png`)
 - `manifest.json` — 웹앱 매니페스트(이름·짧은 이름·아이콘·테마색 `#0d2e52`·`standalone`)
-- `scripts/make_icons.py` — 아이콘 생성기(디자인 좌표 1024 · 4배 슈퍼샘플 → PNG, 같은 도안의 `icon.svg`도 함께 기록)
+- `scripts/make_brand_assets.py` — 로고·아이콘 생성기(`brand/pungkyungchae-scan.jpg` → 워드마크 PNG · 앱 아이콘 · 파비콘 · `icon.svg`, `--check` 로 최신 확인) · `brand/logo_lib.py` — 스캔에서 흰 배경을 걷어내 투명 로고로 복원
 
 ## 테스트 데이터
 
@@ -262,15 +262,19 @@ board/
 
 로직 검증: `python3 test/run_quickjs.py` (Node 없이 QuickJS로 실행, 실 DB에 쓰지 않음)
 
-## 홈 화면 아이콘
+## 상단 로고 · 홈 화면 아이콘 (2026-11-28)
 
-단지 조감도 사진 위에 네이비/민트 오버레이를 얹고, **`풍경채`**(작은 민트) / **`게시판관리`**(큰 흰색) 두 줄 글씨를 새긴 전용 아이콘입니다.
+앱의 상징을 임시 그림(민트 꽃)에서 **제일풍경채 로고**로 바꿨습니다.
+사용자가 2026-11-24에 스캔해 보낸 로고 이미지(`brand/pungkyungchae-scan.jpg`)를 그대로 살려 씁니다.
 
-- 배경 — `images/bg_complex_aerial.jpg`(단지 조감도)를 가운데 정사각으로 잘라 은은하게 깔고, 네이비 반투명 그라데이션(위 75% → 아래 90%) + 아래쪽 민트 워시로 글씨 대비를 올립니다. 같은 사진을 `icons/icon-bg.jpg`(768px)로도 저장해 `icon.svg`가 같이 씁니다.
-- 글씨 — 위 `풍경채`는 작은 보조 타이틀(밝은 민트 `#7ef5c8→#34d69e`), 아래 `게시판관리`는 주인공 타이틀(흰색). 둘 다 나눔고딕 ExtraBold로 잉크 폭에 맞춰 크기를 자동 계산합니다. 위쪽에는 민트 체크 배지(게시·제거 체크)를 둡니다.
-- 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 글씨·배지 75%로 안전영역 안) · `apple-touch-icon-180.png`(iOS, 투명도 없는 정사각) · `favicon-32/16.png`(32px 급은 글씨 없이 흰 카드 + 굵은 체크로 간판화) · `icon.svg`(탭 아이콘, 글씨는 폰트 의존 없이 path 윤곽선) · `icon-bg.jpg`(아이콘용 사진 크롭).
-- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest" href="manifest.json">`. 아이콘이 바뀌면 각 주소 뒤 `?v=` 도 같이 올립니다(캐시 버스팅).
-- 다시 만들기 — `python3 scripts/make_icons.py` (색·모양은 스크립트 위쪽 상수에서 바꿉니다).
+- **스캔 → 투명 로고** — `brand/logo_lib.py` 가 흰 종이 배경을 걷어내고, 잉크 글씨(갈색)와 잎의 노랑·연두·주황을 복원합니다.
+  흰 배경 합성식 `C = A·F + (1-A)·W` 를 뒤집어 불투명도(A)와 순수 색(F)을 구하고, 종이 잡음은 하한 컷, 흐릿한 테두리는 대비 커브로 또렷하게 만듭니다.
+  잎은 '색이 있는 밝은 영역' 안에서만 번지게 해(모폴로지 재구성) 종이처럼 옅게 비친 부분까지 한 덩어리로 잡습니다.
+- **상단바(모든 화면 왼쪽 위)** — 네이비 바탕이라 흰 글씨 버전 `icons/logo-wordmark-white.png`(흰 글씨 + 색 잎)를 높이 26px(좁은 화면 23px)로 얹고, 옆에 얇은 구분선을 둔 뒤 `게시판 관리` / `그랑퍼스트` 두 줄을 붙입니다. 로고가 이미 `풍경채`를 말하므로 보조 줄은 `그랑퍼스트`만 남겼습니다.
+- **홈 화면 아이콘** — 네이비 그라데이션(위 `#1b4a7d` → 아래 `#0a2038`, 아래쪽 민트 글로우) 위에 흰 풍경채 로고를 크게, 그 아래 민트 `게시판 관리`를 새겼습니다. 안드로이드 홈 화면(192px)에서도 글씨가 읽히도록 여백과 크기를 잡았습니다.
+- 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 0.6배로 안전영역 안) · `apple-touch-icon-180.png`(iOS) · `favicon-32.png` · `favicon-16.png`(작은 탭은 `풍` 한 글자만) · `icon.svg`(512 아이콘을 data URI로 품은 SVG) · `logo-wordmark-white.png` · `logo-wordmark-color.png`(밝은 배경용).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128a`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION` 을 함께 올립니다(캐시 버스팅).
+- 다시 만들기 — `python3 scripts/make_brand_assets.py` (`--check` 로 최신 여부만 확인). 로고 자르기·색 보정은 `brand/logo_lib.py`, 아이콘 배치·색은 스크립트 위쪽 상수에서 바꿉니다.
 - 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
 ## 첫 진입 팝업 (2026-11-27)
