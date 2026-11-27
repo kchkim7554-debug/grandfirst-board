@@ -2596,14 +2596,15 @@ var App = (function () {
   function alertDetailBodyHtml(a) {
     var items = alertItems(a);
     var h = "";
-    if (a.summary) h += '<div class="aday-sum">' + esc(a.summary) + "</div>";
     if (!items.length) {
-      h += '<div class="adetail-none">이 날은 제거 대상 게시물이 없었습니다.<br>' +
-        esc(a.memo || "07:00 알림 기록만 남았습니다.") + "</div>";
-    } else {
-      if (a.memo) h += '<div class="aday-sum">' + esc(a.memo) + "</div>";
-      h += '<div>' + items.map(function (it, i) { return alertItemHtml(a, it, i); }).join("") + "</div>";
+      /* 제거 대상이 없는 날은 요약 한 줄만 — 같은 말을 두 번 쓰지 않는다 (2026-11-27) */
+      return '<div class="adetail-none">' +
+        esc(a.summary || "이 날은 제거 대상 게시물이 없었습니다.") +
+        (a.memo ? '<br><span style="font-size:.72rem;font-weight:600">' + esc(a.memo) + "</span>" : "") + "</div>";
     }
+    if (a.summary) h += '<div class="aday-sum">' + esc(a.summary) + "</div>";
+    if (a.memo) h += '<div class="aday-sum">' + esc(a.memo) + "</div>";
+    h += '<div>' + items.map(function (it, i) { return alertItemHtml(a, it, i); }).join("") + "</div>";
     return h;
   }
   /* 상세 — 기존 카드 이미지 · 안내 문구 · 내려받기 그대로 */

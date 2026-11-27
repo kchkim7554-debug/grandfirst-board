@@ -118,7 +118,8 @@ console.log("\n[3] 행을 누르면 별도 상세 화면");
 
   reset({});
   var none = A.screen("2026-11-19");
-  ok("제거 없는 날 상세", has(none, "제거 대상 게시물이 없었습니다") && !has(none, 'class="acard"'));
+  ok("제거 없는 날 상세 — 요약 한 줄만", has(none, "제거 대상 게시물이 없습니다") && !has(none, 'class="acard"') &&
+    (none.match(/제거 대상 게시물이 없/g) || []).length === 1, String((none.match(/제거 대상 게시물이 없/g) || []).length));
   ok("없는 날짜는 안내", has(A.screen("2026-12-25"), "07시 알림 기록이 없습니다"));
   eq("없는 날짜 상세는 빈 문자열", A.detail("2026-12-25"), "");
 }
