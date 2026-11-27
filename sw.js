@@ -4,7 +4,7 @@
    원칙: 캐시를 만들지 않는 패스스루 — 항상 네트워크의 최신 app.js/index.html 을 쓴다.
         skipWaiting() + clients.claim() 으로 구버전 워커가 화면을 붙잡지 않게 한다.
    ========================================================= */
-const VERSION = "20261128b";   /* 파일이 바뀔 때마다 올린다 — 워커 갱신 신호 */
+const VERSION = "20261128c";   /* 파일이 바뀔 때마다 올린다 — 워커 갱신 신호 */
 self.addEventListener("install", function () {
   self.skipWaiting();
 });

@@ -66,11 +66,11 @@ def check_shell():
     ok("설정 시트에 권한 관리·단지 정보", has(html, 'id="setSheet"')
        and has(html, 'data-go="#/admin"') and has(html, 'data-go="#/info"'))
     tabs = [t for t in re.findall(r'id="(tb[A-Za-z]+)"', html) if not t.endswith("Badge")]
-    ok("하단 탭 5개(홈·생성·배포·알림·더보기)",
+    ok("하단 탭 5개(홈·생성·배포·제거·알림·더보기)",
        tabs == ["tbHome", "tbCreate", "tbDeploy", "tbAlerts", "tbMore"], str(tabs))
-    ok("탭 이름", all(lbl in html for lbl in ['>홈<', '>생성<', '>배포<', '>알림<', '>더보기<']))
+    ok("탭 이름(배포 탭은 '배포·제거')", all(lbl in html for lbl in ['>홈<', '>생성<', '>배포·제거<', '>알림<', '>더보기<']))
     ok("탭 연결", has(html, 'data-go="#/create"') and has(html, 'data-go="#/deploy"') and has(html, 'data-go="#/alerts"'))
-    ok("배포·알림 탭 배지", has(html, 'id="tbDeployBadge"') and has(html, 'id="tbAlertBadge"'))
+    ok("배포·제거·알림 탭 배지", has(html, 'id="tbDeployBadge"') and has(html, 'id="tbAlertBadge"'))
     ok("더보기 시트(게시 상태·이력·통계·설정)", has(html, 'id="moreSheet"')
        and has(html, 'data-go="#/status"') and has(html, 'data-go="#/history"'))
     ok("탭바가 본문을 가리지 않도록 여백(--tabh)", "--tabh" in html and "padding-bottom:calc(var(--tabh)" in html)

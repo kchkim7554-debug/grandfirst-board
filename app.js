@@ -1111,7 +1111,7 @@ var App = (function () {
     }
     var dl = n.permanent ? "상시" : "기한 " + dotDate(n.deadline);
     var bld = targetsText(n).split(" · ")[0];
-    var h = '<button class="ptask' + (cls ? " " + cls : "") + '" data-act="go" data-go="#/deploy" aria-label="' + esc(n.title) + ' 배포 화면에서 체크">' +
+    var h = '<button class="ptask' + (cls ? " " + cls : "") + '" data-act="go" data-go="#/deploy" aria-label="' + esc(n.title) + ' 배포·제거 화면에서 체크">' +
       '<span class="pt-h"><span class="pt-date">' + mmdd(n.postedAt) + ' 게시</span>' +
       '<span class="pt-pill">' + esc(pill) + "</span></span>" +
       '<span class="pt-title">' + esc(n.title) + "</span>" +
@@ -1163,7 +1163,7 @@ var App = (function () {
 
     h += '<section><div class="sh"><h2>빠른 메뉴</h2><span class="cnt">핵심 5개</span></div><div class="qgrid">';
     h += qCell("create", "게시물 생성", "#/create", 0);
-    h += qCell("deploy", "게시물 배포", "#/deploy", p.pending + p.removing, "menuDeployBadge");
+    h += qCell("deploy", "게시물 배포·제거", "#/deploy", p.pending + p.removing, "menuDeployBadge");
     h += qCell("status", "게시 상태", "#/status", removeToday);
     h += qCell("history", "이력·통계", "#/history", 0);
     h += qCell("alerts", "일일 알림", "#/alerts", nAlert, "menuAlertBadge");
@@ -1544,7 +1544,7 @@ var App = (function () {
     attachList.sort(sortByDeadline);
     detachList.sort(sortByDeadline);
 
-    var h = '<div class="sec-title"><h2>게시물 배포</h2><span class="hint">게시·제거 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    var h = '<div class="sec-title"><h2>게시물 배포·제거</h2><span class="hint">게시·제거 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
     h += '<div class="dsum">' +
       '<span class="' + (attachList.length ? "warn" : "") + '">오늘 게시 대상 <b>' + attachList.length + "</b>건</span>" +
       '<span class="' + (detachList.length ? "warn" : "") + '">오늘 제거 대상 <b>' + detachList.length + "</b>건</span>" +
@@ -1566,7 +1566,7 @@ var App = (function () {
       h += detachList.map(function (n) { return taskCard(n, "detach"); }).join("");
     }
 
-    /* 2026-11-27 — 이동 탭에서 등록한 이동은 배포에서 [이동 확정]을 눌러야 실제로 반영된다 */
+    /* 2026-11-27 — 이동 탭에서 등록한 이동은 배포·제거에서 [이동 확정]을 눌러야 실제로 반영된다 */
     h += '<div id="depPending">' + pendingSectionHtml() + "</div>";
 
     var postedAll = postedAllList();
@@ -1869,7 +1869,7 @@ var App = (function () {
       return h + createListHtml(false);
     }
     h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
-      "같은 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포에서 게시 체크를 해야 도면에 나타납니다.</div>";
+      "같은 자리에 이미 있는 게시물은 한 칸씩 뒤로 밀립니다. 배포·제거에서 게시 체크를 해야 도면에 나타납니다.</div>";
     h += '<div id="nfBody">' + nfFormHtml() + "</div>";
     h += '<div id="nfList">' + createListHtml(true) + "</div>";
     return h;
@@ -1952,7 +1952,7 @@ var App = (function () {
   /* ---------- [이동] 탭 (2026-11-27 전면 개편) ----------
      흐름: ① 이동대상(현재 게시된 게시물) → ② 이동전 게시장소(자동 기록) → ③ 이동후 게시장소(칸 선택)
            → 정합성 확인(이동전 개수 = 이동후 개수) → [이동실행] 확인 팝업 → 이동목록(대기) 등록
-           → [배포] 탭에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀐다.
+           → [배포·제거] 탭에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀐다.
      이동 등록만으로는 도면·게시 위치가 바뀌지 않는다. */
   var MVSEL = null;        // 이번에 옮길 대상 선택 상태
   var MVPICK = {};         // 이동목록에서 취소할 항목 체크
@@ -2085,7 +2085,7 @@ var App = (function () {
         if (!ok) return;
         closeSheet();
         mvSelReset();
-        toast("이동목록에 등록했습니다 · 배포에서 확정하면 실제로 이동합니다");
+        toast("이동목록에 등록했습니다 · 배포·제거에서 확정하면 실제로 이동합니다");
         render();
       });
     });
@@ -2210,7 +2210,7 @@ var App = (function () {
     h += '<div class="mvbox"><div class="mvbox-h"><span class="mvno">1</span>이동대상</div>' +
       '<div class="mvbox-s">현재 게시된 게시물 중에서 옮길 것을 하나 고르세요 · ' + posted.length + "건</div>";
     if (!posted.length) {
-      h += '<div class="empty-box">현재 게시된 게시물이 없습니다.<br>배포에서 게시 체크가 끝난 게시물만 이동할 수 있습니다.</div>';
+      h += '<div class="empty-box">현재 게시된 게시물이 없습니다.<br>배포·제거에서 게시 체크가 끝난 게시물만 이동할 수 있습니다.</div>';
     } else {
       h += '<div class="mvpicklist" id="mvPickList">' + posted.map(mvNoticeRowHtml).join("") + "</div>";
     }
@@ -2251,7 +2251,7 @@ var App = (function () {
     }
     h += "</div>";
     if (!list.length) {
-      h += '<div class="empty-box">이동 대기 중인 목록이 없습니다.<br>[이동실행]을 하면 이곳에 등록되고, <b>배포</b>에서 확정해야 실제로 이동합니다.</div>';
+      h += '<div class="empty-box">이동 대기 중인 목록이 없습니다.<br>[이동실행]을 하면 이곳에 등록되고, <b>배포·제거</b>에서 확정해야 실제로 이동합니다.</div>';
       return h;
     }
     h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mtable"><thead><tr>' +
@@ -2267,7 +2267,7 @@ var App = (function () {
         '<td class="cp">' + esc(m.toText || "") + "</td></tr>";
     });
     h += "</tbody></table></div></div>";
-    h += '<p class="note">등록만으로는 게시 위치가 바뀌지 않습니다. <b>배포</b> 탭의 <b>이동 대기</b>에서 [이동 확정]을 눌러야 도면·게시 위치가 바뀝니다.</p>';
+    h += '<p class="note">등록만으로는 게시 위치가 바뀌지 않습니다. <b>배포·제거</b> 탭의 <b>이동 대기</b>에서 [이동 확정]을 눌러야 도면·게시 위치가 바뀝니다.</p>';
     if (isA) {
       h += '<div style="display:flex;gap:7px;margin:8px 0 12px">' +
         '<button class="btn danger" data-act="mv-pending-cancel-picked" style="flex:1">선택 후 이동 취소</button></div>';
@@ -2286,7 +2286,7 @@ var App = (function () {
       "<tr><th>이동전</th><td>" + esc(src ? targetText(src) : "-") + "</td></tr>" +
       "<tr><th>이동후</th><td>" + esc(dest ? targetText(dest) : "-") + "</td></tr>" +
       "</table>" +
-      '<div class="cfm-n">이동은 곧바로 반영되지 않습니다. <b>이동목록</b>에 등록되고, <b>배포</b>에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀝니다.</div>' +
+      '<div class="cfm-n">이동은 곧바로 반영되지 않습니다. <b>이동목록</b>에 등록되고, <b>배포·제거</b>에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀝니다.</div>' +
       '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
       '<button class="btn solid" data-act="mv-confirm" style="flex:1.3">이동실행</button></div></div>';
     return h;
@@ -2304,7 +2304,7 @@ var App = (function () {
     else if (LOADED && VIEW.name === "deploy") render();
   }
 
-  /* ---------- [배포] 이동 대기 확정 ---------- */
+  /* ---------- [배포·제거] 이동 대기 확정 ---------- */
   function pendingSectionHtml() {
     if (!MOVES.length) return "";
     var h = '<div class="sec-h"><h3>이동 대기</h3><span class="count">' + MOVES.length + "건</span>" +
@@ -2324,7 +2324,7 @@ var App = (function () {
     return h + "</div>";
   }
 
-  /* ---------- 게시 중 전체보기 (배포 탭) ---------- */
+  /* ---------- 게시 중 전체보기 (배포·제거 탭) ---------- */
   function postedAllList() {
     return NOTICES.filter(function (n) { return !isArchived(n) && allAttached(n) && !needsRemove(n); })
       .sort(function (a, b) {
@@ -4273,7 +4273,7 @@ var App = (function () {
     }
     return { name: "home" };
   }
-  /* 서브 화면에서는 상단에 '‹' 버튼을 보인다. 탭바에 있는 화면(홈·생성·배포·알림)은 탭바로 이동한다. */
+  /* 서브 화면에서는 상단에 '‹' 버튼을 보인다. 탭바에 있는 화면(홈·생성·배포·제거·알림)은 탭바로 이동한다. */
   var BACK_SCREENS = ["status", "history", "admin", "info", "building"];
   function syncChrome() {
     var hb = document.getElementById("homeBtn");
@@ -4970,7 +4970,7 @@ var App = (function () {
       setHist: function (o) { Object.keys(o || {}).forEach(function (k) { HIST[k] = o[k]; }); },
       html: function () { return renderHistory(); }
     },
-    /* 게시물 배포(게시·제거 체크) 화면 검증용 */
+    /* 게시물 배포·제거(게시·제거 체크) 화면 검증용 */
     deploy: {
       card: taskCard, chk: chkCell, ext: extCell,
       extTeam: EXT_TEAM, extLabel: EXT_LABEL,

@@ -62,7 +62,7 @@ console.log("\n[1] 오늘 요약 배너");
   eq("요약 숫자 3개(오늘 제거·게시 중·만료 임박)", count(h, /class="t-stat(?=[ "])/g), 3);
   ok("게시 중은 게시물 건수로 센다(게시판 장수 아님)", has(h, '<span class="n">3</span><span class="l">게시 중</span>'));
   ok("만료 임박(7일 이내 + 오늘)은 2건", has(h, '<span class="n">2</span><span class="l">만료 임박</span>'));
-  ok("주 버튼은 배포 화면으로 간다", has(h, 'class="t-cta" data-act="go" data-go="#/deploy"'));
+  ok("주 버튼은 배포·제거 화면으로 간다", has(h, 'class="t-cta" data-act="go" data-go="#/deploy"'));
   ok("주 버튼에 건수 배지", has(h, '<span class="k">1건</span> 제거 체크 하러 가기'));
   var st = P.stats();
   eq("집계값", [st.removeToday, st.posted, st.soon], [1, 3, 2]);
@@ -74,14 +74,14 @@ console.log("\n[2] 빠른 메뉴 — 3열 × 2줄(6칸)");
   var h = P.html();
   eq("칸은 6개", count(h, /class="q /g), 6);
   ok("게시물 생성", has(h, 'data-go="#/create"') && has(h, "게시물 생성"));
-  ok("게시물 배포", has(h, 'data-go="#/deploy"') && has(h, "게시물 배포"));
+  ok("게시물 배포·제거", has(h, 'data-go="#/deploy"') && has(h, "게시물 배포·제거"));
   ok("게시 상태", has(h, 'data-go="#/status"') && has(h, "게시 상태"));
   ok("이력·통계", has(h, 'data-go="#/history"') && has(h, "이력·통계"));
   ok("일일 알림", has(h, 'data-go="#/alerts"') && has(h, "일일 알림"));
   ok("글자 크게(가+)", has(h, "data-act=\"font\"") && has(h, "글자 크게"));
   ok("권한 관리는 홈 메뉴에서 빠졌다(⚙ 설정으로 이동)", !has(h, 'data-go="#/admin"'));
   ok("단지 정보도 홈 메뉴에서 빠졌다", !has(h, 'data-go="#/info"'));
-  ok("배포 칸 배지 자리", has(h, 'id="menuDeployBadge"'));
+  ok("배포·제거 칸 배지 자리", has(h, 'id="menuDeployBadge"'));
   ok("오늘 알림이 없으면 알림 칸 배지는 숨김", !has(h, 'id="menuAlertBadge"'));
 }
 
@@ -108,7 +108,7 @@ console.log("\n[3] 지금 처리할 일 카드");
   ok("완료 (A조)가 카드에 나온다", has(h, "완료 (A조)"));
   ok("외부업체가 카드에 나온다", has(h, ">외부업체<"));
   ok("안내 문구도 한 번 체크로 완료임을 알린다", has(h, "한 곳만 체크하면 그 구역은 완료"));
-  ok("카드를 누르면 배포 화면으로 간다", has(h, 'class="ptask" data-act="go" data-go="#/deploy"'));
+  ok("카드를 누르면 배포·제거 화면으로 간다", has(h, 'class="ptask" data-act="go" data-go="#/deploy"'));
   eq("처리할 일 4건", P.tasks().length, 4);
   ok("목록 제목", has(h, "지금 처리할 일"));
 }

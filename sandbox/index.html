@@ -8,10 +8,10 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
-<link rel="icon" href="icons/icon.svg?v=20261128b" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261128b" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261128b" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128b">
+<link rel="icon" href="icons/icon.svg?v=20261128c" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128c" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128c" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128c">
 <link rel="manifest" href="sandbox/manifest.json">
 <title>🧪 테스트용 (카피본) · 게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
@@ -789,7 +789,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .mvpend-acts .mini-btn{flex:1 1 0;min-height:40px;}
 .mini-btn.primary{background:var(--navy);border-color:var(--navy);color:#fff;}
 
-/* 배포 — 게시 중 전체보기 */
+/* 배포·제거 — 게시 중 전체보기 */
 .dall-h{font-size:.84rem;font-weight:700;color:var(--ink-2);margin:0 2px 4px;}
 .dall-h b{color:var(--navy);font-size:1rem;}
 .dall-list{display:flex;flex-direction:column;gap:6px;}
@@ -1357,7 +1357,7 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128b" alt="제일풍경채" width="201" height="112">
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128c" alt="제일풍경채" width="201" height="112">
       <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
@@ -1392,10 +1392,10 @@ html.fs-lg .q{min-height:88px;}
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>
     <span class="l">생성</span>
   </button>
-  <button class="tb" id="tbDeploy" data-act="go" data-go="#/deploy" aria-label="게시물 배포">
+  <button class="tb" id="tbDeploy" data-act="go" data-go="#/deploy" aria-label="게시물 배포·제거">
     <span class="bdg" id="tbDeployBadge" hidden>0</span>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.5 20 5l-6 15-3.4-5.6z"/></svg>
-    <span class="l">배포</span>
+    <span class="l">배포·제거</span>
   </button>
   <button class="tb" id="tbAlerts" data-act="go" data-go="#/alerts" aria-label="제거대상 일일 알림">
     <span class="bdg" id="tbAlertBadge" hidden>0</span>
@@ -1452,7 +1452,7 @@ html.fs-lg .q{min-height:88px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script src="sandbox/env.js"></script>
-<script src="app.js?v=20261128b"></script>
+<script src="app.js?v=20261128c"></script>
 <script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
