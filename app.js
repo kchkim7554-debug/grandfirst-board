@@ -1503,7 +1503,7 @@ var App = (function () {
     return '<button class="chk ' + cls + ' lock" data-act="chk-lock"' +
       ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '"' +
       ' aria-label="' + esc(zoneShort(zone) + " " + tip + " · 관리자 전용") + '">' +
-      '<span class="box">' + glyph + '</span><span class="zn">' + esc(zoneShort(zone)) + '</span>' +
+      '<span class="box">' + glyph + '</span><span class="zn">🔒 ' + esc(zoneShort(zone)) + '</span>' +
       '<span class="nm">' + esc(nameText) + "</span></button>";
   }
   function chkCell(n, kind, zone, team) {

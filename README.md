@@ -289,7 +289,7 @@ board/
 - **상단바(모든 화면 왼쪽 위)** — 네이비 바탕이라 흰 글씨 버전 `icons/logo-wordmark-white.png`(흰 글씨 + 색 잎)를 높이 26px(좁은 화면 23px)로 얹고, 옆에 얇은 구분선을 둔 뒤 `게시판 관리` / `그랑퍼스트` 두 줄을 붙입니다. 로고가 이미 `풍경채`를 말하므로 보조 줄은 `그랑퍼스트`만 남겼습니다.
 - **홈 화면 아이콘** — 네이비 그라데이션(위 `#1b4a7d` → 아래 `#0a2038`, 아래쪽 민트 글로우) 위에 흰 풍경채 로고를 크게, 그 아래 민트 `게시판 관리`를 새겼습니다. 안드로이드 홈 화면(192px)에서도 글씨가 읽히도록 여백과 크기를 잡았습니다.
 - 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 0.6배로 안전영역 안) · `apple-touch-icon-180.png`(iOS) · `favicon-32.png` · `favicon-16.png`(작은 탭은 `풍` 한 글자만) · `icon.svg`(512 아이콘을 data URI로 품은 SVG) · `logo-wordmark-white.png` · `logo-wordmark-color.png`(밝은 배경용).
-- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128g`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION` 을 함께 올립니다(캐시 버스팅).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128h`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION` 을 함께 올립니다(캐시 버스팅).
 - 다시 만들기 — `python3 scripts/make_brand_assets.py` (`--check` 로 최신 여부만 확인). 로고 자르기·색 보정은 `brand/logo_lib.py`, 아이콘 배치·색은 스크립트 위쪽 상수에서 바꿉니다.
 - 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
