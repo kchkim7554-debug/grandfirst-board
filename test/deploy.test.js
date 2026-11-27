@@ -14,6 +14,7 @@ if (!API && typeof require === "function") {
   FAC = JSON.parse(fs.readFileSync(path.join(ROOT, "data.json"), "utf8"));
 }
 var D = API.deploy;
+var M = API.move;
 var O = API.order;
 
 let pass = 0, fail = 0;
@@ -167,6 +168,61 @@ console.log("\n[5] 배포 화면");
   ok("게시 필요 목록에 카드", has(h, "게시 필요") && has(h, "외부업체 게시 시험"));
   ok("외부업체 줄이 화면에 나온다", has(h, "team-tag ext"));
   ok("게시·제거 용어 유지", has(h, "게시") && has(h, "제거") && !has(h, "부착") && !has(h, "탈착"));
+}
+
+/* ---------- 6. 게시 중 (제거 예정) — [전체 복사] → [전체보기] ---------- */
+console.log("\n[6] 게시 중 전체보기");
+{
+  API.setToday("2026-11-27");
+  var st = {};
+  for (var i = 1; i <= 8; i++) {
+    st["P" + i] = {
+      id: "P" + i, title: "게시 중 시험 " + i, status: "posted", postedAt: "2026-11-10",
+      deadline: "2026-12-" + (10 + i), createdAt: i,
+      targets: [{ board: "lobby", slot: "0" + i, order: 1, buildings: "all", floors: ["1층"] }],
+      attach: { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } }
+    };
+  }
+  st.PERM = { id: "PERM", title: "상시 게시물", status: "posted", postedAt: "2026-11-01", permanent: true, createdAt: 9,
+    targets: [{ board: "lobby", slot: "12", order: 1, buildings: "all", floors: ["1층"] }],
+    attach: { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } } };
+  O.load(clone(st), clone(FAC));
+  var h = D.useful();
+  ok("[전체보기] 버튼", has(h, 'data-act="deploy-all"') && has(h, "전체보기"));
+  ok("[전체 복사] 버튼은 사라졌다", !has(h, 'data-act="copy" data-kind="all"') && !has(h, "전체 복사"));
+  ok("게시 중 건수는 전체(9건)", has(h, "게시 중 (제거 예정)") && has(h, "<span class=\"count\">9건</span>"));
+  ok("목록은 앞 6건만", (h.match(/class="row" data-act="open-notice"/g) || []).length === 6);
+
+  var sheet = M.deploy();
+  ok("전체보기 팝업 — 전부 9건", (sheet.match(/class="dall-row"/g) || []).length === 9);
+  ok("전체보기 팝업 — 상시 게시물 포함", has(sheet, "상시 게시물") && has(sheet, "상시"));
+  ok("전체보기 팝업 — 줄을 누르면 상세", has(sheet, 'data-act="open-notice"'));
+  ok("전체보기 팝업 — 건수 머리", has(sheet, "게시 중 게시물 <b>9</b>건"));
+}
+
+/* ---------- 7. 이동 대기 — 배포에서 확정 ---------- */
+console.log("\n[7] 이동 대기 확정");
+{
+  API.setToday("2026-11-27");
+  var st2 = {
+    M1: { id: "M1", title: "이동 대기 시험", status: "posted", postedAt: "2026-11-20", deadline: "2026-12-10", createdAt: 1,
+      targets: [{ board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층"] }],
+      attach: { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } } }
+  };
+  O.load(clone(st2), clone(FAC));
+  M.setPending({
+    m1: { id: "m1", at: 1795000000000, date: "2026-11-27", by: "Admin", noticeId: "M1", title: "이동 대기 시험",
+      src: { board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층"] },
+      dst: { board: "lobby", slot: "05", order: 1, buildings: "all", floors: ["1층"] },
+      fromText: "전체 24개동 · 공동현관 1층 03번", toText: "전체 24개동 · 공동현관 1층 05번", status: "pending" }
+  });
+  var h2 = D.useful();
+  ok("배포 탭에 이동 대기 카드", has(h2, "이동 대기") && has(h2, "이동 대기 시험"));
+  ok("[이동 확정] 버튼", has(h2, 'data-act="mv-pending-apply"') && has(h2, "이동 확정"));
+  ok("[취소] 버튼", has(h2, 'data-act="mv-pending-cancel"'));
+  ok("이동전 → 이동후 표시", has(h2, "공동현관 1층 03번") && has(h2, "공동현관 1층 05번"));
+  M.setPending({});
+  ok("대기 0건이면 카드 없음", !has(D.useful(), 'data-act="mv-pending-apply"'));
 }
 
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");

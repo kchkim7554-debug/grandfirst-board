@@ -124,85 +124,127 @@ console.log("\n[6] 하단 목록 — 선택 | 구분 | 게시물 | 생성일자 
   ok("고른 줄은 표시", has(C.list(), "ckbox on"));
 }
 
-/* ---------- 7. [이동] — 원본 찾기 ---------- */
-console.log("\n[7] [이동] — 현재 위치에 걸린 게시물 찾기");
+/* ---------- 7. [이동] — 이동대상은 현재 게시된 게시물 ---------- */
+console.log("\n[7] [이동] — 이동대상 찾기 (게시된 게시물만)");
 {
-  O.load(clone(LIVE), FAC);
-  M.reset();
-  var st = M.state();
-  st.from.buildings = "all"; st.from.lines = "all"; st.from.type = "lobby"; st.from.floors = "all"; st.from.slot = "03";
-  eq("게시판 03번(전체 층)", M.matches(st.from).map(function (i) { return i.id + "=" + i.order; }), ["R01=1", "R08=2"]);
-
-  st.from.floors = ["지하1층", "지하2층"];
-  eq("지하 층만이면 03번 전체층 게시물도 포함", M.matches(st.from).map(function (i) { return i.id; }), ["R01", "R08"]);
-
-  st.from.slot = "05"; st.from.floors = ["1층"];
-  eq("05번 1층", M.matches(st.from).map(function (i) { return i.id; }), ["R04"]);
-
-  st.from.type = "elevator"; st.from.slot = "05"; st.from.elevators = "all";
-  eq("E/V 05번", M.matches(st.from).map(function (i) { return i.id; }), ["R14"]);
-
-  st.from.type = "lobby"; st.from.slot = "03"; st.from.floors = "all"; st.from.buildings = [101];
-  eq("101동만 (전체 동 게시물 포함)", M.matches(st.from).map(function (i) { return i.id; }), ["R01", "R08"]);
-  st.from.buildings = "all";
-}
-
-/* ---------- 8. [이동] — 옮긴 뒤 저장할 update ---------- */
-console.log("\n[8] [이동] — 이동 update 맵");
-{
-  O.load(clone(LIVE), FAC);
-  M.reset();
-  var st = M.state();
-  st.from = { buildings: "all", lines: "all", type: "lobby", floors: "all", elevators: "all", slot: "03" };
-  var items = M.matches(st.from);
-  var to = { buildings: "all", lines: "all", type: "lobby", floors: "all", elevators: "all", slot: "05" };
-  var res = M.apply(items, to);
-  eq("두 건 모두 저장", Object.keys(res.updates).filter(function (k) { return /\/targets$/.test(k); }).length, 2);
-  eq("도착지 번호는 05", res.updates["board/notices/R01/targets"][0].slot, "05");
-  ok("도착지 순번은 기존(05번 2건) 뒤부터", res.updates["board/notices/R01/targets"][0].order >= 3 &&
-    res.updates["board/notices/R08/targets"][0].order > res.updates["board/notices/R01/targets"][0].order);
-  eq("원래 03번 자리는 남은 게시물 없음 → 압축 변경 없음", Object.keys(res.updates).filter(function (k) { return /targets\/\d+\/order/.test(k); }), []);
-
-  /* 3장 중 1장만 옮기면 남은 2장이 1·2번째로 당겨진다 */
-  var st3 = {
-    A: { id: "A", title: "A", createdAt: 1, status: "posted", targets: [{ board: "lobby", slot: "02", order: 1, buildings: "all", floors: ["1층", "지하1층"] }] },
-    B: { id: "B", title: "B", createdAt: 2, status: "posted", targets: [{ board: "lobby", slot: "02", order: 2, buildings: "all", floors: ["1층", "지하1층"] }] },
-    D: { id: "D", title: "D", createdAt: 3, status: "posted", targets: [{ board: "lobby", slot: "02", order: 3, buildings: "all", floors: ["1층", "지하1층"] }] }
+  var API7 = globalThis.__boardTest;
+  API7.setToday("2026-11-27");
+  var att = { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } };
+  var st = {
+    M1: { id: "M1", title: "이동 시험 1", status: "posted", postedAt: "2026-11-20", deadline: "2026-12-10", createdAt: 1,
+      targets: [{ board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층", "지하1층"] }], attach: att },
+    M2: { id: "M2", title: "이동 시험 2", status: "posted", postedAt: "2026-11-21", deadline: "2026-12-10", createdAt: 2,
+      targets: [{ board: "elevator", slot: "05", order: 1, buildings: "all", elevators: "all" }], attach: att },
+    M3: { id: "M3", title: "게시 대기", status: "pending_attach", postedAt: "2026-11-22", deadline: "2026-12-10", createdAt: 3,
+      targets: [{ board: "lobby", slot: "07", order: 1, buildings: "all", floors: ["1층"] }], attach: null }
   };
-  O.load(clone(st3), FAC);
+  O.load(clone(st), FAC);
+  var posted = M.posted().map(function (n) { return n.id; });
+  eq("게시 완료된 게시물만 이동대상", posted, ["M1", "M2"]);
+  ok("게시 대기 게시물은 제외", posted.indexOf("M3") < 0);
+
   M.reset();
-  M.state().from = { buildings: "all", lines: "all", type: "lobby", floors: ["1층"], elevators: "all", slot: "02" };
-  var one = M.matches(M.state().from)[0];
-  var r2 = M.apply([one], { buildings: "all", lines: "all", type: "lobby", floors: ["1층"], elevators: "all", slot: "09" });
-  eq("옮긴 A 는 09번", r2.updates["board/notices/A/targets"][0].slot, "09");
-  ok("남은 B·D 순번이 당겨짐", (function () {
-    var seq = [r2.updates["board/notices/B/targets/0/order"], r2.updates["board/notices/D/targets/0/order"]];
-    return seq.sort().join(",") === "1,2";
-  })(), JSON.stringify(r2.updates));
+  M.pick("M1");
+  eq("고른 게시물의 게시장소가 자동 기록", M.state().noticeId, "M1");
+  ok("게시판 종류도 게시물에 맞춰진다", M.state().board === "lobby");
+  var h7 = M.screen();
+  ok("이동전 게시장소에 현재 위치 표시", has(h7, "공동현관 1층·지하1층 03번"));
 }
 
-/* ---------- 9. [이동] 화면 ---------- */
-console.log("\n[9] [이동] 화면 — 좌우 패널 · 이동 버튼 · 목록");
+/* ---------- 8. [이동] — 정합성 확인과 이동목록 등록 ---------- */
+console.log("\n[8] [이동] — 이동전/이동후 개수 확인 · 이동목록 등록");
 {
-  O.load(clone(LIVE), FAC);
+  var API8 = globalThis.__boardTest;
+  API8.setToday("2026-11-27");
+  var att8 = { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } };
+  var st8 = {
+    M1: { id: "M1", title: "이동 시험 1", status: "posted", postedAt: "2026-11-20", deadline: "2026-12-10", createdAt: 1,
+      targets: [{ board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층", "지하1층"] }], attach: att8 }
+  };
+  O.load(clone(st8), FAC);
   M.reset();
-  var st = M.state();
-  st.from = { buildings: "all", lines: "all", type: "lobby", floors: "all", elevators: "all", slot: "03" };
-  st.to = { buildings: "all", lines: "all", type: "lobby", floors: "all", elevators: "all", slot: "05" };
-  var h = M.screen();
-  ok("현재 위치 · 이동할 곳 패널", has(h, "현재 위치") && has(h, "이동할 곳"));
-  ok("두 패널의 동·라인·게시판·E/V", (h.match(/data-act="mv-bld"/g) || []).length > 40 &&
-    has(h, 'data-act="mv-line"') && has(h, 'data-act="mv-lslot"') && has(h, 'data-act="mv-eslot"'));
-  ok("이동 버튼", has(h, 'data-act="mv-apply"') && has(h, "이동 →"));
-  ok("목록 머리: 구분·이동대상·이동할 곳·이동일", has(h, "이동대상") && has(h, "이동할 곳") && has(h, "이동일"));
-  ok("대상에 R01·R08", has(h, "R01") === false || has(h, "승강기"));
-  ok("이동일은 오늘", has(h, "2026.11.21"));
-  ok("도착지 문구가 목록에 표시", (h.match(/05번/g) || []).length >= 2);
-  ok("용어는 게시/제거 (부착/탈착 없음)", !has(h, "부착") && !has(h, "탈착"));
+  var c0 = M.check();
+  ok("이동대상이 없으면 실행 불가", c0.ok === false && has(c0.msg, "이동대상"));
 
-  M.logs({ "-N1": { type: "attach", at: 1 }, "-N2": { type: "move", at: 1795000000000, date: "2026-11-21", from: "게시판 03번", to: "게시판 05번", count: 2, titles: ["승강기", "기존사업자"] } });
+  M.pick("M1");
+  var c1 = M.check();
+  ok("이동후 번호를 고르기 전에는 개수 불일치", c1.ok === false && has(c1.msg, "이동후 0곳") && has(c1.msg, "개수가 달라"), c1.msg);
+
+  M.state().slot = "05";
+  M.state().floors = "all";
+  var c2 = M.check();
+  ok("이동전 1곳 = 이동후 1곳이면 실행 가능", c2.ok === true && has(c2.msg, "일치"), c2.msg);
+
+  M.state().slot = "03";
+  M.state().floors = ["1층", "지하1층"];
+  var c3 = M.check();
+  ok("같은 자리(03번·같은 층)는 실행 불가", c3.ok === false && has(c3.msg, "같은 자리"), c3.msg);
+  M.state().slot = "05";
+  M.state().floors = "all";
+
+  var e = M.entry();
+  ok("이동목록 등록 내용", e && e.noticeId === "M1" && e.dst.slot === "05" && e.status === "pending" &&
+    has(e.fromText, "03번") && has(e.toText, "05번"), JSON.stringify(e && { f: e.fromText, t: e.toText }));
+  var res = M.applyPending(e);
+  eq("이동 확정 → 실제 게시 위치가 05번", res.updates["board/notices/M1/targets"][0].slot, "05");
+  eq("이동 확정 → 이동목록에서 제거", res.updates["board/moves/" + e.id], null);
+  ok("이동 확정 → 게시물 갱신 시각 기록", typeof res.updates["board/notices/M1/updatedAt"] === "number");
+  eq("이동전/이동후 표시 문구", [res.dest.slot, res.from.slot], ["05", "03"]);
+
+  var stale = M.applyPending({ id: "x", noticeId: "M1", src: { board: "lobby", slot: "09", order: 1, buildings: "all", floors: ["1층"] }, dst: { board: "lobby", slot: "10", order: 1, buildings: "all", floors: ["1층"] }, fromText: "", toText: "" });
+  ok("이미 바뀐 위치를 확정하면 안내하고 중단", !!stale.error && has(stale.error, "바뀌었습니다"));
+}
+
+/* ---------- 9. [이동] 화면 — 3단 구성 · 확인 팝업 · 이동목록 ---------- */
+console.log("\n[9] [이동] 화면 — ① 대상 ② 이동전 ③ 이동후 · 확인 팝업 · 이동목록");
+{
+  var API9 = globalThis.__boardTest;
+  API9.setToday("2026-11-27");
+  var att9 = { front: { by: "담당", team: "A", at: 1 }, backA: { by: "담당", team: "A", at: 1 }, backB: { by: "담당", team: "A", at: 1 } };
+  var st9 = {
+    M1: { id: "M1", title: "이동 시험 1", status: "posted", postedAt: "2026-11-20", deadline: "2026-12-10", createdAt: 1,
+      targets: [{ board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층", "지하1층"] }], attach: att9 },
+    M2: { id: "M2", title: "이동 시험 2", status: "posted", postedAt: "2026-11-21", deadline: "2026-12-10", createdAt: 2,
+      targets: [{ board: "lobby", slot: "01", order: 1, buildings: "all", floors: ["1층", "지하1층", "지하2층"] }], attach: att9 }
+  };
+  O.load(clone(st9), FAC);
+  M.reset();
+  M.pick("M1");
+  var h = M.screen();
+  ok("① 이동대상 ② 이동전 게시장소 ③ 이동후 게시장소", has(h, "이동대상") && has(h, "이동전 게시장소") && has(h, "이동후 게시장소"));
+  ok("이동대상 목록", has(h, 'data-act="mv-target"') && has(h, "이동 시험 1") && has(h, "이동 시험 2"));
+  ok("이동전은 자동 기록(읽기 전용 박스)", has(h, 'class="mvfrom"') && has(h, "공동현관"));
+  ok("이동후 게시판/층/번호 선택", has(h, 'data-act="mv-dest-board"') && has(h, 'data-act="mv-dest-floor"') &&
+    (h.match(/data-act="mv-dest-slot"/g) || []).length === 12);
+  ok("정합성 안내 문구", has(h, "이동후 0곳") && has(h, "개수가 달라 실행할 수 없습니다"));
+  ok("[이동실행] 버튼(불일치면 비활성)", has(h, 'data-act="mv-run"') && has(h, "이동실행") && has(h, "disabled"));
+  ok("최근 이동기록은 사라졌다", !has(h, "최근 이동 기록") && !has(h, "좌우 패널"));
+
+  var cf = M.confirm();
+  ok("확인 팝업 — 다시 한번 확인 바랍니다", has(cf, "다시 한번 확인 바랍니다") && has(cf, "<th>대상</th>") &&
+    has(cf, "<th>이동전</th>") && has(cf, "<th>이동후</th>") && has(cf, "취소") && has(cf, "이동실행"));
+
+  M.state().slot = "05";
+  M.setPending({
+    "m1": { id: "m1", at: 1795000000000, date: "2026-11-27", by: "Admin", noticeId: "M1", title: "이동 시험 1",
+      src: { board: "lobby", slot: "03", order: 1, buildings: "all", floors: ["1층", "지하1층"] },
+      dst: { board: "lobby", slot: "05", order: 1, buildings: "all", floors: ["전체"] },
+      fromText: "전체 24개동 · 공동현관 1층·지하1층 03번", toText: "전체 24개동 · 공동현관 전체층 05번", status: "pending" },
+    "m2": { id: "m2", at: 1795000001000, date: "2026-11-27", by: "Admin", noticeId: "M2", title: "이동 시험 2",
+      src: { board: "lobby", slot: "01", order: 1, buildings: "all", floors: ["1층"] },
+      dst: { board: "lobby", slot: "06", order: 1, buildings: "all", floors: ["1층"] },
+      fromText: "전체 24개동 · 공동현관 1층 01번", toText: "전체 24개동 · 공동현관 1층 06번", status: "pending" }
+  });
   var h2 = M.screen();
-  ok("최근 이동 기록 표시", has(h2, "최근 이동 기록") && has(h2, "게시판 03번"));
+  ok("이동목록에 대기 2건", (h2.match(/data-act="mv-pick"/g) || []).length === 2 && has(h2, "전체 선택"));
+  ok("이동목록 표 머리 5칸", has(h2, "<th class=\"ck\">선택</th>") && has(h2, "<th>변경일</th>") && has(h2, "<th>이동대상</th>") &&
+    has(h2, "<th>이동전 게시장소</th>") && has(h2, "<th>이동후 게시장소</th>"));
+  ok("선택 후 이동 취소", has(h2, 'data-act="mv-pending-cancel-picked"') && has(h2, "선택 후 이동 취소"));
+  ok("이동목록 행에 이동전·이동후", has(h2, "공동현관 전체층 05번") && has(h2, "1층 06번"));
+  ok("배포에서 확정 안내", has(h2, "배포") && has(h2, "이동 확정"));
+
+  var dep = M.pendingSection();
+  ok("배포 탭 이동 대기 카드", has(dep, "이동 대기") && has(dep, "이동 확정") && has(dep, 'data-act="mv-pending-apply"'));
 }
 
 /* ---------- 10. 느린 회선: 시설 데이터보다 게시물이 먼저 와도 멈추지 않는다 ---------- */

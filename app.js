@@ -1170,8 +1170,10 @@ var App = (function () {
     h += qCell("font", "글자 크게", "", 0);
     h += "</div></section>";
 
-    h += '<p class="note">게시물·담당자 정보는 Firebase에 실시간 저장됩니다. 등록·수정·이동은 관리자 인증(PIN) 후 가능합니다.' +
-      (hasTest() ? "<br><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다." : "") + "</p>";
+    /* 2026-11-27 사용자 요청 — 홈 화면 하단 Firebase 안내 문구 삭제 */
+    if (hasTest()) {
+      h += '<p class="note"><b>테스트 데이터가 포함되어 있습니다.</b> 시스템 권한 관리 → 데이터에서 지울 수 있습니다.</p>';
+    }
     return h;
   }
   /* 3. 현재 게시물 게시 상태 조회 (동별 현황) */
@@ -1190,6 +1192,151 @@ var App = (function () {
     return h;
   }
   function hasTest() { return NOTICES.some(function (n) { return n.isTest; }); }
+
+  /* ========================================================
+     첫 진입 팝업 — ① 동·층별 게시판 현황 → ② 오늘 일일 알림
+     · 홈(첫 화면)으로 들어올 때 세션당 1회만
+     · #/deploy 처럼 특정 화면으로 바로 들어온 딥링크는 제외
+     ======================================================== */
+  var WEL = { on: false, step: 1, no: null, core: null, loc: "f1" };
+  function welcomeSeen() {
+    try { return sessionStorage.getItem(LS_PREFIX + "welcome") === "1"; } catch (e) { return false; }
+  }
+  function markWelcomeSeen() {
+    try { sessionStorage.setItem(LS_PREFIX + "welcome", "1"); } catch (e) {}
+  }
+  function maybeWelcome() {
+    if (WEL.on || !LOADED || VIEW.name !== "home") return;
+    var raw = "";
+    try { raw = String(location.hash || "").replace(/^#\/?/, ""); } catch (e) { raw = ""; }
+    if (raw) return;              // 딥링크로 특정 화면에 바로 들어온 경우는 띄우지 않는다
+    if (welcomeSeen()) return;
+    WEL.on = true; WEL.step = 1;
+    var b = buildingByNo(VIEW.no) || FAC.buildings[0];
+    WEL.no = b.no;
+    WEL.core = b.cores[0].key;
+    WEL.loc = "f1";
+    markWelcomeSeen();
+    renderWelcome();
+  }
+  function welCoreOf() {
+    var b = buildingByNo(WEL.no) || FAC.buildings[0];
+    var core = b.cores.filter(function (c) { return c.key === WEL.core; })[0] || b.cores[0];
+    WEL.core = core.key;
+    return { b: b, core: core };
+  }
+  function welSlotCell(no, coreKey, locKey, slot) {
+    var items = slotItems(no, coreKey, locKey, slot);
+    var first = items.length ? items[0].notice : null;
+    var st = items.length ? worstStatus(items) : "";
+    return '<button class="wslot' + (items.length ? " st-" + st : " empty") + '" data-act="wel-slot" data-slot="' + slot + '" aria-label="' + slot + "번 " + (first ? esc(first.title) : "빈 게시판") + '">' +
+      (items.length > 1 ? '<span class="wslot-b">' + items.length + "</span>" : "") +
+      '<span class="wslot-no">' + slot + "</span>" +
+      (first ? '<span class="wslot-t">' + esc(first.title) + "</span>" : '<span class="wslot-e">빈 게시판</span>') +
+      "</button>";
+  }
+  function welBoardHtml() {
+    var ref = welCoreOf(), b = ref.b, core = ref.core;
+    var isElev = String(WEL.loc).charAt(0) === "e";
+    var elevKey = isElev ? String(WEL.loc).slice(1) : "";
+    if (isElev && !core.elevators.some(function (e) { return e.key === elevKey; })) WEL.loc = "e" + core.elevators[0].key;
+    var locKey = WEL.loc;
+    var isElev2 = String(locKey).charAt(0) === "e";
+    var bs = boardStats(b.no, core.key, locKey);
+    var elev = isElev2 ? core.elevators.filter(function (e) { return "e" + e.key === locKey; })[0] : null;
+    var slots = isElev2 ? FAC.boards.elevator.slots : FAC.boards.lobby.slots;
+    var h = '<div class="pophead"><div><div class="popt">동·층별 게시판 현황</div>' +
+      '<div class="pops">' + esc(zoneName(b.zone)) + " · " + b.no + "동 " + esc(core.name) + "</div></div>" +
+      '<button class="popx" data-act="wel-next" aria-label="닫기">닫기</button></div>';
+    h += '<div class="popbody">';
+    h += '<div class="welrow"><label class="wellab" for="welNo">동</label>' +
+      '<select class="f-sel" id="welNo" aria-label="동 선택">' +
+      FAC.buildings.map(function (x) {
+        return '<option value="' + x.no + '"' + (x.no === b.no ? " selected" : "") + ">" + x.no + "동 · " + esc(zoneName(x.zone)) + "</option>";
+      }).join("") + "</select></div>";
+    if (b.cores.length > 1) {
+      h += '<div class="welrow"><span class="wellab">라인</span><div class="chips welchips">' +
+        b.cores.map(function (c) {
+          return '<button class="chip' + (c.key === core.key ? " on" : "") + '" data-act="wel-core" data-v="' + esc(c.key) + '">' + esc(c.name) + "</button>";
+        }).join("") + "</div></div>";
+    }
+    h += '<div class="welrow"><span class="wellab">위치</span><div class="chips welchips">' +
+      FAC.boards.lobby.floors.map(function (f) {
+        var k = floorKey(f);
+        return '<button class="chip' + (k === locKey ? " on" : "") + '" data-act="wel-loc" data-v="' + k + '">' + f + "</button>";
+      }).join("") +
+      '<button class="chip' + (isElev2 ? " on" : "") + '" data-act="wel-loc" data-v="e1">엘리베이터</button></div></div>';
+    if (isElev2 && core.elevators.length > 1) {
+      h += '<div class="welrow"><span class="wellab">호기</span><div class="chips welchips">' +
+        core.elevators.map(function (e) {
+          return '<button class="chip' + ("e" + e.key === locKey ? " on" : "") + '" data-act="wel-loc" data-v="e' + esc(e.key) + '">' + esc(e.name) + "</button>";
+        }).join("") + "</div></div>";
+    }
+    h += '<div class="welboard"><div class="welboard-h"><div class="welboard-t">' +
+      (isElev2 ? "엘리베이터 " + esc(elev ? elev.name : "") + " 내 게시판" : "공동현관 홀 · " + locLabel(locKey)) + "</div>" +
+      '<div class="welboard-s">게시 ' + bs.total + "장<br>" + (bs.urgent ? "제거 " + bs.urgent + "칸" : "제거 0칸") + "</div></div>" +
+      '<div class="welgrid">' + slots.map(function (s) { return welSlotCell(b.no, core.key, locKey, s); }).join("") + "</div>" +
+      '<p class="welnone">칸을 누르면 그 자리에 게시된 게시물을 바로 볼 수 있습니다.</p></div>';
+    h += '<div class="popfoot"><button class="btn line wide" data-act="wel-next">닫기 · 오늘 일일 알림 보기</button></div>';
+    return h + "</div>";
+  }
+  function welAlertHtml() {
+    var a = todayAlert();
+    var items = a ? alertItems(a) : [];
+    var h = '<div class="pophead"><div><div class="popt">오늘의 일일 알림</div>' +
+      '<div class="pops">' + esc(korDate(TODAY)) + " (" + weekday(TODAY) + ")" +
+      (a && shiftLabel(a) ? " · " + esc(shiftLabel(a)) : "") + (a ? " · 제거 대상 " + items.length + "건" : "") + "</div></div>" +
+      '<button class="popx" data-act="wel-close" aria-label="닫기">닫기</button></div>';
+    h += '<div class="popbody">';
+    if (!a) {
+      h += '<div class="empty-box">오늘 07시 알림 기록이 없습니다.<br>알림은 매일 07:00에 쌓입니다.</div>';
+    } else {
+      h += alertEventsHtml(a);
+      h += '<div class="asec aremsec"><div class="asec-h"><span class="asec-t">🗑️ 오늘 제거대상 게시물</span><span class="asec-s">' + items.length + "건</span></div>" +
+        '<div class="adetail aview">' + alertDetailBodyHtml(a) + "</div></div>";
+    }
+    h += '<div class="popfoot"><button class="mini-btn" data-act="wel-alerts">일일 알림 전체 보기</button>' +
+      '<button class="btn solid" data-act="wel-close" style="flex:1">닫기</button></div>';
+    return h + "</div>";
+  }
+  function renderWelcome() {
+    var root = document.getElementById("welRoot");
+    if (!root) {
+      if (!document.body) return;
+      root = document.createElement("div");
+      root.id = "welRoot";
+      document.body.appendChild(root);
+    }
+    if (!WEL.on) { root.innerHTML = ""; return; }
+    root.innerHTML = '<div class="popwrap" id="welcomePop">' +
+      '<div class="popback" data-act="' + (WEL.step === 1 ? "wel-next" : "wel-close") + '"></div>' +
+      '<div class="popcard" role="dialog" aria-modal="true" aria-label="' +
+      (WEL.step === 1 ? "동·층별 게시판 현황" : "오늘의 일일 알림") + '">' +
+      (WEL.step === 1 ? welBoardHtml() : welAlertHtml()) +
+      "</div></div>";
+  }
+  function welClose() {
+    if (WEL.step === 1) { WEL.step = 2; renderWelcome(); return; }
+    WEL.on = false; renderWelcome();
+  }
+  function welOpenSlot(slot) {
+    var ref = welCoreOf(), b = ref.b, core = ref.core;
+    var locKey = WEL.loc;
+    var items = slotItems(b.no, core.key, locKey, slot);
+    if (!items.length) { toast(slot + "번은 빈 게시판입니다"); return; }
+    if (items.length === 1) { closeSheet(); setTimeout(function () { openNoticeSheet(items[0].notice.id); }, 200); return; }
+    var isElev = String(locKey).charAt(0) === "e";
+    var html = '<p class="f-hint" style="margin:0 2px 9px">' + b.no + "동 " + esc(core.name) + " · " +
+      (isElev ? "엘리베이터" : locLabel(locKey)) + " " + slot + "번에 게시물 " + items.length + "장이 겹쳐 있습니다.</p>";
+    items.forEach(function (it) {
+      var n = it.notice;
+      html += '<article class="notice"><div class="notice-order">' + orderNum(it.order) + "번째</div>" +
+        '<div class="notice-main"><div class="notice-title">' + esc(n.title) + "</div>" +
+        '<div class="notice-meta">' + statusPill(n) + "</div>" +
+        '<button class="mini-btn" style="margin-top:7px" data-act="open-notice" data-id="' + esc(n.id) + '">상세 보기</button></div></article>';
+    });
+    openSheet({ title: slot + "번 게시물", sub: b.no + "동 " + core.name, html: html });
+  }
 
   /* ---------- building view ---------- */
   function renderSlotCell(no, coreKey, locKey, slot) {
@@ -1419,13 +1566,15 @@ var App = (function () {
       h += detachList.map(function (n) { return taskCard(n, "detach"); }).join("");
     }
 
-    var upcoming = NOTICES.filter(function (n) {
-      return !isArchived(n) && allAttached(n) && !needsRemove(n) && !n.permanent && n.deadline;
-    }).sort(sortByDeadline).slice(0, 6);
-    h += '<div class="sec-h"><h3>게시 중 (제거 예정)</h3><span class="count">' + upcoming.length + "건</span>" +
-      '<span class="spacer"></span><button class="mini-btn" data-act="copy" data-kind="all">전체 복사</button></div>';
+    /* 2026-11-27 — 이동 탭에서 등록한 이동은 배포에서 [이동 확정]을 눌러야 실제로 반영된다 */
+    h += '<div id="depPending">' + pendingSectionHtml() + "</div>";
+
+    var postedAll = postedAllList();
+    var upcoming = postedAll.slice(0, 6);
+    h += '<div class="sec-h"><h3>게시 중 (제거 예정)</h3><span class="count">' + postedAll.length + "건</span>" +
+      '<span class="spacer"></span><button class="mini-btn" data-act="deploy-all">전체보기</button></div>';
     if (!upcoming.length) {
-      h += '<div class="empty-box">예정된 제거가 없습니다.</div>';
+      h += '<div class="empty-box">게시 중인 게시물이 없습니다.</div>';
     } else {
       h += '<div class="list">' + upcoming.map(function (n) {
         return '<button class="row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
@@ -1441,8 +1590,6 @@ var App = (function () {
   /* =========================================================
      1. 게시물 생성 및 이동 ([생성] / [이동])
      ========================================================= */
-  var MV_FILTER = { q: "" };
-  var moveState = null;
 
   function flowBadge(n) {
     var fl = flowOf(n);
@@ -1647,14 +1794,6 @@ var App = (function () {
       "</div></div>";
     return h;
   }
-  function mvSpecChips(side, kind, val, max) {
-    var out = "";
-    for (var i = 1; i <= max; i++) {
-      var s2 = pad2(i);
-      out += '<button class="f-chip' + (val && pad2(val) === s2 ? " on" : "") + '" data-act="mv-' + kind + 'slot" data-side="' + esc(side) + '" data-v="' + s2 + '">' + s2 + "</button>";
-    }
-    return out;
-  }
   function slotChipsHtml(act, val, max) {
     var out = "";
     for (var i = 1; i <= max; i++) {
@@ -1810,326 +1949,409 @@ var App = (function () {
     });
   }
 
-  /* ---------- [이동] 탭 ---------- */
-  var MV = null;
-  var MLOGS = [];          // 최근 이동 기록 (board/logs · type=move)
-  function mvBlank(type) {
-    return {
-      buildings: "all", lines: "all",
-      type: type || "lobby",
-      floors: "all", elevators: "all", slot: "01"
+  /* ---------- [이동] 탭 (2026-11-27 전면 개편) ----------
+     흐름: ① 이동대상(현재 게시된 게시물) → ② 이동전 게시장소(자동 기록) → ③ 이동후 게시장소(칸 선택)
+           → 정합성 확인(이동전 개수 = 이동후 개수) → [이동실행] 확인 팝업 → 이동목록(대기) 등록
+           → [배포] 탭에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀐다.
+     이동 등록만으로는 도면·게시 위치가 바뀌지 않는다. */
+  var MVSEL = null;        // 이번에 옮길 대상 선택 상태
+  var MVPICK = {};         // 이동목록에서 취소할 항목 체크
+  var MOVES = [];          // 이동 대기 목록 (board/moves · status=pending)
+
+  function mvSelReset() {
+    MVSEL = { noticeId: "", srcIdx: 0, board: "lobby", floors: "all", elevators: "all", slot: "" };
+    return MVSEL;
+  }
+  function mvSelEnsure() { if (!MVSEL) mvSelReset(); return MVSEL; }
+  /* 현재 게시된(게시 완료·기한 전) 게시물 — 이동대상 후보 */
+  function postedForMove() {
+    return NOTICES.filter(function (n) { return !isArchived(n) && flowOf(n) === "posted"; })
+      .sort(function (a, b) {
+        var da = a.deadline || "9999-12-31", db = b.deadline || "9999-12-31";
+        if (da !== db) return da < db ? -1 : 1;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+  }
+  function selectedMoveNotice() { return (MVSEL && MVSEL.noticeId) ? getNotice(MVSEL.noticeId) : null; }
+  function selectedSrcTarget() {
+    var n = selectedMoveNotice();
+    if (!n) return null;
+    return targetsOf(n)[MVSEL.srcIdx] || null;
+  }
+  /* 두 게시장소가 같은 자리인지 (순번은 보지 않는다) */
+  function mvSamePlace(a, b) {
+    if (!a || !b) return false;
+    if ((a.board || "lobby") !== (b.board || "lobby")) return false;
+    if (pad2(a.slot) !== pad2(b.slot)) return false;
+    var na = buildingsOfTarget(a), nb = buildingsOfTarget(b);
+    if (na.length !== nb.length || !na.every(function (no) { return nb.indexOf(no) >= 0; })) return false;
+    if ((a.board || "lobby") === "lobby") {
+      var fa = lobbyFloorsOf(a), fb = lobbyFloorsOf(b);
+      if (fa.length !== fb.length || !fa.every(function (f) { return fb.indexOf(f) >= 0; })) return false;
+    } else {
+      var ea = elevKeysOf(a), eb = elevKeysOf(b);
+      if (ea.length !== eb.length || !ea.every(function (k) { return eb.indexOf(k) >= 0; })) return false;
+    }
+    return true;
+  }
+  /* 이동후 대상 — 이동전 대상의 동·라인 범위는 그대로, 게시판 종류·층/호기·번호만 바꾼다 */
+  function mvDestTarget() {
+    var src = selectedSrcTarget();
+    if (!src) return null;
+    var sel = mvSelEnsure();
+    var t = {
+      board: sel.board,
+      slot: pad2(sel.slot || "01"),
+      order: 1,
+      buildings: (src.buildings === "all" || !src.buildings) ? "all" : src.buildings.slice()
     };
+    if (src.cores) t.cores = (src.cores === "all") ? "all" : src.cores.slice();
+    if (sel.board === "lobby") {
+      t.floors = (sel.floors === "all" || !sel.floors || !sel.floors.length) ? allFloorNames() : sel.floors.slice();
+    } else {
+      t.elevators = (sel.elevators === "all" || !sel.elevators || !sel.elevators.length) ? "all" : sel.elevators.slice();
+    }
+    return t;
   }
-  function mvReset() {
-    MV = { from: mvBlank("lobby"), to: mvBlank("lobby"), picked: {} };
-    MV.to.slot = "02";
-    return MV;
+  /* 정합성 — 이동전 개수와 이동후 개수가 같아야 실행할 수 있다 */
+  function mvCheck() {
+    mvSelEnsure();
+    var n = selectedMoveNotice();
+    if (!n) return { ok: false, srcCount: 0, dstCount: 0, msg: "이동대상을 먼저 고르세요." };
+    var src = selectedSrcTarget();
+    if (!src) return { ok: false, srcCount: 0, dstCount: 0, msg: "이동전 게시장소를 확인할 수 없습니다 · 게시물을 다시 고르세요." };
+    var srcCount = 1;
+    var dstCount = MVSEL.slot ? 1 : 0;
+    if (!dstCount) {
+      return { ok: false, srcCount: srcCount, dstCount: 0, msg: "이동전 " + srcCount + "곳 · 이동후 0곳 — 개수가 달라 실행할 수 없습니다." };
+    }
+    var dest = mvDestTarget();
+    if (mvSamePlace(src, dest)) {
+      return { ok: false, srcCount: srcCount, dstCount: dstCount, msg: "이동전과 이동후가 같은 자리입니다 · 다른 번호나 층을 고르세요." };
+    }
+    /* 같은 게시물의 다른 게시장소가 이미 그 자리에 있으면 겹치므로 막는다 */
+    var dupHere = targetsOf(n).some(function (t, i) { return i !== MVSEL.srcIdx && mvSamePlace(t, dest); });
+    if (dupHere) {
+      return { ok: false, srcCount: srcCount, dstCount: dstCount, msg: "이 게시물이 이미 그 자리에 게시되어 있습니다 · 다른 번호를 고르세요." };
+    }
+    return { ok: true, srcCount: srcCount, dstCount: dstCount, dest: dest, msg: "이동전 " + srcCount + "곳 · 이동후 " + dstCount + "곳 — 일치" };
   }
-  function mvEnsure() { if (!MV) mvReset(); return MV; }
-  function setMoveLogs(val) {
-    MLOGS = [];
+
+  /* ---------- 이동 대기 목록 (board/moves) ---------- */
+  function setMoves(val) {
+    MOVES = [];
     if (val && typeof val === "object") {
       Object.keys(val).forEach(function (k) {
-        var e = val[k];
-        if (!e || typeof e !== "object") return;
-        if (e.type !== "move") return;
-        e.key = k;
-        MLOGS.push(e);
+        var m = val[k];
+        if (!m || typeof m !== "object") return;
+        if (m.status && m.status !== "pending") return;
+        if (!m.noticeId || !m.src || !m.dst) return;
+        m.id = m.id || k;
+        MOVES.push(m);
       });
     }
-    MLOGS.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
-    MLOGS = MLOGS.slice(0, 12);
+    MOVES.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+    var keep = {};
+    MOVES.forEach(function (m) { if (MVPICK[m.id]) keep[m.id] = true; });
+    MVPICK = keep;
   }
-  function mvSideHtml(side) {
-    var s = MV[side];
-    var title = side === "from" ? "현재 위치" : "이동할 곳";
-    var h = '<div class="mvpanel"><div class="mvph">' + title + "</div>";
-    h += '<div class="nf-row"><div class="nf-lab">동</div><div class="nf-chips">' +
-      '<button class="f-chip' + (s.buildings === "all" ? " on" : "") + '" data-act="mv-bld" data-side="' + side + '" data-v="all">전체</button>' +
-      FAC.buildings.map(function (b) {
-        var on = s.buildings !== "all" && s.buildings.indexOf(b.no) >= 0;
-        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-bld" data-side="' + side + '" data-v="' + b.no + '">' + b.no + "</button>";
-      }).join("") + "</div></div>";
-    h += '<div class="nf-row"><div class="nf-lab">라인</div><div class="nf-chips">' +
-      '<button class="f-chip' + (s.lines === "all" ? " on" : "") + '" data-act="mv-line" data-side="' + side + '" data-v="all">전체</button>' +
-      lineList().map(function (l) {
-        var on = s.lines !== "all" && s.lines.indexOf(l.key) >= 0;
-        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-line" data-side="' + side + '" data-v="' + esc(l.key) + '">' + esc(l.name) + "</button>";
-      }).join("") + "</div></div>";
-    h += '<div class="nf-row' + (s.type === "lobby" ? " on" : " off") + '"><div class="nf-lab">게시판</div><div class="nf-body">' +
-      '<div class="nf-chips">' +
-      '<button class="f-chip' + (s.type === "lobby" && s.floors === "all" ? " on" : "") + '" data-act="mv-floor" data-side="' + side + '" data-v="all">전체</button>' +
-      allFloorNames().map(function (f) {
-        var on = s.type === "lobby" && s.floors !== "all" && s.floors.indexOf(f) >= 0;
-        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-floor" data-side="' + side + '" data-v="' + esc(f) + '">' + esc(f) + "</button>";
-      }).join("") + "</div>" +
-      '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + mvSpecChips(side, "l", s.type === "lobby" ? s.slot : "", 12) + "</div></div>" +
-      "</div></div>";
-    h += '<div class="nf-row' + (s.type === "elevator" ? " on" : " off") + '"><div class="nf-lab">E/V</div><div class="nf-body">' +
-      '<div class="nf-chips">' +
-      '<button class="f-chip' + (s.type === "elevator" && s.elevators === "all" ? " on" : "") + '" data-act="mv-elev" data-side="' + side + '" data-v="all">전체</button>' +
-      allElevKeys().map(function (k) {
-        var on = s.type === "elevator" && s.elevators !== "all" && s.elevators.indexOf(String(k)) >= 0;
-        return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-elev" data-side="' + side + '" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
-      }).join("") + "</div>" +
-      '<div class="nf-numrow"><span class="nf-numlab">번호</span><div class="f-grid nf-num">' + mvSpecChips(side, "e", s.type === "elevator" ? s.slot : "", 6) + "</div></div>" +
-      "</div></div>";
-    h += '<div class="mvsum">' + esc(specPlaceText(s)) + "</div></div>";
-    return h;
+  function pendingById(id) {
+    for (var i = 0; i < MOVES.length; i++) if (MOVES[i].id === id) return MOVES[i];
+    return null;
   }
-  function mvMatches(spec) {
-    var out = [];
-    NOTICES.forEach(function (n) {
-      if (isArchived(n)) return;
-      targetsOf(n).forEach(function (t, i) {
-        if (!specHitsTarget(spec, t)) return;
-        out.push({ id: n.id, title: n.title, idx: i, order: orderNum(t.order), t: t, notice: n });
-      });
-    });
-    out.sort(function (a, b) {
-      if (a.order !== b.order) return a.order - b.order;
-      return (a.title || "") < (b.title || "") ? -1 : 1;
-    });
-    return out;
+  function mvBox() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+  function mvEntryFromSel() {
+    var chk = mvCheck();
+    if (!chk.ok) return null;
+    var n = selectedMoveNotice(), src = selectedSrcTarget();
+    if (!n || !src) return null;
+    return {
+      id: mvBox(), at: nowTs(), date: TODAY,
+      by: SESSION.role === "admin" ? (SESSION.admin || "관리자") : (SESSION.name || ""),
+      noticeId: n.id, title: n.title,
+      src: dup(src), dst: dup(chk.dest),
+      fromText: targetText(src), toText: targetText(chk.dest),
+      status: "pending"
+    };
   }
-  /* 선택한 게시물을 한 번에 옮기는 update 맵 — 도착지 순번은 기존 게시물 뒤로, 원래 자리는 1..n 압축 */
-  function massMoveUpdates(items, toSpec) {
-    var dest = specTarget(toSpec);
-    var moved = {};
-    items.forEach(function (it) { moved[it.id] = true; });
-    var destCount = 0;
-    NOTICES.forEach(function (n) {
-      if (isArchived(n) || moved[n.id]) return;
-      targetsOf(n).forEach(function (t) { if (targetOverlaps(dest, t)) destCount++; });
-    });
-    var updates = {}, olds = [];
-    items.forEach(function (it, k) {
-      var t = dup(dest);
-      t.order = destCount + k + 1;
-      var arr = targetsOf(it.notice).slice();
-      arr[it.idx] = t;
-      updates[DB_ROOT + "/notices/" + it.id + "/targets"] = arr;
-      updates[DB_ROOT + "/notices/" + it.id + "/updatedAt"] = nowTs();
-      olds.push(it.t);
-    });
-    var comp = compactOrders(olds, items.map(function (it) { return it.id; }));
-    Object.keys(comp.updates).forEach(function (k2) { if (!(k2 in updates)) updates[k2] = comp.updates[k2]; });
-    return { updates: updates, dest: dest, compacted: comp.changed };
-  }
-  function mvPickedList() {
-    return mvMatches(MV.from).filter(function (it) { return MV.picked[it.id] !== false; });
-  }
-  function mvListHtml(isA) {
-    var items = mvMatches(MV.from);
-    var picked = items.filter(function (it) { return MV.picked[it.id] !== false; });
-    var toTxt = specPlaceText(MV.to);
-    var h = '<div class="sec-h"><h3>이동 목록</h3><span class="count">' + items.length + "건" +
-      (picked.length !== items.length ? " · 선택 " + picked.length + "건" : "") + "</span>";
-    if (isA && items.length) h += '<span class="spacer"></span><button class="mini-btn" data-act="mv-all">전체 선택/해제</button>';
-    h += "</div>";
-    if (!items.length) {
-      h += '<div class="empty-box">현재 위치에 게시 중인 게시물이 없습니다.<br>왼쪽에서 위치를, 오른쪽에서 옮길 곳을 고르세요.</div>';
-    } else {
-      h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
-        (isA ? '<th class="ck">선택</th>' : "") +
-        "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
-      items.forEach(function (it) {
-        var on = MV.picked[it.id] !== false;
-        var where = (it.t.board === "elevator")
-          ? "E/V " + pad2(it.t.slot) + "번"
-          : ((it.t.floors && it.t.floors.length && it.t.floors.length < allFloorNames().length ? it.t.floors.join("·") : "전체층") + " " + pad2(it.t.slot) + "번");
-        h += '<tr class="' + (on ? "sel" : "") + '">' +
-          (isA ? '<td class="ck"><button class="ckbox' + (on ? " on" : "") + '" data-act="mv-pick" data-id="' + esc(it.id) + '" aria-label="선택">' + (on ? "✓" : "") + "</button></td>" : "") +
-          '<td class="ct">' + ((it.t.board === "elevator") ? "E/V" : "게시판") + "</td>" +
-          '<td class="cn">' + esc(it.title) + '<span class="csub">' + esc(where + orderText(it.t.order)) + "</span></td>" +
-          '<td class="cp">' + esc(toTxt) + "</td>" +
-          '<td class="cd">' + esc(dotDate(TODAY)) + "</td></tr>";
-      });
-      h += "</tbody></table></div></div>";
-    }
-    if (MLOGS.length) {
-      h += '<div class="sec-h"><h3>최근 이동 기록</h3><span class="count">' + MLOGS.length + "건</span></div>";
-      h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mt"><thead><tr>' +
-        "<th>구분</th><th>이동대상</th><th>이동할 곳</th><th>이동일</th></tr></thead><tbody>";
-      MLOGS.forEach(function (m) {
-        h += "<tr><td class=\"ct\">" + esc(m.count ? m.count + "건" : (m.noticeId ? "1건" : "-")) + "</td>" +
-          '<td class="cn">' + esc((m.titles && m.titles.length ? m.titles.slice(0, 2).join(" · ") : (m.title || "-"))) + "</td>" +
-          '<td class="cp">' + esc(m.to || "") + '<span class="csub">← ' + esc(m.from || "") + "</span></td>" +
-          '<td class="cd">' + esc(dotDate(m.date || ymdOfTs(m.at) || "")) + "</td></tr>";
-      });
-      h += "</tbody></table></div></div>";
-    }
-    return h;
-  }
-  function mvPanelsHtml() {
-    return '<div class="mvpanels">' + mvSideHtml("from") +
-      '<div class="mvgo-wrap"><button class="btn solid mvgo" data-act="mv-apply">이동 →</button></div>' +
-      mvSideHtml("to") + "</div>";
-  }
-  /* 화면 전체를 다시 그리지 않고 폼 또는 목록만 갱신 (칩을 눌러도 스크롤·제목이 유지된다) */
-  function refreshCreateList() {
-    var l = document.getElementById("nfList");
-    if (!l) { render(); return; }
-    l.innerHTML = createListHtml(SESSION.role === "admin");
-  }
-  function refreshCreate() {
-    var b = document.getElementById("nfBody");
-    if (!b) { render(); return; }
-    b.innerHTML = nfFormHtml();
-  }
-  function refreshMoveList() {
-    var l = document.getElementById("mvList");
-    if (!l) { render(); return; }
-    l.innerHTML = mvListHtml(SESSION.role === "admin");
-  }
-  function refreshMove() {
-    var b = document.getElementById("mvBody");
-    if (!b) { render(); return; }
-    b.innerHTML = mvPanelsHtml();
-    refreshMoveList();
-  }
-  function moveTabHtml(isA) {
-    mvEnsure();
-    var h = "";
-    if (!isA) {
-      h += lockCardHtml("게시물 이동은 관리자 인증이 필요합니다",
-        "게시판 위치·번호를 바꾸면 현장 게시판 전체에 영향을 주므로 관리자만 할 수 있습니다. 아래 목록은 조회용입니다.");
-      return h + mvListHtml(false);
-    }
-    h += '<div class="warnbox">왼쪽 <b>현재 위치</b>에 게시된 게시물을 골라 오른쪽 <b>이동할 곳</b>으로 한 번에 옮깁니다. ' +
-      "옮긴 게시물은 이동한 날짜와 함께 기록에 남습니다.</div>";
-    h += '<div id="mvBody">' + mvPanelsHtml() + "</div>";
-    h += '<div id="mvList">' + mvListHtml(true) + "</div>";
-    return h;
-  }
-  function applyMassMove() {
-    mvEnsure();
-    var items = mvPickedList();
-    if (!items.length) { toast("이동할 게시물을 선택하세요"); return; }
-    if (sameSpec(MV.from, MV.to)) { toast("이동할 곳이 현재 위치와 같습니다 · 오른쪽에서 옮길 곳을 바꾸세요"); return; }
-    var res = massMoveUpdates(items, MV.to);
-    var fromTxt = specPlaceText(MV.from), toTxt = specPlaceText(MV.to);
+  /* [이동실행] 확정 — 실제 이동이 아니라 이동목록(이동 대기)에 등록만 한다 */
+  function registerPendingMove() {
+    var e = mvEntryFromSel();
+    if (!e) { toast(mvCheck().msg); return; }
     requireAdmin(function () {
-      var btn = document.querySelector('[data-act="mv-apply"]');
-      if (btn) { btn.disabled = true; btn.textContent = "이동 중…"; }
-      fbUpdate(res.updates).then(function (ok) {
-        if (btn) { btn.disabled = false; btn.textContent = "이동 →"; }
+      var updates = {};
+      updates[DB_ROOT + "/moves/" + e.id] = e;
+      fbUpdate(updates).then(function (ok) {
+        if (!ok) return;
+        closeSheet();
+        mvSelReset();
+        toast("이동목록에 등록했습니다 · 배포에서 확정하면 실제로 이동합니다");
+        render();
+      });
+    });
+  }
+  function cancelPendingMoves(ids) {
+    ids = (ids || []).filter(function (id) { return pendingById(id); });
+    if (!ids.length) { toast("취소할 이동을 선택하세요"); return; }
+    requireAdmin(function () {
+      var updates = {};
+      ids.forEach(function (id) { updates[DB_ROOT + "/moves/" + id] = null; });
+      fbUpdate(updates).then(function (ok) {
+        if (!ok) return;
+        ids.forEach(function (id) { delete MVPICK[id]; });
+        toast(ids.length + "건의 이동 등록을 취소했습니다");
+        render();
+      });
+    });
+  }
+  /* 이동 확정 — 이동목록의 이동전 → 이동후를 실제 게시 위치에 반영한다 */
+  function pendingMoveUpdates(mv) {
+    var n = getNotice(mv.noticeId);
+    if (!n || isArchived(n)) return { error: "게시물을 찾을 수 없습니다" };
+    var arr = targetsOf(n).slice();
+    var idx = -1;
+    for (var i = 0; i < arr.length; i++) {
+      if (mvSamePlace(arr[i], mv.src)) { idx = i; break; }
+    }
+    if (idx < 0) return { error: "이미 게시 위치가 바뀌었습니다" };
+    var dest = dup(mv.dst);
+    var destCount = 0;
+    NOTICES.forEach(function (x) {
+      if (x.id === mv.noticeId || isArchived(x)) return;
+      targetsOf(x).forEach(function (t) { if (targetOverlaps(dest, t)) destCount++; });
+    });
+    dest.order = destCount + 1;
+    arr[idx] = dest;
+    var updates = {};
+    updates[DB_ROOT + "/notices/" + mv.noticeId + "/targets"] = arr;
+    updates[DB_ROOT + "/notices/" + mv.noticeId + "/updatedAt"] = nowTs();
+    updates[DB_ROOT + "/moves/" + mv.id] = null;      // 확정한 이동은 대기 목록에서 빠진다
+    var comp = compactOrders([mv.src], [mv.noticeId]);
+    Object.keys(comp.updates).forEach(function (k) { updates[k] = comp.updates[k]; });
+    return { updates: updates, dest: dest, from: mv.src };
+  }
+  function applyPendingMove(id) {
+    var mv = pendingById(id);
+    if (!mv) return;
+    requireGuard(function (a) {
+      var res = pendingMoveUpdates(mv);
+      if (res.error) { toast(res.error + " — 취소하고 다시 등록하세요"); return; }
+      var updates = res.updates;
+      fbUpdate(updates).then(function (ok) {
         if (!ok) return;
         writeLog({
-          type: "move", by: SESSION.admin || "관리자", at: nowTs(), date: TODAY,
-          from: fromTxt, to: toTxt, count: items.length,
-          ids: items.map(function (it) { return it.id; }),
-          titles: items.map(function (it) { return it.title; })
+          noticeId: mv.noticeId, type: "move", by: (a && a.name) || "관리자", team: (a && a.team) || "",
+          at: nowTs(), date: TODAY, title: mv.title,
+          from: mv.fromText, to: targetText(res.dest), count: 1, via: "deploy"
         });
-        MV.picked = {};
-        var needAttach = items.some(function (it) {
-          var att = attachedZones(it.notice);
-          return buildingsOfTarget(res.dest).some(function (no) {
-            var z = zoneOfBuilding(no);
-            return z && att.indexOf(z) < 0;
-          });
-        });
-        toast(items.length + "건을 이동했습니다 · " + toTxt + (needAttach ? " (새 구역은 게시 체크 필요)" : ""));
+        toast("이동 확정 · " + mv.title + " → " + targetText(res.dest));
       });
     });
   }
 
-  /* ---- 이동 시트 ---- */
-  function openMoveSheet(id) {
-    var n = getNotice(id);
-    if (!n) return;
-    var t = targetsOf(n)[0] || { board: "lobby", slot: "01", order: 1 };
-    moveState = {
-      id: id,
-      orig: JSON.parse(JSON.stringify(t)),
-      buildings: (t.buildings === "all" || !t.buildings) ? "all" : t.buildings.slice(),
-      board: t.board || "lobby",
-      floors: (t.floors && t.floors.length) ? t.floors.slice() : FAC.boards.lobby.floors.slice(),
-      elevators: (t.elevators && t.elevators !== "all") ? t.elevators.map(String) : "all",
-      slot: pad2(t.slot || "01"),
-      order: orderNum(t.order)
-    };
-    openSheet({ title: "게시물 이동", sub: n.title, html: moveSheetHtml(n), form: true });
+  /* ---------- [이동] 화면 ---------- */
+  function mvNoticeRowHtml(n) {
+    var on = MVSEL.noticeId === n.id;
+    return '<button class="mvpick' + (on ? " on" : "") + '" data-act="mv-target" data-id="' + esc(n.id) + '">' +
+      '<span class="mvpick-main"><span class="mvpick-t">' + esc(n.title) + "</span>" +
+      '<span class="mvpick-s">' + esc(targetsShort(n)) + " · " + (n.permanent ? "상시" : "기한 " + dotDate(n.deadline)) + "</span></span>" +
+      statusPill(n) + '<span class="mvpick-ck" aria-hidden="true">' + (on ? "✓" : "") + "</span></button>";
   }
-  function moveStateTarget() {
-    var t = {
-      board: moveState.board, slot: moveState.slot, order: moveState.order,
-      buildings: moveState.buildings === "all" ? "all" : moveState.buildings.slice()
-    };
-    if (moveState.board === "lobby") t.floors = (moveState.floors && moveState.floors.length) ? moveState.floors.slice() : FAC.boards.lobby.floors.slice();
-    else t.elevators = moveState.elevators;
-    return t;
-  }
-  function mvLocChips() {
-    if (moveState.board === "elevator") {
-      var out = '<button class="f-chip' + (moveState.elevators === "all" ? " on" : "") + '" data-act="mv-loc" data-v="all">전체 호기</button>';
+  function mvFloorChipsHtml() {
+    mvSelEnsure();
+    var out = "";
+    if (MVSEL.board === "elevator") {
+      out += '<button class="f-chip' + (MVSEL.elevators === "all" ? " on" : "") + '" data-act="mv-dest-elev" data-v="all">전체 호기</button>';
       allElevKeys().forEach(function (k) {
-        var on = moveState.elevators !== "all" && moveState.elevators.indexOf(String(k)) >= 0;
-        out += '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-loc" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
+        var on = MVSEL.elevators !== "all" && MVSEL.elevators.indexOf(String(k)) >= 0;
+        out += '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-dest-elev" data-v="' + esc(k) + '">' + esc(k) + "호기</button>";
       });
       return out;
     }
-    return FAC.boards.lobby.floors.map(function (f) {
-      var on = moveState.floors.indexOf(f) >= 0;
-      return '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-loc" data-v="' + esc(f) + '">' + esc(f) + "</button>";
-    }).join("");
+    out += '<button class="f-chip' + (MVSEL.floors === "all" ? " on" : "") + '" data-act="mv-dest-floor" data-v="all">전체층</button>';
+    allFloorNames().forEach(function (f) {
+      var on = MVSEL.floors !== "all" && MVSEL.floors.indexOf(f) >= 0;
+      out += '<button class="f-chip' + (on ? " on" : "") + '" data-act="mv-dest-floor" data-v="' + esc(f) + '">' + esc(f) + "</button>";
+    });
+    return out;
   }
-  function mvSlotChips() {
-    var max = moveState.board === "elevator" ? 6 : 12;
-    var out = "";
+  function mvSlotGridHtml() {
+    mvSelEnsure();
+    var max = MVSEL.board === "elevator" ? 6 : 12, out = "";
     for (var i = 1; i <= max; i++) {
       var s = pad2(i);
-      out += '<button class="f-chip' + (moveState.slot === s ? " on" : "") + '" data-act="mv-slot" data-v="' + s + '">' + s + "</button>";
+      out += '<button class="mvslot' + (MVSEL.slot === s ? " on" : "") + '" data-act="mv-dest-slot" data-v="' + s + '">' + s + "</button>";
     }
     return out;
   }
-  function mvOrderChips() {
-    var out = "";
-    for (var o = 1; o <= Math.max(3, orderNum(moveState.order) + 1); o++) {
-      out += '<button class="f-chip' + (orderNum(moveState.order) === o ? " on" : "") + '" data-act="mv-order" data-v="' + o + '">' + o + "번째</button>";
-    }
-    return out;
-  }
-  function mvPreviewHtml() {
-    var here;
-    try { here = stackedHere(moveStateTarget(), moveState.id); } catch (e) { here = []; }
-    if (!here.length) return '<div class="f-hint" style="margin-top:6px">이 자리는 지금 비어 있습니다.</div>';
-    return '<div class="f-hint" style="margin-top:6px">이 자리 지금: ' + here.map(function (it) {
-      return esc(it.notice.title) + "(" + it.order + "번째)";
-    }).join(" · ") + "</div>";
-  }
-  function moveSheetHtml(n) {
-    var h = '<div class="fld"><label>현재 위치</label>' +
-      '<div class="f-in" style="background:#f7f9fb;font-size:.8rem;line-height:1.5;min-height:auto">' + esc(targetsText(n)) + "</div></div>";
-    h += '<div class="fld"><label>새 게시판 종류</label><div class="f-chips" id="mvBoard">' +
-      '<button class="f-chip' + (moveState.board === "lobby" ? " on" : "") + '" data-act="mv-board" data-v="lobby">공동현관 홀</button>' +
-      '<button class="f-chip' + (moveState.board === "elevator" ? " on" : "") + '" data-act="mv-board" data-v="elevator">엘리베이터</button>' +
+  function mvDestPanelHtml() {
+    mvSelEnsure();
+    var h = '<div class="nf-row"><div class="nf-lab">게시판</div><div class="nf-chips">' +
+      '<button class="f-chip' + (MVSEL.board === "lobby" ? " on" : "") + '" data-act="mv-dest-board" data-v="lobby">공동현관 홀</button>' +
+      '<button class="f-chip' + (MVSEL.board === "elevator" ? " on" : "") + '" data-act="mv-dest-board" data-v="elevator">엘리베이터</button>' +
       "</div></div>";
-    h += '<div class="fld"><label><span id="mvLocLabel">' + (moveState.board === "elevator" ? "호기" : "층") + '</span></label><div class="f-chips" id="mvLoc">' + mvLocChips() + "</div></div>";
-    h += '<div class="fld"><label>게시 번호</label><div class="f-grid" id="mvSlot">' + mvSlotChips() + "</div></div>";
-    h += '<div class="fld"><label>겹치는 순번</label><div class="f-chips" id="mvOrder">' + mvOrderChips() + '</div><div id="mvPreview">' + mvPreviewHtml() + "</div></div>";
-    h += '<div class="f-hint" style="margin:0 2px">동 범위는 그대로 유지됩니다 · ' +
-      esc(moveState.buildings === "all" ? "전체 " + FAC.buildings.length + "개동" : buildingListText(moveState.buildings)) + "</div>";
-    h += '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
-      '<button class="btn solid" data-act="mv-save" data-id="' + esc(n.id) + '" style="flex:1.3">이동 저장</button></div>';
+    h += '<div class="nf-row"><div class="nf-lab">' + (MVSEL.board === "elevator" ? "호기" : "층") + '</div><div class="nf-chips">' + mvFloorChipsHtml() + "</div></div>";
+    h += '<div class="nf-row"><div class="nf-lab">번호</div><div class="f-grid mvslots">' + mvSlotGridHtml() + "</div></div>";
+    var chk = mvCheck();
+    h += '<div class="mvchk ' + (chk.ok ? "ok" : "no") + '">' + esc(chk.msg) + "</div>";
+    h += '<button class="btn solid wide mvrun" data-act="mv-run"' + (chk.ok ? "" : " disabled") + ">이동실행</button>";
     return h;
   }
-  function refreshMoveBits() {
-    var b = document.getElementById("mvBoard");
-    if (b) b.querySelectorAll(".f-chip").forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-v") === moveState.board); });
-    var ll = document.getElementById("mvLocLabel");
-    if (ll) ll.textContent = moveState.board === "elevator" ? "호기" : "층";
-    var loc = document.getElementById("mvLoc");
-    if (loc) loc.innerHTML = mvLocChips();
-    var slot = document.getElementById("mvSlot");
-    if (slot) slot.innerHTML = mvSlotChips();
-    var ord = document.getElementById("mvOrder");
-    if (ord) ord.innerHTML = mvOrderChips();
-    var prev = document.getElementById("mvPreview");
-    if (prev) prev.innerHTML = mvPreviewHtml();
+  function moveTabHtml(isA) {
+    mvSelEnsure();
+    var h = "";
+    if (!isA) {
+      h += lockCardHtml("게시물 이동은 관리자 인증이 필요합니다",
+        "게시판 위치·번호를 바꾸면 현장 게시판 전체에 영향을 주므로 관리자만 등록할 수 있습니다. 아래 이동목록은 조회용입니다.");
+    }
+    var posted = postedForMove();
+    var n = selectedMoveNotice(), src = selectedSrcTarget();
+    /* ① 이동대상 */
+    h += '<div class="mvbox"><div class="mvbox-h"><span class="mvno">1</span>이동대상</div>' +
+      '<div class="mvbox-s">현재 게시된 게시물 중에서 옮길 것을 하나 고르세요 · ' + posted.length + "건</div>";
+    if (!posted.length) {
+      h += '<div class="empty-box">현재 게시된 게시물이 없습니다.<br>배포에서 게시 체크가 끝난 게시물만 이동할 수 있습니다.</div>';
+    } else {
+      h += '<div class="mvpicklist" id="mvPickList">' + posted.map(mvNoticeRowHtml).join("") + "</div>";
+    }
+    h += "</div>";
+    /* ② 이동전 게시장소 */
+    h += '<div class="mvbox"><div class="mvbox-h"><span class="mvno">2</span>이동전 게시장소</div>';
+    if (!n || !src) {
+      h += '<div class="mvbox-none">이동대상을 고르면 그 게시물의 현재 게시장소가 자동으로 기록됩니다.</div>';
+    } else {
+      if (targetsOf(n).length > 1) {
+        h += '<div class="mvbox-s">이 게시물은 게시장소가 ' + targetsOf(n).length + "곳입니다 · 옮길 곳을 고르세요.</div>" +
+          '<div class="f-chips mvsrcchips">' + targetsOf(n).map(function (t, i) {
+            return '<button class="f-chip' + (MVSEL.srcIdx === i ? " on" : "") + '" data-act="mv-src" data-i="' + i + '">' + (i + 1) + "번째</button>";
+          }).join("") + "</div>" +
+          '<div class="mvfromlist">' + targetsOf(n).map(function (t, i) {
+            return '<div class="mvfromrow' + (MVSEL.srcIdx === i ? " on" : "") + '"><span class="mvfromno">' + (i + 1) + "</span><span>" + esc(targetText(t)) + "</span></div>";
+          }).join("") + "</div>";
+      } else {
+        h += '<div class="mvfrom" id="mvFrom">' + esc(targetText(src)) + "</div>";
+      }
+      h += '<div class="mvbox-s" style="margin-top:7px;margin-bottom:0">' + esc(n.title) + "</div>";
+    }
+    h += "</div>";
+    /* ③ 이동후 게시장소 */
+    h += '<div class="mvbox"><div class="mvbox-h"><span class="mvno">3</span>이동후 게시장소</div>' +
+      '<div id="mvDest">' + mvDestPanelHtml() + "</div></div>";
+    h += '<div id="mvPendingBox">' + pendingListHtml(isA) + "</div>";
+    return h;
+  }
+  function pendingListHtml(isA) {
+    var list = MOVES;
+    var picked = list.filter(function (m) { return !!MVPICK[m.id]; });
+    var h = '<div class="sec-h"><h3>이동목록</h3><span class="count">' + list.length + "건" +
+      (picked.length ? " · 선택 " + picked.length + "건" : "") + "</span>";
+    if (isA && list.length) {
+      h += '<span class="spacer"></span>' +
+        '<button class="mini-btn" data-act="mv-pick-all">' + (picked.length === list.length ? "전체 해제" : "전체 선택") + "</button>";
+    }
+    h += "</div>";
+    if (!list.length) {
+      h += '<div class="empty-box">이동 대기 중인 목록이 없습니다.<br>[이동실행]을 하면 이곳에 등록되고, <b>배포</b>에서 확정해야 실제로 이동합니다.</div>';
+      return h;
+    }
+    h += '<div class="statcard" style="padding:2px"><div class="tscroll"><table class="ctable mtable"><thead><tr>' +
+      '<th class="ck">선택</th><th>변경일</th><th>이동대상</th><th>이동전 게시장소</th><th>이동후 게시장소</th>' +
+      "</tr></thead><tbody>";
+    list.forEach(function (m) {
+      var on = !!MVPICK[m.id];
+      h += '<tr class="' + (on ? "sel" : "") + '">' +
+        '<td class="ck"><button class="ckbox' + (on ? " on" : "") + '" data-act="mv-pick" data-id="' + esc(m.id) + '" aria-label="선택">' + (on ? "✓" : "") + "</button></td>" +
+        '<td class="cd">' + esc(dotDate(m.date || ymdOfTs(m.at) || "")) + "</td>" +
+        '<td class="cn">' + esc(m.title) + "</td>" +
+        '<td class="cp">' + esc(m.fromText || "") + "</td>" +
+        '<td class="cp">' + esc(m.toText || "") + "</td></tr>";
+    });
+    h += "</tbody></table></div></div>";
+    h += '<p class="note">등록만으로는 게시 위치가 바뀌지 않습니다. <b>배포</b> 탭의 <b>이동 대기</b>에서 [이동 확정]을 눌러야 도면·게시 위치가 바뀝니다.</p>';
+    if (isA) {
+      h += '<div style="display:flex;gap:7px;margin:8px 0 12px">' +
+        '<button class="btn danger" data-act="mv-pending-cancel-picked" style="flex:1">선택 후 이동 취소</button></div>';
+    }
+    return h;
+  }
+  /* 이동 실행 확인 팝업 (다시 한번 확인 바랍니다 · 대상 / 이동전 / 이동후) */
+  function mvConfirmHtml() {
+    var n = selectedMoveNotice(), src = selectedSrcTarget();
+    var chk = mvCheck();
+    var dest = chk.dest || null;
+    var h = '<div class="cfm">' +
+      '<div class="cfm-t">다시 한번 확인 바랍니다</div>' +
+      '<table class="cfm-tb">' +
+      "<tr><th>대상</th><td>" + esc(n ? n.title : "-") + "</td></tr>" +
+      "<tr><th>이동전</th><td>" + esc(src ? targetText(src) : "-") + "</td></tr>" +
+      "<tr><th>이동후</th><td>" + esc(dest ? targetText(dest) : "-") + "</td></tr>" +
+      "</table>" +
+      '<div class="cfm-n">이동은 곧바로 반영되지 않습니다. <b>이동목록</b>에 등록되고, <b>배포</b>에서 [이동 확정]을 눌러야 실제 게시 위치가 바뀝니다.</div>' +
+      '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
+      '<button class="btn solid" data-act="mv-confirm" style="flex:1.3">이동실행</button></div></div>';
+    return h;
+  }
+  function openMoveConfirm() {
+    var chk = mvCheck();
+    if (!chk.ok) { toast(chk.msg); return; }
+    openSheet({ title: "게시물 이동", sub: "이동목록에 등록합니다", html: mvConfirmHtml() });
+  }
+  function refreshPendingLists() {
+    var mv = document.getElementById("mvPendingBox");
+    if (mv) mv.innerHTML = pendingListHtml(SESSION.role === "admin");
+    var dp = document.getElementById("depPending");
+    if (dp) dp.innerHTML = pendingSectionHtml();
+    else if (LOADED && VIEW.name === "deploy") render();
   }
 
-  /* 이동 저장 맵 — 같은 자리면 1..N 재배열, 다른 자리면 새 자리에 순번 삽입 + 원래 자리 순번 압축 */
+  /* ---------- [배포] 이동 대기 확정 ---------- */
+  function pendingSectionHtml() {
+    if (!MOVES.length) return "";
+    var h = '<div class="sec-h"><h3>이동 대기</h3><span class="count">' + MOVES.length + "건</span>" +
+      '<span class="spacer"></span><span class="mvhint">이동 탭에서 등록 · 확정해야 반영</span></div>' +
+      '<div class="mvpendlist">';
+    MOVES.forEach(function (m) {
+      h += '<div class="mvpend">' +
+        '<div class="mvpend-h"><span class="mvpend-t">' + esc(m.title) + "</span>" +
+        '<span class="mvpend-when">' + esc(tsText(m.at)) + (m.by ? " · " + esc(m.by) : "") + "</span></div>" +
+        '<div class="mvpend-body"><span class="mvpend-from">' + esc(m.fromText || "") + "</span>" +
+        '<span class="mvpend-ar">→</span><span class="mvpend-to">' + esc(m.toText || "") + "</span></div>" +
+        '<div class="mvpend-acts">' +
+        '<button class="mini-btn" data-act="mv-pending-cancel" data-id="' + esc(m.id) + '">취소</button>' +
+        '<button class="mini-btn primary" data-act="mv-pending-apply" data-id="' + esc(m.id) + '">이동 확정</button>' +
+        "</div></div>";
+    });
+    return h + "</div>";
+  }
+
+  /* ---------- 게시 중 전체보기 (배포 탭) ---------- */
+  function postedAllList() {
+    return NOTICES.filter(function (n) { return !isArchived(n) && allAttached(n) && !needsRemove(n); })
+      .sort(function (a, b) {
+        if (!!a.permanent !== !!b.permanent) return a.permanent ? 1 : -1;
+        return sortByDeadline(a, b);
+      });
+  }
+  function deployAllHtml() {
+    var list = postedAllList();
+    var h = '<div class="dall-h">게시 중 게시물 <b>' + list.length + "</b>건</div>" +
+      '<p class="f-hint" style="margin:0 2px 9px">게시판·E/V에 지금 걸려 있는 게시물 전체입니다. 줄을 누르면 상세로 들어갑니다.</p>';
+    if (!list.length) return h + '<div class="empty-box">게시 중인 게시물이 없습니다.</div>';
+    h += '<div class="dall-list">';
+    list.forEach(function (n) {
+      h += '<button class="dall-row" data-act="open-notice" data-id="' + esc(n.id) + '">' +
+        '<span class="dall-main"><span class="dall-t">' + esc(n.title) + "</span>" +
+        '<span class="dall-s">' + esc(targetsShort(n)) + " · " + (n.permanent ? "상시" : "기한 " + dotDate(n.deadline)) + "</span></span>" +
+        statusPill(n) + '<span class="dall-ar" aria-hidden="true">›</span></button>';
+    });
+    return h + "</div>";
+  }
+  function openDeployAll() {
+    openSheet({ title: "게시 중 전체 보기", sub: "게시 중 (제거 예정) 전체 List", html: deployAllHtml() });
+  }
+
+  /* 이동 저장 맵 — 같은 자리면 1..N 재배열, 다른 자리면 새 자리에 순번 삽입 + 원래 자리 순번 압축
+     (게시물 상세의 단건 이동·겹침 순번 검증에서 함께 쓴다) */
   function buildMoveUpdates(id, n, oldTargets, newTarget) {
     var olds = oldTargets || [];
     if (olds.length === 1 && sameTarget(olds[0], newTarget)) return { updates: {}, changed: false, needsAttach: false };
@@ -2175,23 +2397,6 @@ var App = (function () {
     var att = attachedZones(n);
     var needsAttach = newZones.some(function (z) { return att.indexOf(z) < 0; });
     return { updates: updates, changed: true, needsAttach: needsAttach };
-  }
-  function saveMove(id) {
-    var n = getNotice(id);
-    if (!n || !moveState) return;
-    var t = moveStateTarget();
-    var res = buildMoveUpdates(id, n, targetsOf(n), t);
-    if (!res.changed) { toast("위치가 그대로입니다 · 번호나 순번을 바꿔 주세요"); return; }
-    requireAdmin(function () {
-      var btn = document.querySelector('[data-act="mv-save"]');
-      if (btn) { btn.disabled = true; btn.textContent = "저장 중…"; }
-      fbUpdate(res.updates).then(function (ok) {
-        if (!ok) { if (btn) { btn.disabled = false; btn.textContent = "다시 저장"; } return; }
-        writeLog({ noticeId: id, type: "move", by: SESSION.admin || "관리자", at: nowTs(), title: n.title, from: targetsText(n), to: targetText(t) });
-        closeSheet();
-        toast("이동했습니다 · " + targetShort(t) + (res.needsAttach ? " (새 구역은 게시 체크 필요)" : ""));
-      });
-    });
   }
 
   /* ---------- 시스템 권한 관리 ---------- */
@@ -2350,13 +2555,10 @@ var App = (function () {
       h += '<button class="acard" data-act="zoom" data-src="' + img + '" data-dl="' + esc(fname) + '" data-cap="' +
         esc(a.date + " " + (shiftLabel(a) ? shiftLabel(a) + " " : "") + title) + '">' +
         '<img src="' + img + '" alt="' + esc(title) + '">' +
-        '<span class="acard-tag">눌러서 크게 보기 · 저장</span></button>';
+        '<span class="acard-tag">눌러서 크게 보기</span></button>';
     }
     if (msg) h += '<div class="aitem-msg">' + esc(msg) + "</div>";
-    h += '<div class="aitem-foot">' +
-      '<button class="mini-btn" data-act="alert-copy" data-date="' + esc(a.date) + '" data-i="' + i + '">안내 문구 복사</button>' +
-      (img ? '<a class="mini-btn" href="' + img + '" download="' + esc(fname) + '">카드 저장</a>' : "") +
-      "</div></div>";
+    h += "</div>";        /* 2026-11-27 — 안내 문구 복사 · 카드 저장 버튼 삭제 */
     return h;
   }
   /* 표 — 년월일 | 내용 | 제거건수 | 담당 | (바로가기 화살표) */
@@ -2410,7 +2612,7 @@ var App = (function () {
     if (!a) return "";
     var items = alertItems(a);
     return '<div class="adetail" id="alertDetail">' +
-      '<div class="adetail-h"><div class="adetail-t">' + esc(korDate(a.date)) +
+      '<div class="adetail-h"><div class="adetail-t">' + calIcon(a.date) + esc(korDate(a.date)) +
       " (" + esc(a.weekday || weekday(a.date)) + ")" +
       (shiftLabel(a) ? ' <span class="pill soon">' + esc(shiftLabel(a)) + "</span>" : "") +
       ' <span class="pill ' + (items.length ? "overdue" : "removed") + '">제거 대상 ' + items.length + "건</span></div>" +
@@ -2435,6 +2637,26 @@ var App = (function () {
     lines.push(boardLink());
     return lines.join("\n");
   }
+  /* 날짜 숫자가 들어가는 커스텀 달력 아이콘 (2026-11-27 — 고정 📅 이모지 대체) */
+  function calIcon(date) {
+    return CAlicON(String(date || "").slice(8, 10));
+  }
+  function CAlicON(day) {
+    return '<svg class="calico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<rect x="3" y="4.6" width="18" height="16.4" rx="3.4" fill="#fff" stroke="#123a63" stroke-width="1.6"/>' +
+      '<path d="M4.1 6.1h15.8a1.1 1.1 0 0 1 1.1 1.1v1.3H3v-1.3a1.1 1.1 0 0 1 1.1-1.1z" fill="#123a63"/>' +
+      '<path d="M7.8 2.9v3.2M16.2 2.9v3.2" stroke="#123a63" stroke-width="1.9" stroke-linecap="round"/>' +
+      '<text class="calnum" x="12" y="18.1" text-anchor="middle">' + esc(day) + "</text></svg>";
+  }
+  /* 「주의할 내용」 제목 옆 아이콘 — 주의(경고) 표시 (고정 📅 이모지 대체) */
+  function warnIcon() {
+    return '<svg class="warnico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+      '<path d="M12 3.1 21.3 19.2a1.15 1.15 0 0 1-1 1.75H3.7a1.15 1.15 0 0 1-1-1.75z" ' +
+      'fill="#fff5e6" stroke="#b26a00" stroke-width="1.7" stroke-linejoin="round"/>' +
+      '<path d="M12 8.9v4.7" stroke="#b26a00" stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="12" cy="17.3" r="1.15" fill="#b26a00"/></svg>';
+  }
+
   /* 그날의 주요 일정(events) — 배열·Firebase 객체·문자열 모두 받는다 */
   function alertEvents(a) {
     var src = a && a.events;
@@ -2462,7 +2684,7 @@ var App = (function () {
     var evs = alertEvents(a);
     var isToday = !!(a && a.date === TODAY);
     var h = '<div class="asec aevsec">' +
-      '<div class="asec-h"><span class="asec-t">📅 ' + (isToday ? "오늘" : "그날") + ' 일어날 일</span>' +
+      '<div class="asec-h"><span class="asec-t">' + warnIcon() + (isToday ? "오늘" : "그날") + ' 주의할 내용</span>' +
       '<span class="asec-s">(게시물 주요 일정)</span></div>';
     if (!evs.length) {
       return h + '<div class="asec-none">등록된 주요 일정 없음<br>' +
@@ -2484,12 +2706,16 @@ var App = (function () {
   function alertDetailScreenHtml(date) {
     var a = alertByDate(date);
     var wd = (a && a.weekday) || weekday(date);
-    var h = '<div class="acrumb">' +
-      '<button class="alist" data-act="alert-list" aria-label="일일 알림 목록으로 돌아가기">‹ 일일 알림 목록</button>' +
-      '<div class="acrumb-txt"><div class="acrumb-t">일일 알림</div>' +
-      '<div class="acrumb-s">날짜별 상세</div></div></div>';
+    /* 상단은 한 줄로 — 목록으로 / 날짜(달력 아이콘) / 닫기 (2026-11-27 사용자 요청) */
+    var h = '<div class="aview-top" id="alertDetail">' +
+      '<div class="aview-head">' +
+      '<button class="alist acrumb-back" data-act="alert-list" aria-label="일일 알림 목록으로 돌아가기">‹ 목록</button>' +
+      '<div class="aview-date">' + (a ? calIcon(a.date) : "") +
+      '<span>' + esc(dotDate(date)) + " (" + esc(wd) + ")</span></div>" +
+      '<button class="aview-x" data-act="alert-list" aria-label="닫기">닫기</button>' +
+      "</div>";
     if (!a) {
-      return h + '<div class="empty-box">이 날짜의 07시 알림 기록이 없습니다.<br>' +
+      return h + "</div>" + '<div class="empty-box">이 날짜의 07시 알림 기록이 없습니다.<br>' +
         "목록으로 돌아가 다른 날짜를 눌러 주세요.</div>";
     }
     var items = alertItems(a);
@@ -2498,19 +2724,13 @@ var App = (function () {
     var meta = [];
     if (s) meta.push(esc(s));
     meta.push("제거 대상 " + items.length + "건");
-    h += '<div class="aview-top" id="alertDetail">' +
-      '<div class="aview-date">📅 ' + esc(dotDate(a.date)) + " (" + esc(wd) + ")" +
-      '<span class="aview-meta"> · ' + meta.join(" · ") + "</span></div></div>";
-    /* ① 오늘 일어날 일 */
+    h += '<div class="aview-meta aview-metarow">' + meta.join(" · ") + "</div></div>";
+    /* ① 오늘 주의할 내용 (게시물 주요 일정) */
     h += alertEventsHtml(a);
-    /* ② 오늘 제거 대상 */
+    /* ② 오늘 제거대상 게시물 */
     h += '<div class="asec aremsec">' +
-      '<div class="asec-h"><span class="asec-t">🗑️ ' + (isToday ? "오늘" : "그날") + ' 제거 대상</span>' +
+      '<div class="asec-h"><span class="asec-t">🗑️ ' + (isToday ? "오늘" : "그날") + ' 제거대상 게시물</span>' +
       '<span class="asec-s">' + items.length + "건</span></div>" +
-      '<div class="adetail-acts">' +
-      '<button class="mini-btn on" data-act="alert-copy-day" data-date="' + esc(a.date) + '">' +
-      (isToday ? "오늘 제거 목록 복사" : "이 날 제거 목록 복사") + "</button>" +
-      "</div>" +
       '<div class="adetail aview">' + alertDetailBodyHtml(a) + "</div></div>";
     return h;
   }
@@ -4078,6 +4298,7 @@ var App = (function () {
     LOADED = true;
     VIEW = parseHash();
     route();
+    maybeWelcome();
     return true;
   }
   function render() {
@@ -4177,38 +4398,86 @@ var App = (function () {
       if (act === "go") { closeMore(); closeSettingsMenu(); if (el.dataset.go) go(el.dataset.go); }
       else if (act === "home") { go("#/"); }
       else if (act === "create-tab") { go(el.dataset.v === "move" ? "#/create/move" : "#/create"); }
-      else if (act === "move-open") {
-        var mvId = el.dataset.id;
-        closeSheet();
-        setTimeout(function () { openMoveSheet(mvId); }, 200);
+      else if (act === "deploy-all") { openDeployAll(); }
+      else if (act === "wel-close") { welClose(); }
+      else if (act === "wel-next") { WEL.step = 2; renderWelcome(); }
+      else if (act === "wel-alerts") {
+        WEL.on = false; renderWelcome();
+        go(TODAY ? "#/alerts/" + TODAY : "#/alerts");
       }
-      else if (act === "mv-board") {
-        moveState.board = el.dataset.v;
-        if (moveState.board === "elevator" && moveState.slot > "06") moveState.slot = "01";
-        refreshMoveBits();
+      else if (act === "wel-core") { WEL.core = el.dataset.v; WEL.loc = "f1"; renderWelcome(); }
+      else if (act === "wel-loc") { WEL.loc = el.dataset.v; renderWelcome(); }
+      else if (act === "wel-slot") { welOpenSlot(el.dataset.slot); }
+      else if (act === "mv-target") {
+        mvSelEnsure();
+        MVSEL.noticeId = el.dataset.id || "";
+        MVSEL.srcIdx = 0;
+        MVSEL.slot = "";
+        var mt = selectedSrcTarget();
+        MVSEL.board = mt ? (mt.board || "lobby") : "lobby";
+        MVSEL.floors = (mt && mt.floors && mt.floors.length && mt.floors.length < allFloorNames().length) ? mt.floors.slice() : "all";
+        MVSEL.elevators = (mt && mt.elevators && mt.elevators !== "all") ? mt.elevators.map(String) : "all";
+        render();
       }
-      else if (act === "mv-loc") {
-        var mvv = el.dataset.v;
-        if (moveState.board === "elevator") {
-          if (mvv === "all") moveState.elevators = "all";
-          else {
-            if (moveState.elevators === "all") moveState.elevators = [];
-            var ei = moveState.elevators.indexOf(mvv);
-            if (ei >= 0) moveState.elevators.splice(ei, 1);
-            else moveState.elevators.push(mvv);
-            if (!moveState.elevators.length) moveState.elevators = "all";
-          }
-        } else {
-          var fi = moveState.floors.indexOf(mvv);
-          if (fi >= 0) moveState.floors.splice(fi, 1);
-          else moveState.floors.push(mvv);
-          if (!moveState.floors.length) moveState.floors = FAC.boards.lobby.floors.slice();
+      else if (act === "mv-src") {
+        mvSelEnsure();
+        MVSEL.srcIdx = Number(el.dataset.i) || 0;
+        var mt2 = selectedSrcTarget();
+        if (mt2) {
+          MVSEL.board = mt2.board || "lobby";
+          MVSEL.floors = (mt2.floors && mt2.floors.length && mt2.floors.length < allFloorNames().length) ? mt2.floors.slice() : "all";
+          MVSEL.elevators = (mt2.elevators && mt2.elevators !== "all") ? mt2.elevators.map(String) : "all";
         }
-        refreshMoveBits();
+        MVSEL.slot = "";
+        render();
       }
-      else if (act === "mv-slot") { moveState.slot = el.dataset.v; refreshMoveBits(); }
-      else if (act === "mv-order") { moveState.order = Number(el.dataset.v); refreshMoveBits(); }
-      else if (act === "mv-save") { saveMove(el.dataset.id); }
+      else if (act === "mv-dest-board") {
+        mvSelEnsure();
+        MVSEL.board = el.dataset.v === "elevator" ? "elevator" : "lobby";
+        MVSEL.slot = "";
+        MVSEL.floors = "all";
+        MVSEL.elevators = "all";
+        render();
+      }
+      else if (act === "mv-dest-floor") {
+        mvSelEnsure();
+        var mfv = el.dataset.v;
+        MVSEL.floors = (mfv === "all") ? "all" : ((MVSEL.floors !== "all" && MVSEL.floors.indexOf(mfv) >= 0) ? "all" : [mfv]);
+        render();
+      }
+      else if (act === "mv-dest-elev") {
+        mvSelEnsure();
+        var mev = el.dataset.v;
+        MVSEL.elevators = (mev === "all") ? "all" : ((MVSEL.elevators !== "all" && MVSEL.elevators.indexOf(String(mev)) >= 0) ? "all" : [String(mev)]);
+        render();
+      }
+      else if (act === "mv-dest-slot") {
+        mvSelEnsure();
+        MVSEL.slot = (MVSEL.slot === el.dataset.v) ? "" : el.dataset.v;
+        render();
+      }
+      else if (act === "mv-run") { openMoveConfirm(); }
+      else if (act === "mv-confirm") { registerPendingMove(); }
+      else if (act === "mv-pick") {
+        var mpk = el.dataset.id;
+        if (MVPICK[mpk]) delete MVPICK[mpk]; else MVPICK[mpk] = true;
+        render();
+      }
+      else if (act === "mv-pick-all") {
+        var mAll = MOVES.length && MOVES.every(function (m) { return !!MVPICK[m.id]; });
+        MVPICK = {};
+        if (!mAll) MOVES.forEach(function (m) { MVPICK[m.id] = true; });
+        render();
+      }
+      else if (act === "mv-pending-cancel-picked") {
+        cancelPendingMoves(Object.keys(MVPICK));
+      }
+      else if (act === "mv-pending-cancel") {
+        cancelPendingMoves([el.dataset.id]);
+      }
+      else if (act === "mv-pending-apply") {
+        applyPendingMove(el.dataset.id);
+      }
       else if (act === "admin-logout") {
         if (SANDBOX) { toast("🧪 테스트용 카피본은 항상 Admin 권한입니다"); return; }
         SESSION.role = null; SESSION.admin = "";
@@ -4383,55 +4652,6 @@ var App = (function () {
         refreshCreateList();
       }
       else if (act === "nf-delete") { deleteSelected(); }
-      /* ---------- [이동] 탭 ---------- */
-      else if (act === "mv-bld" || act === "mv-line" || act === "mv-floor" || act === "mv-elev") {
-        mvEnsure();
-        var mside = el.dataset.side === "to" ? "to" : "from";
-        var ms = MV[mside], mvv = el.dataset.v;
-        if (act === "mv-bld") {
-          if (mvv === "all") ms.buildings = "all";
-          else {
-            ms.buildings = (ms.buildings === "all") ? [] : ms.buildings.slice();
-            var mbi = ms.buildings.indexOf(Number(mvv));
-            if (mbi >= 0) ms.buildings.splice(mbi, 1); else ms.buildings.push(Number(mvv));
-            if (!ms.buildings.length) ms.buildings = "all";
-          }
-        } else if (act === "mv-line") {
-          ms.lines = togglePick(ms.lines, allLineKeys(), mvv);
-        } else if (act === "mv-floor") {
-          if (ms.type !== "lobby") { ms.type = "lobby"; ms.floors = (mvv === "all" ? "all" : [mvv]); }
-          else ms.floors = togglePick(ms.floors, allFloorNames(), mvv);
-        } else {
-          if (ms.type !== "elevator") { ms.type = "elevator"; ms.elevators = (mvv === "all" ? "all" : [String(mvv)]); }
-          else ms.elevators = togglePick(ms.elevators, allElevKeys(), mvv);
-        }
-        MV.picked = {};
-        refreshMove();
-      }
-      else if (act === "mv-lslot" || act === "mv-eslot") {
-        mvEnsure();
-        var lside = el.dataset.side === "to" ? "to" : "from";
-        var ls = MV[lside];
-        if (act === "mv-lslot") { ls.type = "lobby"; ls.slot = el.dataset.v; }
-        else { ls.type = "elevator"; ls.slot = el.dataset.v; }
-        MV.picked = {};
-        refreshMove();
-      }
-      else if (act === "mv-pick") {
-        mvEnsure();
-        var mpk = el.dataset.id;
-        MV.picked[mpk] = MV.picked[mpk] === false;
-        refreshMoveList();
-      }
-      else if (act === "mv-all") {
-        mvEnsure();
-        var mrows = mvMatches(MV.from);
-        var mAllOn = mrows.every(function (it) { return MV.picked[it.id] !== false; });
-        MV.picked = {};
-        if (mAllOn) mrows.forEach(function (it) { MV.picked[it.id] = false; });
-        refreshMoveList();
-      }
-      else if (act === "mv-apply") { applyMassMove(); }
       else if (act === "f-cat") { formDefaults.category = el.dataset.v; markChips("#fCat", el); }
       else if (act === "f-board") {
         formState.board = el.dataset.v;
@@ -4524,12 +4744,6 @@ var App = (function () {
         if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
       }
       else if (e.target.id === "nfTitle") { nfEnsure(); NF.title = e.target.value; }
-      else if (e.target.id === "mvQ") {
-        MV_FILTER.q = e.target.value.trim();
-        render();
-        var mq = document.getElementById("mvQ");
-        if (mq) { mq.focus(); mq.setSelectionRange(mq.value.length, mq.value.length); }
-      }
     });
 
     /* 선택조회 기간(년월) 입력 */
@@ -4563,6 +4777,14 @@ var App = (function () {
         return;
       }
       if (e.target.id === "nfDeadline") { nfEnsure(); NF.deadline = e.target.value || ""; return; }
+      if (e.target.id === "welNo") {
+        WEL.no = Number(e.target.value);
+        var wb = buildingByNo(WEL.no);
+        WEL.core = wb ? wb.cores[0].key : WEL.core;
+        WEL.loc = "f1";
+        renderWelcome();
+        return;
+      }
       if (e.target.id === "alertFromM") {
         AZ.from = (e.target.value || "").slice(0, 7);
         if (AZ.to && AZ.to < AZ.from) AZ.to = AZ.from;
@@ -4672,19 +4894,21 @@ var App = (function () {
             var form = document.querySelector('.sheet[data-form="1"]');
             if (!form) render();
           }
+          if (WEL.on && VIEW.name === "home") renderWelcome();
         }, function (err) {
           document.getElementById("view").innerHTML =
             '<div class="empty-box">게시판 데이터에 연결하지 못했습니다.<br><b>' + esc(err.message) + '</b><br>인터넷 연결을 확인하고 새로고침해 주세요.</div>';
         });
-        db.ref(DB_ROOT + "/logs").limitToLast(50).on("value", function (s) {
-          setMoveLogs(s.val());
-          if (LOADED && VIEW.name === "create") render();
-        }, function () { /* 이동 기록을 읽지 못해도 화면은 그대로 쓴다 */ });
+        db.ref(DB_ROOT + "/moves").on("value", function (s) {
+          setMoves(s.val());
+          if (LOADED && (VIEW.name === "create" || VIEW.name === "deploy")) render();
+        }, function () { /* 이동 대기 목록을 읽지 못해도 화면은 그대로 쓴다 */ });
         db.ref(DB_ROOT + "/daily_alerts").on("value", function (s) {
           setAlerts(s.val());
           if (!LOADED) return;
           if (VIEW.name === "alerts") renderAlertList();
           else if (!document.querySelector('.sheet[data-form="1"]')) render();
+          if (WEL.on && WEL.step === 2) renderWelcome();
         }, function () { /* 알림 기록을 읽지 못해도 다른 화면은 그대로 쓴다 */ });
       } catch (e) {
         document.getElementById("view").innerHTML = '<div class="empty-box">Firebase 초기화 실패: ' + esc(e.message) + "</div>";
@@ -4756,6 +4980,18 @@ var App = (function () {
       html: function () { return renderPortal(); },
       tasks: portalTasks, zone: zoneStateLabel, stats: portalStats
     },
+    /* 첫 진입 팝업(동·층별 게시판 현황 → 오늘 일일 알림) 검증용 */
+    welcome: {
+      board: welBoardHtml, alert: welAlertHtml,
+      open: function (no) {
+        var b = no ? buildingByNo(no) : FAC.buildings[0];
+        WEL.on = true; WEL.step = 1; WEL.no = b.no; WEL.core = b.cores[0].key; WEL.loc = "f1";
+        return WEL;
+      },
+      state: function () { return WEL; },
+      set: function (o) { Object.keys(o || {}).forEach(function (k) { WEL[k] = o[k]; }); },
+      next: welClose, cell: welSlotCell, seen: function () { return welcomeSeen(); }
+    },
     /* 사진 제목 1차 OCR 검증용 */
     ocr: {
       title: ocrTitleCandidate, lines: ocrLinesFrom, decision: ocrFieldDecision,
@@ -4771,9 +5007,19 @@ var App = (function () {
       specText: specPlaceText, lines: lineList, toggle: togglePick
     },
     move: {
-      reset: mvReset, ensure: mvEnsure, state: function () { return MV; },
-      matches: mvMatches, apply: massMoveUpdates, screen: function () { return moveTabHtml(true); },
-      place: specPlaceText, hits: specHitsTarget, same: sameSpec, logs: setMoveLogs
+      reset: mvSelReset, ensure: mvSelEnsure, state: function () { return MVSEL; },
+      posted: postedForMove, pick: function (id, i) {
+        mvSelEnsure(); MVSEL.noticeId = id || ""; MVSEL.srcIdx = i || 0;
+        var t = selectedSrcTarget();
+        if (t) { MVSEL.board = t.board || "lobby"; MVSEL.slot = ""; }
+        return MVSEL;
+      },
+      check: mvCheck, dest: mvDestTarget, entry: mvEntryFromSel,
+      applyPending: pendingMoveUpdates, screen: function () { return moveTabHtml(true); },
+      pending: function () { return MOVES; }, setPending: function (v) { setMoves(v); },
+      confirm: mvConfirmHtml, deploy: function () { return deployAllHtml(); },
+      pendingSection: pendingSectionHtml,
+      place: specPlaceText, hits: specHitsTarget, same: sameSpec, samePlace: mvSamePlace
     },
     state: function () { return { TODAY: TODAY, NOTICES: NOTICES, CFG: CFG, SESSION: SESSION,
       env: { dbRoot: DB_ROOT, sandbox: SANDBOX, adminLabel: ADMIN_LABEL, lsPrefix: LS_PREFIX } }; },

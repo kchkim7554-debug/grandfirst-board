@@ -33,6 +33,7 @@ TEST_FILES = [
     "test/deploy.test.js",
     "test/ocr.test.js",
     "test/portal.test.js",
+    "test/welcome.test.js",
     "test/sandbox.test.js",
 ]
 
@@ -107,7 +108,25 @@ def check_shell():
        "linear-gradient(180deg,#ecfaf5 0%,#e3f6ef 52%,#d9f1e8 100%)" in html)
     ok("예전 회색 바탕(#f2f5fa)이 기본 배경에서 빠졌다",
        "--bg:#f2f5fa" not in html and "linear-gradient(180deg,#f4f8fc" not in html)
-    ok("theme-color 도 민트", 'name="theme-color" content="#e5f6f1"' in html)
+    # 2026-11-27 — PWA 단독 앱 전환으로 상단 네이비 바와 theme-color 를 맞춘다
+    ok("theme-color 는 상단 네이비(#0d2e52)", 'name="theme-color" content="#0d2e52"' in html)
+    # 2026-11-27 — PWA 단독 앱 실행 (서비스 워커 · 매니페스트 theme_color)
+    ok("PWA 서비스 워커 등록", 'navigator.serviceWorker.register("sw.js"' in html)
+    swp = os.path.join(ROOT, "sw.js")
+    ok("board/sw.js 있음", os.path.exists(swp))
+    sw = ""
+    if os.path.exists(swp):
+        with open(swp, encoding="utf-8") as f:
+            sw = f.read()
+    ok("sw.js — skipWaiting · clients.claim", "self.skipWaiting()" in sw and "self.clients.claim()" in sw)
+    ok("sw.js — 캐시 없는 패스스루", 'cache: "no-store"' in sw and "caches.open" not in sw)
+    try:
+        with open(os.path.join(ROOT, "manifest.json"), encoding="utf-8") as f:
+            mj = json.load(f)
+    except Exception:
+        mj = {}
+    ok("매니페스트 theme_color 는 상단 네이비(#0d2e52)", mj.get("theme_color") == "#0d2e52", str(mj.get("theme_color")))
+
     ver = re.search(r'app\.js\?v=(\d{8}[a-z]?)', html)
     ok("app.js 캐시 버전 쿼리", bool(ver) and ver.group(1) >= "20261126b", ver.group(1) if ver else "없음")
     return out, n_pass, n_fail

@@ -102,13 +102,18 @@ console.log("\n[3] 행을 누르면 별도 상세 화면");
   var body = A.screen("2026-11-20");
   ok("날짜 상세 화면은 목록을 가린다", has(body, 'id="alertDetail"') && !has(body, 'id="alertBody"') &&
     !has(body, "<th>년월일</th>"));
-  ok("상세 제목 = 날짜·담당·건수", has(body, "📅 2026.11.20 (금)") && has(body, "B조") && has(body, "제거 대상 2건"));
-  ok("맨 위 뒤로 가기(‹ 일일 알림 목록)", has(body, 'data-act="alert-list"') && has(body, "‹ 일일 알림 목록"));
+  ok("상세 제목 = 날짜·담당·건수", has(body, "2026.11.20 (금)") && has(body, "B조") && has(body, "제거 대상 2건"));
+  ok("맨 위 뒤로 가기(‹ 목록)", has(body, 'data-act="alert-list"') && has(body, "‹ 목록"));
+  /* 2026-11-27 요청 — 상단 중복 줄 정리 + 우측 상단 [닫기] + 날짜 숫자 달력 아이콘 */
+  ok("상단 중복 줄(일일 알림 / 날짜별 상세)이 사라졌다", !has(body, "날짜별 상세") && !has(body, 'class="acrumb"'));
+  ok("우측 상단 [닫기]", has(body, 'class="aview-x"') && has(body, "닫기"));
+  ok("고정 📅 이모지 대신 커스텀 달력 아이콘", !has(body, "📅") && has(body, 'class="calico"'));
+  ok("달력 아이콘에 그날 날짜 숫자(20)", has(body, 'class="calnum" x="12" y="18.1" text-anchor="middle">20</text>'));
   ok("카드 이미지 2장", (body.match(/class="acard"/g) || []).length === 2 &&
     has(body, "templates/cards/2026-11-20_R01.jpg") && has(body, "templates/cards/2026-11-20_R15.jpg"));
   ok("안내 문구 표시", has(body, "[승강기 정기 점검] 오늘 제거 바랍니다."));
-  ok("안내 문구 복사 버튼", has(body, 'data-act="alert-copy"'));
-  ok("카드 저장(내려받기) 링크", has(body, 'download="2026-11-20_R01.jpg"'));
+  ok("안내 문구 복사 버튼은 삭제됨", !has(body, 'data-act="alert-copy"') && !has(body, "안내 문구 복사"));
+  ok("카드 저장(내려받기) 링크는 삭제됨", !has(body, 'download="2026-11-20_R01.jpg"') && !has(body, "카드 저장"));
   ok("확대 보기(zoom)", has(body, 'data-act="zoom"'));
 
   reset({});
@@ -135,10 +140,13 @@ console.log("\n[3-2] 상세 화면 순서 — 게시물 주요 일정이 먼저"
 {
   reset({});
   var d = A.screen("2026-11-20");
-  ok("'일어날 일' 섹션이 제거 대상 섹션보다 위", d.indexOf("일어날 일") > 0 && d.indexOf("🗑️") > 0 &&
-    d.indexOf("일어날 일") < d.indexOf("🗑️"),
-    "일정 " + d.indexOf("일어날 일") + " / 제거 " + d.indexOf("🗑️"));
-  ok("일정 섹션 제목", has(d, "📅 그날 일어날 일") && has(d, "(게시물 주요 일정)"));
+  ok("'주의할 내용' 섹션이 제거대상 게시물 섹션보다 위", d.indexOf("주의할 내용") > 0 && d.indexOf("제거대상 게시물") > 0 &&
+    d.indexOf("주의할 내용") < d.indexOf("제거대상 게시물"),
+    "일정 " + d.indexOf("주의할 내용") + " / 제거 " + d.indexOf("제거대상 게시물"));
+  ok("섹션 제목 — 오늘 주의할 내용 (기존 오늘 일어날 일)", has(d, "그날 주의할 내용") && has(d, "(게시물 주요 일정)") &&
+    !has(d, "일어날 일"));
+  ok("주의 아이콘(SVG)", has(d, 'class="warnico"'));
+  ok("섹션 제목 — 그날 제거대상 게시물", has(d, "그날 제거대상 게시물") && !has(d, "제거 대상</span>"));
   ok("events 없으면 빈 상태", has(d, "등록된 주요 일정 없음"));
 
   var withEv = clone(FIX);
@@ -166,10 +174,11 @@ console.log("\n[3-3] 상세 화면 — 제거 목록 복사");
 {
   reset({});
   var d = A.screen("2026-11-20");
-  ok("제거 목록 복사 버튼", has(d, 'data-act="alert-copy-day"') && has(d, "이 날 제거 목록 복사"));
+  ok("제거 목록 복사 버튼 3개는 삭제됨", !has(d, 'data-act="alert-copy-day"') && !has(d, "제거 목록 복사") &&
+    !has(d, "카드 저장") && !has(d, "안내 문구 복사"));
 
   B.setToday("2026-11-20");
-  ok("오늘 날짜면 '오늘 제거 목록 복사'", has(A.screen("2026-11-20"), "오늘 제거 목록 복사"));
+  ok("오늘 날짜 상세 — 오늘 제목", has(A.screen("2026-11-20"), "오늘 제거대상 게시물"));
   var t = A.dayCopy("2026-11-20");
   ok("복사 문구 — 날짜·담당·건수",
     t.indexOf("[제일풍경채 그랑퍼스트 1단지] 2026년 11월 20일 (금) B조 제거 대상 2건") === 0, t.split("\n")[0]);

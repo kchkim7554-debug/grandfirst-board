@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <base href="../">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#e5f6f1">
+<meta name="theme-color" content="#0d2e52">
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 (2026-11-26) — 아이콘 원본은 scripts/make_icons.py -->
@@ -665,6 +665,147 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .dsum span b{color:var(--navy);font-weight:800;}
 .dsum span.warn{background:var(--orange-bg);border-color:var(--orange-line);color:var(--orange);}
 .dsum span.warn b{color:var(--orange);}
+/* =========================================================
+   2026-11-27 — 일일 알림 상세 아이콘·첫 진입 팝업·이동 탭 개편
+   ========================================================= */
+/* 달력 아이콘(날짜 숫자) · 주의 아이콘 */
+.calico{width:22px;height:22px;flex:0 0 auto;vertical-align:-5px;margin-right:6px;}
+.calico .calnum{font-size:8.2px;font-weight:800;fill:#123a63;
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",Arial,sans-serif;}
+.warnico{width:19px;height:19px;flex:0 0 auto;vertical-align:-4px;margin-right:5px;}
+.asec-t{display:inline-flex;align-items:center;}
+/* 일일 알림 날짜 상세 상단 — 한 줄로 정리 */
+.aview-head{display:flex;align-items:center;gap:7px;}
+.aview-head .alist{flex:0 0 auto;min-height:38px;padding:7px 10px;}
+.aview-head .aview-date{flex:1 1 auto;min-width:0;display:flex;align-items:center;font-size:1rem;white-space:nowrap;overflow:hidden;}
+.aview-head .aview-date > span{overflow:hidden;text-overflow:ellipsis;}
+.aview-x{flex:0 0 auto;border:0;background:var(--navy);color:#fff;border-radius:11px;min-height:38px;padding:0 13px;font-size:.8rem;font-weight:800;letter-spacing:-.3px;}
+.aview-x:active{opacity:.85;}
+.aview-metarow{margin:5px 2px 9px;font-size:.78rem;}
+
+/* 첫 진입 팝업 (동·층별 게시판 현황 → 오늘 일일 알림) */
+.popwrap{position:fixed;inset:0;z-index:56;display:flex;align-items:flex-end;justify-content:center;}
+.popback{position:absolute;inset:0;background:rgba(9,20,33,.5);}
+.popcard{position:relative;width:100%;max-width:560px;max-height:92vh;background:var(--card);
+  border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(9,20,33,.28);
+  display:flex;flex-direction:column;overflow:hidden;animation:popup .2s ease;}
+@keyframes popup{from{transform:translateY(22px);opacity:.7}to{transform:none;opacity:1}}
+.pophead{display:flex;align-items:flex-start;gap:10px;padding:13px 14px 10px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#f3f9ff 0%,#fff 100%);}
+.popt{font-size:1.06rem;font-weight:800;letter-spacing:-.5px;color:#0d2a49;}
+.pops{font-size:.72rem;color:var(--muted);font-weight:700;margin-top:2px;line-height:1.4;}
+.popx{margin-left:auto;flex:0 0 auto;border:0;background:var(--navy);color:#fff;border-radius:11px;
+  min-height:38px;padding:0 14px;font-size:.82rem;font-weight:800;letter-spacing:-.2px;box-shadow:0 3px 9px rgba(18,58,99,.22);}
+.popx:active{transform:translateY(1px);}
+.popbody{padding:11px 13px calc(16px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}
+.popfoot{display:flex;gap:7px;margin-top:11px;align-items:stretch;}
+.popfoot .btn{flex:1 1 auto;}
+.popfoot .mini-btn{flex:0 0 auto;min-height:46px;}
+.welrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.wellab{flex:0 0 34px;font-size:.72rem;font-weight:800;color:var(--ink-2);}
+.welrow .f-sel{flex:1 1 auto;min-height:42px;font-size:.84rem;}
+.welchips{flex:1 1 auto;overflow-x:auto;padding:1px 1px 3px;}
+.welchips .chip{min-height:34px;padding:6px 11px;font-size:.76rem;}
+.welboard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;box-shadow:0 1px 3px rgba(18,35,54,.05);}
+.welboard-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
+.welboard-t{font-size:.86rem;font-weight:800;letter-spacing:-.3px;}
+.welboard-s{font-size:.68rem;color:var(--ink-2);text-align:right;white-space:nowrap;font-weight:700;line-height:1.4;}
+.welgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;}
+.wslot{position:relative;border:1px solid var(--line);background:#fff;border-radius:9px;min-height:58px;
+  padding:4px 4px 5px;text-align:left;display:flex;flex-direction:column;gap:1px;overflow:hidden;}
+.wslot:active{transform:translateY(1px);}
+.wslot-no{font-size:.7rem;font-weight:800;color:var(--ink-2);line-height:1.1;}
+.wslot-t{font-size:.56rem;font-weight:700;line-height:1.22;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;}
+.wslot-e{font-size:.55rem;color:#aab5c2;margin:auto 0;}
+.wslot.empty{border-style:dashed;border-color:#d6dee8;background:#fafbfd;}
+.wslot-b{position:absolute;top:2px;right:2px;background:var(--navy);color:#fff;border-radius:999px;
+  font-size:.54rem;font-weight:800;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 3px;}
+.wslot.st-overdue{background:var(--red-bg);border-color:var(--red-line);}
+.wslot.st-today{background:var(--orange-bg);border-color:var(--orange-line);}
+.wslot.st-tomorrow{background:var(--amber-bg);border-color:var(--amber-line);}
+.wslot.st-soon{background:var(--blue-bg);border-color:var(--blue-line);}
+.wslot.st-active{background:var(--green-bg);border-color:var(--green-line);}
+.wslot.st-permanent{background:var(--violet-bg);border-color:var(--violet-line);}
+.welnone{font-size:.64rem;color:var(--muted);margin:7px 2px 0;line-height:1.45;}
+@media (max-width:360px){.welgrid{grid-template-columns:repeat(4,1fr);}}
+@media (min-width:600px){.popwrap{align-items:center;padding:16px;}.popcard{border-radius:20px;max-height:88vh;}}
+
+/* 이동 탭 — ① 대상 ② 이동전 ③ 이동후 · 정합성 · 이동목록 */
+.mvbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 12px;margin-bottom:9px;
+  box-shadow:0 1px 2px rgba(18,35,54,.05);}
+.mvbox-h{display:flex;align-items:center;gap:7px;font-size:.9rem;font-weight:800;color:var(--navy);margin-bottom:6px;letter-spacing:-.3px;}
+.mvno{width:20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;font-size:.7rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.mvbox-s{font-size:.7rem;color:var(--muted);font-weight:600;line-height:1.45;margin-bottom:7px;}
+.mvbox-none{font-size:.78rem;color:var(--muted);background:#f7f9fc;border:1px dashed var(--line);border-radius:11px;
+  padding:13px 12px;text-align:center;font-weight:700;line-height:1.5;}
+.mvpicklist{display:flex;flex-direction:column;gap:5px;max-height:264px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.mvpick{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:8px 9px;min-height:52px;}
+.mvpick.on{border-color:var(--navy);background:#eef4fc;box-shadow:inset 0 0 0 1px var(--navy);}
+.mvpick-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.mvpick-t{font-size:.85rem;font-weight:800;line-height:1.3;letter-spacing:-.3px;word-break:keep-all;}
+.mvpick-s{font-size:.66rem;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mvpick-ck{flex:0 0 auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);color:#fff;
+  font-size:.78rem;font-weight:800;line-height:20px;text-align:center;background:#fff;}
+.mvpick.on .mvpick-ck{background:var(--navy);border-color:var(--navy);}
+.mvfrom{background:#f2f7fd;border:1px solid var(--blue-line);border-radius:11px;padding:10px 11px;
+  font-size:.84rem;font-weight:800;color:#12395e;line-height:1.45;word-break:keep-all;}
+.mvfromlist{display:flex;flex-direction:column;gap:5px;margin-top:7px;}
+.mvfromrow{display:flex;align-items:flex-start;gap:7px;background:#f7f9fc;border:1px solid var(--line);
+  border-radius:10px;padding:8px 9px;font-size:.78rem;font-weight:700;color:var(--ink-2);line-height:1.45;word-break:keep-all;}
+.mvfromrow.on{background:#eef4fc;border-color:var(--navy);color:#12395e;box-shadow:inset 0 0 0 1px var(--navy);}
+.mvfromno{flex:0 0 auto;width:18px;height:18px;border-radius:50%;background:var(--navy);color:#fff;
+  font-size:.64rem;font-weight:800;line-height:18px;text-align:center;margin-top:1px;}
+.mvslots{grid-template-columns:repeat(6,1fr);}
+.mvslots .mvslot{border:1px solid var(--line);background:#fff;border-radius:10px;min-height:42px;
+  font-size:.82rem;font-weight:800;color:var(--ink-2);padding:9px 0;}
+.mvslot:active{background:#eef3f9;}
+.mvslot.on{background:var(--navy);border-color:var(--navy);color:#fff;}
+.mvchk{margin-top:9px;border-radius:10px;padding:8px 10px;font-size:.74rem;font-weight:800;line-height:1.45;}
+.mvchk.ok{background:var(--green-bg);border:1px solid var(--green-line);color:var(--green);}
+.mvchk.no{background:var(--orange-bg);border:1px solid var(--orange-line);color:var(--orange);}
+.mvrun{margin-top:9px;}
+.mvrun[disabled]{opacity:.55;box-shadow:none;}
+.mtable td.cp{min-width:132px;}
+.mvhint{font-size:.64rem;color:var(--muted);font-weight:700;}
+.mvpendlist{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+.mvpend{background:#fff;border:1px solid var(--orange-line);border-left:4px solid #e09a2b;border-radius:13px;
+  padding:10px 11px;box-shadow:0 1px 3px rgba(18,35,54,.05);}
+.mvpend-h{display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap;}
+.mvpend-t{font-size:.88rem;font-weight:800;line-height:1.3;word-break:keep-all;}
+.mvpend-when{margin-left:auto;font-size:.64rem;color:var(--muted);font-weight:700;white-space:nowrap;}
+.mvpend-body{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-top:6px;
+  font-size:.74rem;font-weight:700;color:var(--ink-2);line-height:1.4;}
+.mvpend-from{background:#f4f6f9;border-radius:7px;padding:4px 7px;}
+.mvpend-ar{color:var(--muted);font-weight:800;}
+.mvpend-to{background:var(--green-bg);border:1px solid var(--green-line);border-radius:7px;padding:4px 7px;color:var(--green);}
+.mvpend-acts{display:flex;gap:6px;margin-top:8px;}
+.mvpend-acts .mini-btn{flex:1 1 0;min-height:40px;}
+.mini-btn.primary{background:var(--navy);border-color:var(--navy);color:#fff;}
+
+/* 배포 — 게시 중 전체보기 */
+.dall-h{font-size:.84rem;font-weight:700;color:var(--ink-2);margin:0 2px 4px;}
+.dall-h b{color:var(--navy);font-size:1rem;}
+.dall-list{display:flex;flex-direction:column;gap:6px;}
+.dall-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;
+  border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-height:54px;}
+.dall-row:active{background:#f4f8fc;}
+.dall-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.dall-t{font-size:.86rem;font-weight:800;line-height:1.3;word-break:keep-all;}
+.dall-s{font-size:.66rem;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dall-ar{color:#b6c1ce;font-size:1rem;font-weight:800;flex:0 0 auto;}
+
+/* 이동 실행 확인 팝업 */
+.cfm-t{font-size:1rem;font-weight:800;letter-spacing:-.4px;margin-bottom:9px;}
+.cfm-tb{width:100%;border-collapse:collapse;font-size:.8rem;}
+.cfm-tb th{width:4.6em;text-align:left;color:var(--muted);font-weight:800;font-size:.72rem;padding:7px 4px;
+  vertical-align:top;border-bottom:1px solid #f0f3f7;}
+.cfm-tb td{padding:7px 4px;font-weight:700;line-height:1.45;word-break:keep-all;border-bottom:1px solid #f0f3f7;}
+.cfm-n{margin-top:9px;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);
+  border-radius:10px;padding:9px 10px;font-size:.72rem;font-weight:700;line-height:1.5;}
+
 /* ---------- footer ---------- */
 .sitefoot{
   max-width:760px;margin:22px auto 0;padding:16px 16px 8px;
@@ -1312,6 +1453,14 @@ html.fs-lg .q{min-height:88px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script src="sandbox/env.js"></script>
-<script src="app.js?v=20261126r"></script>
+<script src="app.js?v=20261127a"></script>
+<script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js", { scope: "./" }).then(function (reg) {
+      try { reg.update(); } catch (e) {}
+    }).catch(function () {});
+  });
+}</script>
 </body>
 </html>
