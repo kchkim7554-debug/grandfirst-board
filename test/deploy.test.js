@@ -217,13 +217,19 @@ console.log("\n[7] 이동 대기 확정");
       dst: { board: "lobby", slot: "05", order: 1, buildings: "all", floors: ["1층"] },
       fromText: "전체 24개동 · 공동현관 1층 03번", toText: "전체 24개동 · 공동현관 1층 05번", status: "pending" }
   });
+  /* 2026-11-28 — 이동 확정·취소는 관리자 전용이므로 관리자 세션에서 확인하고, 비관리자는 막힌 문구만 */
+  var SES = API.state().SESSION;
   var h2 = D.useful();
   ok("배포·제거 탭에 이동 대기 카드", has(h2, "이동 대기") && has(h2, "이동 대기 시험"));
-  ok("[이동 확정] 버튼", has(h2, 'data-act="mv-pending-apply"') && has(h2, "이동 확정"));
-  ok("[취소] 버튼", has(h2, 'data-act="mv-pending-cancel"'));
+  ok("비관리자에게는 [이동 확정] 버튼이 없다", !has(h2, 'data-act="mv-pending-apply"') && has(h2, "관리자 인증 후 가능"));
+  SES.role = "admin";
+  h2 = D.useful();
+  ok("[이동 확정] 버튼 (관리자)", has(h2, 'data-act="mv-pending-apply"') && has(h2, "이동 확정"));
+  ok("[취소] 버튼 (관리자)", has(h2, 'data-act="mv-pending-cancel"'));
   ok("이동전 → 이동후 표시", has(h2, "공동현관 1층 03번") && has(h2, "공동현관 1층 05번"));
   M.setPending({});
   ok("대기 0건이면 카드 없음", !has(D.useful(), 'data-act="mv-pending-apply"'));
+  SES.role = null;
 }
 
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");

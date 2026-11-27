@@ -24,9 +24,10 @@ var SANDBOX = !!GF_ENV.sandbox;
 var ADMIN_LABEL = GF_ENV.adminLabel || "Admin";
 /* 저장 키 접두어 — 카피본은 원본과 기기 저장(session·글자크기)도 섞이지 않게 따로 쓴다 */
 var LS_PREFIX = GF_ENV.lsPrefix || "gf.";
-var PIN_SALT = "grandfirst-board|";
-/* 기본 관리자 PIN 7554 의 SHA-256 (평문은 DB에 저장하지 않음) */
-var DEFAULT_PIN_HASH = "280e9599e805b04e6990ecd8a70563e485534485b97cbc93835be8a4bce7965f";
+var ADMIN_PW_SALT = "grandfirst-board|";
+/* 관리자 암호의 SHA-256 (평문은 소스에도 DB에도 두지 않는다)
+   2026-11-28 — 4자리 숫자 PIN 을 관리자 암호(문자·기호 포함)로 바꿨다. */
+var DEFAULT_PIN_HASH = "36c3d0d67a8be4415b438ec9121fade6f2fdb8e5ea4d79df4560dadcf9458fdb";
 
 /* 화면 링크(카카오톡 복사 문구에 넣는 게시판 주소)
    · 지금 열려 있는 화면 기준 — 원본 …/grandfirst-board/ , 카피본 …/grandfirst-board/sandbox/
@@ -58,7 +59,7 @@ var DEFAULT_CONFIG = {
 var App = (function () {
   /* ---------- state ---------- */
   var FAC = null;                       // 시설 데이터 (data.json): 동/코어/게시판
-  var CFG = null;                       // 담당자·PIN 설정 (Firebase board/config)
+  var CFG = null;                       // 담당자·관리자 암호 설정 (Firebase board/config)
   var NOTICES = [];                     // 게시물 배열 (Firebase board/notices)
   var ALERTS = [];                      // 07시 제거 알림 (Firebase board/daily_alerts), 최신순
   var BYID = {};                        // id → notice
@@ -553,7 +554,7 @@ var App = (function () {
       }
     } catch (e) {}
     try { FONT_LG = localStorage.getItem(LS_PREFIX + "fontLg") === "1"; } catch (e) {}
-    /* 테스트용 카피본은 PIN 없이 항상 Admin — 눌러 보는 사람이 바로 모든 기능을 쓸 수 있다 */
+    /* 테스트용 카피본은 암호 없이 항상 Admin — 눌러 보는 사람이 바로 모든 기능을 쓸 수 있다 */
     if (SANDBOX) {
       SESSION.role = "admin";
       SESSION.admin = ADMIN_LABEL;
@@ -595,6 +596,14 @@ var App = (function () {
     if (SANDBOX) { SESSION.role = "admin"; SESSION.admin = ADMIN_LABEL; saveSession(); render(); cb(); return; }
     openAdminLogin(cb);
   }
+  /* C.R.U.D·관리 기능은 전부 관리자 전용 — 저장 직전에 한 번 더 막는다
+     (버튼을 숨겨 두어도 화면·기기 저장이 남아 있는 경우가 있어 실행 지점에서 확인) */
+  function isAdmin() { return SESSION.role === "admin"; }
+  function adminOnly(what) {
+    if (isAdmin()) return true;
+    toast(what + " — 관리자 인증 후 사용할 수 있습니다");
+    return false;
+  }
   function openWhoSheet(onDone) {
     var html = '<p class="f-hint" style="margin:0 2px 10px">게시·제거 체크는 담당자 확인 후 기록됩니다. 내 조와 구역을 고르세요. (이 기기에 기억됩니다)</p>';
     html += '<div class="pick">';
@@ -632,58 +641,57 @@ var App = (function () {
 
   async function hashPin(pin) {
     if (!window.crypto || !crypto.subtle) return null;
-    var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(PIN_SALT + pin));
+    var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ADMIN_PW_SALT + pin));
     return Array.prototype.map.call(new Uint8Array(buf), function (b) {
       return b.toString(16).padStart(2, "0");
     }).join("");
   }
 
   function openAdminLogin(onDone) {
-    var html = '<p class="f-hint" style="margin:0 2px 6px">관리자(' + esc(((CFG && CFG.admins) || []).join("·")) + ')만 등록·수정·삭제할 수 있습니다. PIN 4자리를 입력하세요.</p>';
+    openSheet({ title: "관리자 인증", sub: "관리자 암호", html: adminLoginHtml(), form: true });
+    if (!SESSION.admin) SESSION.admin = ((CFG && CFG.admins) || [])[0] || "";
+    pendingAdminCb = onDone || null;
+    pwTry = 0;
+    setTimeout(function () {
+      var el = document.getElementById("pwView");
+      if (el) el.focus();
+    }, 260);
+  }
+  /* 관리자 암호 입력 — 2026-11-28 부터 4자리 숫자가 아니라 문자·기호가 섞인 암호를 받는다 */
+  function adminLoginHtml() {
+    var html = '<p class="f-hint" style="margin:0 2px 6px">게시물 등록·수정·기한 변경·삭제·이동은 관리자만 할 수 있습니다. 관리자 암호를 입력하세요.</p>';
     html += '<div class="f-chips" style="margin:8px 0 6px">';
-    (CFG.admins || []).forEach(function (a) {
+    ((CFG && CFG.admins) || []).forEach(function (a) {
       html += '<button class="f-chip' + (a === SESSION.admin ? " on" : "") + '" data-act="pick-admin" data-name="' + esc(a) + '">' + esc(a) + "</button>";
     });
     html += "</div>";
-    html += '<input class="pin-dot" id="pinView" readonly value="" style="width:100%;letter-spacing:10px;text-align:center" inputmode="numeric" aria-label="PIN">';
-    html += '<div class="keypad">';
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9"].forEach(function (k) {
-      html += '<button class="key" data-act="pin-key" data-k="' + k + '">' + k + "</button>";
-    });
-    html += '<button class="key" data-act="pin-key" data-k="del">⌫</button>';
-    html += '<button class="key" data-act="pin-key" data-k="0">0</button>';
-    html += '<button class="key" data-act="pin-submit">확인</button>';
-    html += "</div>";
-    openSheet({ title: "관리자 인증", sub: "PIN 4자리", html: html, form: true });
-    pinBuf = "";
-    if (!SESSION.admin) SESSION.admin = (CFG.admins || [])[0] || "";
-    pendingAdminCb = onDone || null;
+    html += '<input type="password" class="f-in" id="pwView" value="" autocomplete="current-password" ' +
+      'placeholder="관리자 암호" aria-label="관리자 암호" ' +
+      'style="width:100%;text-align:center;font-size:1rem;letter-spacing:2px;padding:12px 14px">';
+    html += '<div class="f-hint" style="margin:6px 2px 0">영문·숫자·기호를 그대로 입력합니다. (기기에 저장하지 않습니다)</div>';
+    html += '<button class="btn solid wide" data-act="pw-submit" style="margin-top:10px">확인</button>';
+    return html;
   }
-  var pinBuf = "";
+  var pwTry = 0;
   var pendingAdminCb = null;
 
-  function pinKey(k) {
-    if (k === "del") pinBuf = pinBuf.slice(0, -1);
-    else if (pinBuf.length < 4) pinBuf += k;
-    var v = document.getElementById("pinView");
-    if (v) v.value = pinBuf.replace(/./g, "●");
-    if (pinBuf.length === 4) setTimeout(pinSubmit, 120);
-  }
-  async function pinSubmit() {
-    if (pinBuf.length !== 4) { toast("PIN 4자리를 입력하세요"); return; }
-    var h = await hashPin(pinBuf);
-    var ok = h && (h === (CFG.pinHash || DEFAULT_PIN_HASH));
+  async function pwSubmit() {
+    var el = document.getElementById("pwView");
+    var pw = el ? String(el.value || "") : "";
+    if (!pw) { toast("관리자 암호를 입력하세요"); return; }
+    var h = await hashPin(pw);
+    if (!h) { toast("이 브라우저에서는 관리자 인증을 할 수 없습니다 (보안 연결 확인)"); return; }
+    var ok = (h === (((CFG && CFG.pinHash) || DEFAULT_PIN_HASH)));
     if (!ok) {
-      pinBuf = "";
-      var v = document.getElementById("pinView");
-      if (v) v.value = "";
-      toast("PIN이 맞지 않습니다");
+      pwTry++;
+      if (el) { el.value = ""; el.focus(); }
+      toast(pwTry >= 3 ? "암호가 맞지 않습니다 (" + pwTry + "회)" : "암호가 맞지 않습니다");
       return;
     }
     SESSION.role = "admin";
-    if (!SESSION.admin) SESSION.admin = (CFG.admins || [])[0] || "관리자";
+    if (!SESSION.admin) SESSION.admin = ((CFG && CFG.admins) || [])[0] || "관리자";
     saveSession();
-    pinBuf = "";
+    pwTry = 0;
     toast("관리자로 인증되었습니다");
     closeSheet();
     var cb = pendingAdminCb; pendingAdminCb = null;
@@ -847,15 +855,15 @@ var App = (function () {
     var val = (document.getElementById("dlNew") || {}).value;
     var note = ((document.getElementById("dlNote") || {}).value || "").trim();
     if (!val) { toast("새 기한을 선택하세요"); return; }
-    requireGuard(function (a) {
+    requireAdmin(function () {
       var updates = {};
       updates[DB_ROOT + "/notices/" + id + "/deadline"] = val;
       updates[DB_ROOT + "/notices/" + id + "/permanent"] = false;
       updates[DB_ROOT + "/notices/" + id + "/updatedAt"] = nowTs();
-      updates[DB_ROOT + "/notices/" + id + "/deadlineChanged"] = { by: a.name, at: nowTs(), from: n.deadline || "", to: val, note: note };
+      updates[DB_ROOT + "/notices/" + id + "/deadlineChanged"] = { by: SESSION.admin || "관리자", at: nowTs(), from: n.deadline || "", to: val, note: note };
       fbUpdate(updates).then(function (ok) {
         if (!ok) return;
-        writeLog({ noticeId: id, type: "deadline", by: a.name, team: a.team, at: nowTs(), note: note, from: n.deadline, to: val, title: n.title });
+        writeLog({ noticeId: id, type: "deadline", by: SESSION.admin || "관리자", team: "관리", at: nowTs(), note: note, from: n.deadline, to: val, title: n.title });
         closeSheet();
         toast("기한을 " + dotDate(val) + "로 변경했습니다");
       });
@@ -866,6 +874,12 @@ var App = (function () {
   function openNoticeSheet(id) {
     var n = getNotice(id);
     if (!n) return;
+    openSheet({ title: "게시물 상세", sub: mmdd(n.postedAt) + " 게시", html: noticeSheetHtml(id) });
+  }
+  /* 상세 모달 내용 — 관리 기능(기한 변경·수정·제거 완료 처리·삭제·재등록)은 관리자에게만 보인다 */
+  function noticeSheetHtml(id) {
+    var n = getNotice(id);
+    if (!n) return "";
     var fl = flowOf(n);
     var flowPill = fl === "pending" ? '<span class="pill pending">게시 대기</span>'
       : fl === "attaching" ? '<span class="pill pending">게시 진행</span>'
@@ -900,20 +914,23 @@ var App = (function () {
 
     var btns = "";
     btns += '<div class="form-actions" style="flex-wrap:wrap">';
-    btns += '<button class="btn line" data-act="dl-open" data-id="' + esc(id) + '">기한 변경</button>';
-    if (SESSION.role === "admin") {
+    if (isAdmin()) {
+      btns += '<button class="btn line" data-act="dl-open" data-id="' + esc(id) + '">기한 변경</button>';
       btns += '<button class="btn soft" data-act="edit-notice" data-id="' + esc(id) + '">수정</button>';
       if (!isArchived(n)) {
         btns += '<button class="btn line" data-act="force-archive" data-id="' + esc(id) + '">제거 완료 처리</button>';
       }
       btns += '<button class="btn danger" data-act="del-notice" data-id="' + esc(id) + '">삭제</button>';
+    } else {
+      btns += '<div class="f-hint" style="width:100%;margin:0 2px 4px">기한 변경·수정·제거 완료 처리·삭제는 관리자 인증 후 사용할 수 있습니다.</div>' +
+        '<button class="btn solid wide" data-act="admin-login">관리자 인증 (암호)</button>';
     }
     btns += "</div>";
-    if (isArchived(n)) {
-      btns += '<div class="form-actions"><button class="btn solid" data-act="' + (SESSION.role === "admin" ? "repost" : "ask-admin") + '" data-id="' + esc(id) + '">신규 게시로 재등록</button></div>';
+    if (isArchived(n) && isAdmin()) {
+      btns += '<div class="form-actions"><button class="btn solid" data-act="repost" data-id="' + esc(id) + '">신규 게시로 재등록</button></div>';
     }
     html += btns;
-    openSheet({ title: "게시물 상세", sub: mmdd(n.postedAt) + " 게시", html: html });
+    return html;
   }
   function statusPill(n) {
     var st = statusOf(n);
@@ -1531,9 +1548,10 @@ var App = (function () {
     h += '<div class="task-row"><div class="team-tag">B조</div>' + FAC.zones.map(function (z) { return chkCell(n, kind, z.id, "B"); }).join("") + "</div>";
     /* 게시·제거 카드 모두 A·B조 아래에 외부업체 줄 */
     h += '<div class="task-row"><div class="team-tag ext">외부업체</div>' + FAC.zones.map(function (z) { return extCell(n, kind, z.id); }).join("") + "</div>";
+    /* 2026-11-28 — 기한 변경은 관리자 전용 (경비원은 상세만) */
     h += '<div class="task-foot">' +
       '<button class="mini-btn" data-act="open-notice" data-id="' + esc(n.id) + '">상세</button>' +
-      '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' +
+      (isAdmin() ? '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' : "") +
       "</div>";
     h += "</div>";
     return h;
@@ -1602,7 +1620,7 @@ var App = (function () {
     return '<div class="lockcard"><div style="font-size:1.35rem">🔒</div>' +
       '<div class="lk-t">' + esc(title) + "</div>" +
       '<div class="lk-s">' + desc + "</div>" +
-      '<button class="btn solid wide lk-b" data-act="admin-login">관리자 인증 (PIN)</button></div>';
+      '<button class="btn solid wide lk-b" data-act="admin-login">관리자 인증 (암호)</button></div>';
   }
   function renderCreate(tab) {
     var isA = SESSION.role === "admin";
@@ -1865,7 +1883,7 @@ var App = (function () {
     var h = "";
     if (!isA) {
       h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
-        "새 게시물 등록·삭제는 관리자(" + esc(((CFG && CFG.admins) || []).join("·")) + ")가 PIN 4자리로 인증한 뒤 사용합니다.<br>경비원은 조회와 게시·제거 체크를 바로 쓸 수 있습니다.");
+        "새 게시물 등록·수정·삭제·기한 변경은 관리자(" + esc(((CFG && CFG.admins) || []).join("·")) + ")가 암호로 인증한 뒤 사용합니다.<br>경비원은 조회와 구역별 게시·제거 체크를 바로 쓸 수 있습니다.");
       return h + createListHtml(false);
     }
     h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
@@ -2133,14 +2151,14 @@ var App = (function () {
   function applyPendingMove(id) {
     var mv = pendingById(id);
     if (!mv) return;
-    requireGuard(function (a) {
+    requireAdmin(function () {
       var res = pendingMoveUpdates(mv);
       if (res.error) { toast(res.error + " — 취소하고 다시 등록하세요"); return; }
       var updates = res.updates;
       fbUpdate(updates).then(function (ok) {
         if (!ok) return;
         writeLog({
-          noticeId: mv.noticeId, type: "move", by: (a && a.name) || "관리자", team: (a && a.team) || "",
+          noticeId: mv.noticeId, type: "move", by: SESSION.admin || "관리자", team: "관리",
           at: nowTs(), date: TODAY, title: mv.title,
           from: mv.fromText, to: targetText(res.dest), count: 1, via: "deploy"
         });
@@ -2317,8 +2335,10 @@ var App = (function () {
         '<div class="mvpend-body"><span class="mvpend-from">' + esc(m.fromText || "") + "</span>" +
         '<span class="mvpend-ar">→</span><span class="mvpend-to">' + esc(m.toText || "") + "</span></div>" +
         '<div class="mvpend-acts">' +
-        '<button class="mini-btn" data-act="mv-pending-cancel" data-id="' + esc(m.id) + '">취소</button>' +
-        '<button class="mini-btn primary" data-act="mv-pending-apply" data-id="' + esc(m.id) + '">이동 확정</button>' +
+        (isAdmin()
+          ? '<button class="mini-btn" data-act="mv-pending-cancel" data-id="' + esc(m.id) + '">취소</button>' +
+            '<button class="mini-btn primary" data-act="mv-pending-apply" data-id="' + esc(m.id) + '">이동 확정</button>'
+          : '<span class="mvhint">이동 확정·제거 취소는 관리자 인증 후 가능</span>') +
         "</div></div>";
     });
     return h + "</div>";
@@ -2424,7 +2444,7 @@ var App = (function () {
 
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>권한 구조</h3></div>' +
       '<table class="itable">' +
-      '<tr><th>관리자</th><td>게시물 등록·수정·삭제·이동, 기한 변경, 담당자·PIN 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">PIN 4자리 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
+      '<tr><th>관리자</th><td>게시물 등록·수정·삭제·이동, 기한 변경, 담당자·암호 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">관리자 암호 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
       '<tr><th>경비원</th><td>조회, 구역별 게시·제거 체크 (본인 기록으로 남음)<br><span style="color:var(--muted);font-weight:600">A·B조 × 정문/후문A/후문B 담당자로 선택</span></td></tr>' +
       '<tr><th>조회</th><td>누구나 읽기 가능 (기록·수정 불가)</td></tr>' +
       "</table></div>";
@@ -2438,7 +2458,7 @@ var App = (function () {
           esc(guardName("A", z.id) || "미지정") + " · B조 " + esc(guardName("B", z.id) || "미지정") + "</span></td></tr>";
       }).join("") +
       "</table>" +
-      (isAdmin ? "" : '<div class="f-hint" style="margin-top:8px">담당자·PIN 변경은 관리자 인증 후 가능합니다.</div>') + "</div>";
+      (isAdmin ? "" : '<div class="f-hint" style="margin-top:8px">담당자·암호 변경은 관리자 인증 후 가능합니다.</div>') + "</div>";
 
     if (isAdmin) {
       h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>데이터 관리</h3></div>' +
@@ -3321,7 +3341,7 @@ var App = (function () {
           (n.memo ? '<div class="notice-memo">' + esc(n.memo) + "</div>" : "") +
           '<div style="display:flex;gap:6px;margin-top:8px">' +
           '<button class="mini-btn" data-act="open-notice" data-id="' + esc(n.id) + '">상세</button>' +
-          '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' +
+          (isAdmin() ? '<button class="mini-btn" data-act="dl-open" data-id="' + esc(n.id) + '">기한 변경</button>' : "") +
           "</div></div>" +
           (n.photo
             ? '<button class="thumb" data-act="zoom" data-src="' + esc(n.photo) + '" data-cap="' + esc(n.title) + '"><img src="' + esc(n.photo) + '" alt=""></button>'
@@ -4067,10 +4087,10 @@ var App = (function () {
       html += "</div>";
     });
     html += '<div class="f-hint">이름을 바꾸면 게시·제거 담당자 표시가 함께 바뀝니다.</div></div>';
-    html += '<div class="fld"><label>관리자 PIN 변경 (선택)</label><div class="f-row">' +
-      '<input class="f-in" id="sPin1" inputmode="numeric" maxlength="4" placeholder="새 PIN 4자리">' +
-      '<input class="f-in" id="sPin2" inputmode="numeric" maxlength="4" placeholder="한 번 더"></div>' +
-      '<div class="f-hint">비워두면 그대로 유지됩니다. 기본 PIN은 7554입니다.</div></div>';
+    html += '<div class="fld"><label>관리자 암호 변경 (선택)</label><div class="f-row">' +
+      '<input class="f-in" type="password" id="sPin1" autocomplete="new-password" maxlength="40" placeholder="새 암호">' +
+      '<input class="f-in" type="password" id="sPin2" autocomplete="new-password" maxlength="40" placeholder="한 번 더"></div>' +
+      '<div class="f-hint">비워두면 그대로 유지됩니다. 4자 이상, 영문·숫자·기호 모두 됩니다. 암호는 평문이 아니라 해시로 저장됩니다.</div></div>';
     html += '<div class="form-actions"><button class="btn line" data-act="close-sheet" style="flex:1">취소</button>' +
       '<button class="btn solid" data-act="s-save" style="flex:1.3">설정 저장</button></div>';
     html += '<div style="margin-top:18px;border-top:1px dashed var(--line);padding-top:12px">' +
@@ -4078,7 +4098,7 @@ var App = (function () {
       '<button class="btn line wide" data-act="export-json" style="margin-bottom:6px">전체 데이터 내보내기 (JSON 복사)</button>' +
       '<button class="btn danger wide" data-act="del-test">테스트 데이터 일괄 삭제</button>' +
       '<div class="f-hint" style="margin-top:6px">Database: grandfirst-board-default-rtdb (asia-southeast1) · Spark 무료 요금제</div></div>';
-    openSheet({ title: "관리자 설정", sub: "담당자·PIN·데이터", html: html, form: true });
+    openSheet({ title: "관리자 설정", sub: "담당자·암호·데이터", html: html, form: true });
   }
   async function saveSettings() {
     var admins = [
@@ -4090,20 +4110,20 @@ var App = (function () {
       var t = inp.getAttribute("data-team"), z = inp.getAttribute("data-zone");
       teams[t].zones[z] = (inp.value || "").trim();
     });
-    var p1 = ((document.getElementById("sPin1") || {}).value || "").trim();
-    var p2 = ((document.getElementById("sPin2") || {}).value || "").trim();
+    var p1 = ((document.getElementById("sPin1") || {}).value || "");
+    var p2 = ((document.getElementById("sPin2") || {}).value || "");
     var pinHash = CFG.pinHash || DEFAULT_PIN_HASH;
     if (p1 || p2) {
-      if (!/^\d{4}$/.test(p1)) { toast("PIN은 숫자 4자리로 입력하세요"); return; }
-      if (p1 !== p2) { toast("PIN 확인이 일치하지 않습니다"); return; }
+      if (p1.length < 4) { toast("암호는 4자 이상으로 입력하세요"); return; }
+      if (p1 !== p2) { toast("암호 확인이 일치하지 않습니다"); return; }
       pinHash = await hashPin(p1);
-      if (!pinHash) { toast("이 브라우저에서는 PIN을 저장할 수 없습니다"); return; }
+      if (!pinHash) { toast("이 브라우저에서는 암호를 저장할 수 없습니다"); return; }
     }
     var next = Object.assign({}, CFG, { admins: admins, teams: teams, pinHash: pinHash, updatedAt: nowTs() });
     fbSet(DB_ROOT + "/config", next).then(function (ok) {
       if (!ok) return;
       closeSheet();
-      toast(p1 ? "설정과 PIN을 저장했습니다" : "설정을 저장했습니다");
+      toast(p1 ? "설정과 암호를 저장했습니다" : "설정을 저장했습니다");
     });
   }
 
@@ -4541,8 +4561,7 @@ var App = (function () {
           b.classList.toggle("on", b.getAttribute("data-name") === SESSION.admin);
         });
       }
-      else if (act === "pin-key") { pinKey(el.dataset.k); }
-      else if (act === "pin-submit") { pinSubmit(); }
+      else if (act === "pw-submit") { pwSubmit(); }
       else if (act === "chk") {
         toggleZoneCheck(el.dataset.id, el.dataset.kind, el.dataset.zone, el.dataset.team);
       }
@@ -4553,34 +4572,38 @@ var App = (function () {
         toggleZoneCheck(el.dataset.id, el.dataset.kind, el.dataset.zone, el.dataset.team);
       }
       else if (act === "open-notice") { closeSheet(); setTimeout(function () { openNoticeSheet(el.dataset.id); }, 200); }
-      else if (act === "dl-open") { closeSheet(); setTimeout(function () { openDeadlineSheet(el.dataset.id); }, 200); }
-      else if (act === "dl-save") { saveDeadline(el.dataset.id); }
+      else if (act === "dl-open") { requireAdmin(function () { openDeadlineSheet(el.dataset.id); }); }
+      else if (act === "dl-save") { if (adminOnly("기한 변경")) saveDeadline(el.dataset.id); }
       else if (act === "zoom") { openLightbox(el.dataset.src, el.dataset.cap, el.dataset.dl); }
       else if (act === "new-notice") { requireAdmin(function () { openNoticeForm({}); }); }
       else if (act === "edit-notice") {
         var n = getNotice(el.dataset.id);
-        closeSheet();
-        setTimeout(function () { openNoticeForm(n || {}); }, 200);
+        requireAdmin(function () {
+          closeSheet();
+          setTimeout(function () { openNoticeForm(n || {}); }, 200);
+        });
       }
       else if (act === "del-notice") { requireAdmin(function () { deleteNotice(el.dataset.id); }); }
       else if (act === "force-archive") { requireAdmin(function () { forceArchive(el.dataset.id); }); }
       else if (act === "repost") {
         var src = getNotice(el.dataset.id);
-        closeSheet();
-        setTimeout(function () {
-          openNoticeForm({
-            title: src.title, category: src.category, memo: src.memo,
-            postedAt: TODAY, deadline: "", permanent: false,
-            targets: src.targets, photo: src.photo
-          });
-          toast("새 게시물로 다시 등록합니다 · 기한을 확인하세요");
-        }, 220);
+        requireAdmin(function () {
+          closeSheet();
+          setTimeout(function () {
+            openNoticeForm({
+              title: src.title, category: src.category, memo: src.memo,
+              postedAt: TODAY, deadline: "", permanent: false,
+              targets: src.targets, photo: src.photo
+            });
+            toast("새 게시물로 다시 등록합니다 · 기한을 확인하세요");
+          }, 220);
+        });
       }
       else if (act === "ask-admin") { requireAdmin(function () { openNoticeSheet(el.dataset.id); }); }
       else if (act === "settings") { requireAdmin(function () { openSettings(); }); }
-      else if (act === "s-save") { saveSettings(); }
+      else if (act === "s-save") { if (adminOnly("설정 저장")) saveSettings(); }
       else if (act === "del-test") { requireAdmin(function () { deleteTestData(); }); }
-      else if (act === "export-json") { exportJson(); }
+      else if (act === "export-json") { if (adminOnly("데이터 내보내기")) exportJson(); }
       else if (act === "cleanup") { toast("게시·제거 탭에서 체크하세요. 도면은 게시 후 표시됩니다."); }
       else if (act === "arch-date") { ARCH_FILTER.date = el.dataset.v; render(); }
       else if (act === "arch-slot") { ARCH_FILTER.slot = el.dataset.v; render(); }
@@ -4643,7 +4666,7 @@ var App = (function () {
       else if (act === "nf-lslot") { nfEnsure(); NF.lobbySlot = el.dataset.v; refreshCreate(); }
       else if (act === "nf-eslot") { nfEnsure(); NF.evSlot = el.dataset.v; refreshCreate(); }
       else if (act === "nf-nodeadline") { nfEnsure(); NF.noDeadline = !NF.noDeadline; refreshCreate(); }
-      else if (act === "nf-save") { saveNewNotice(); }
+      else if (act === "nf-save") { if (adminOnly("게시물 등록")) saveNewNotice(); }
       else if (act === "nf-pick") { nfEnsure(); NF.picked[el.dataset.id] = !NF.picked[el.dataset.id]; refreshCreateList(); }
       else if (act === "nf-pick-all") {
         nfEnsure();
@@ -4732,7 +4755,7 @@ var App = (function () {
         var prev = document.getElementById("fPhotoPrev");
         if (prev) prev.textContent = "사진 없음";
       }
-      else if (act === "f-save") { saveNoticeForm(); }
+      else if (act === "f-save") { if (adminOnly("게시물 수정")) saveNoticeForm(); }
       else if (act === "cf-close") { var cf = document.querySelector(".copyfallback"); if (cf) cf.remove(); }
     });
 
@@ -4808,6 +4831,14 @@ var App = (function () {
         if (HIST.to < HIST.from) HIST.from = HIST.to;
         render();
       }
+    });
+
+    /* 관리자 암호 입력에서 Enter 로 확인 */
+    document.addEventListener("keydown", function (e) {
+      if (!e.target || e.target.id !== "pwView") return;
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      pwSubmit();
     });
 
     /* 키보드로 표의 날짜 행을 고르고 Enter/스페이스로 상세 화면 열기 */
@@ -4981,6 +5012,14 @@ var App = (function () {
       html: function () { return renderPortal(); },
       tasks: portalTasks, zone: zoneStateLabel, stats: portalStats
     },
+    /* 관리자 인증·권한 검증용 (암호 평문은 테스트에도 넣지 않는다) */
+    auth: {
+      salt: ADMIN_PW_SALT, defaultHash: DEFAULT_PIN_HASH, hash: hashPin,
+      loginHtml: adminLoginHtml, submit: pwSubmit,
+      adminOnly: adminOnly, isAdmin: isAdmin, requireAdmin: requireAdmin
+    },
+    /* 게시물 상세 모달(관리 버튼 노출 여부) 검증용 */
+    detail: noticeSheetHtml,
     /* 첫 진입 팝업(동·층별 게시판 현황 → 오늘 일일 알림) 검증용 */
     welcome: {
       board: welBoardHtml, alert: welAlertHtml,

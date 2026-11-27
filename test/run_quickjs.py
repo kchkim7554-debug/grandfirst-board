@@ -34,6 +34,7 @@ TEST_FILES = [
     "test/ocr.test.js",
     "test/portal.test.js",
     "test/welcome.test.js",
+    "test/admin.test.js",
     "test/sandbox.test.js",
 ]
 

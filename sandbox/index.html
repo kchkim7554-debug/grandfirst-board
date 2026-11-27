@@ -8,10 +8,10 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
-<link rel="icon" href="icons/icon.svg?v=20261128d" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261128d" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261128d" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128d">
+<link rel="icon" href="icons/icon.svg?v=20261128e" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128e" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128e" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128e">
 <link rel="manifest" href="sandbox/manifest.json">
 <title>🧪 테스트용 (카피본) · 게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
@@ -434,18 +434,6 @@ button.photo-prev .z-tag{
   font-weight:700;color:var(--ink-2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .pick-btn.on{background:var(--navy);border-color:var(--navy);color:#fff;}
-.pin-row{display:flex;gap:6px;justify-content:center;margin:8px 0 4px;}
-.pin-dot{
-  width:44px;height:52px;border:1px solid var(--line);border-radius:11px;background:#fff;
-  font-size:1.3rem;font-weight:800;text-align:center;letter-spacing:2px;color:var(--ink);
-}
-.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px;}
-.key{
-  border:1px solid var(--line);background:#fff;border-radius:11px;min-height:48px;font-size:1.05rem;
-  font-weight:800;color:var(--ink);
-}
-.key:active{background:#eef3f9;}
-.key.wide{grid-column:span 2;}
 
 /* ---------- toolbar ---------- */
 .toolbar{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none;}
@@ -1358,7 +1346,7 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128d" alt="제일풍경채" width="201" height="112">
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128e" alt="제일풍경채" width="201" height="112">
       <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
@@ -1453,7 +1441,7 @@ html.fs-lg .q{min-height:88px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script src="sandbox/env.js"></script>
-<script src="app.js?v=20261128d"></script>
+<script src="app.js?v=20261128e"></script>
 <script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

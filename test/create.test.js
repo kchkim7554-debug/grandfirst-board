@@ -244,7 +244,12 @@ console.log("\n[9] [이동] 화면 — ① 대상 ② 이동전 ③ 이동후 ·
   ok("배포에서 확정 안내", has(h2, "배포") && has(h2, "이동 확정"));
 
   var dep = M.pendingSection();
-  ok("배포 탭 이동 대기 카드", has(dep, "이동 대기") && has(dep, "이동 확정") && has(dep, 'data-act="mv-pending-apply"'));
+  ok("배포 탭 이동 대기 카드", has(dep, "이동 대기"));
+  ok("비관리자에게는 [이동 확정] 버튼이 없다", !has(dep, 'data-act="mv-pending-apply"') && has(dep, "관리자 인증 후 가능"));
+  API.state().SESSION.role = "admin";
+  var dep2 = M.pendingSection();
+  ok("관리자: 배포 탭 카드에 [이동 확정]", has(dep2, "이동 대기") && has(dep2, 'data-act="mv-pending-apply"'));
+  API.state().SESSION.role = null;
 }
 
 /* ---------- 10. 느린 회선: 시설 데이터보다 게시물이 먼저 와도 멈추지 않는다 ---------- */
