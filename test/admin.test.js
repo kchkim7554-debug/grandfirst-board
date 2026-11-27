@@ -2,7 +2,8 @@
 /* 관리자 암호·권한 검증 — 2026-11-28 사용자 요청
    ① 관리자 암호를 4자리 PIN 에서 문자·기호가 섞인 암호로 바꿨다 (해시만 저장)
    ② C.R.U.D·관리 기능(등록·수정·기한 변경·삭제·이동 확정·설정)은 관리자 전용
-   ③ 경비원은 조회와 구역별 게시·제거 체크를 그대로 쓸 수 있다
+   ③ C.R.U.D·관리 기능(등록·수정·기한 변경·삭제·이동 확정·설정)은 관리자 전용
+   ④ 구역별 게시·제거 체크(외부업체 포함)도 관리자 전용 — 일반 화면은 조회 전용
    실행: python3 test/run_quickjs.py   (board/ 폴더에서)
 
    ※ 암호 평문은 소스에도 테스트에도 남기지 않는다 (공개 저장소). 해시로만 확인한다. */
@@ -69,8 +70,8 @@ console.log("\n[3] 게시물 상세 — 관리 기능은 관리자만");
   SES.role = null;
 }
 
-/* ---------- 4. 배포·제거 카드 — 구역 체크는 경비원 권한 ---------- */
-console.log("\n[4] 배포·제거 카드 — 구역 체크는 그대로, 기한 변경은 관리자만");
+/* ---------- 4. 배포·제거 카드 — 구역 체크도 관리자 전용 ---------- */
+console.log("\n[4] 배포·제거 카드 — 구역 체크·기한 변경 모드 관리자 전용");
 {
   var N2 = {
     id: "AD2", title: "체크 시험", status: "pending_attach", postedAt: "2026-11-20", deadline: "2026-12-01",
@@ -83,12 +84,21 @@ console.log("\n[4] 배포·제거 카드 — 구역 체크는 그대로, 기한 
   var card = API.deploy.card(O.load([N2], JSON.parse(JSON.stringify(FAC)))[0] || N2, "attach");
   ok("비관리자 카드: [기한 변경] 없음", !has(card, 'data-act="dl-open"'));
   ok("비관리자 카드: [상세]는 있다", has(card, 'data-act="open-notice"'));
-  ok("경비원 구역 체크(A·B조)는 그대로", count(card, /data-act="chk"/g) + count(card, /data-act="chk-undo"/g) >= 3);
-  ok("외부업체 체크 칸도 그대로", has(card, 'data-act="chk-ext"'));
+  ok("비관리자: A·B조 구역 칸은 누를 수 없다", !has(card, 'data-act="chk"') && !has(card, 'data-act="chk-undo"'));
+  ok("비관리자: 외부업체 칸도 누를 수 없다", !has(card, 'data-act="chk-ext"'));
+  ok("비관리자: 잠금 칸으로 상태만 보인다(9칸)", count(card, /data-act="chk-lock"/g) === 9);
+  ok("비관리자: 잠금 칸에 자물쇠 표시", has(card, 'lock"') && has(card, "관리자 전용"));
+  ok("비관리자: canCheck = false", API.deploy.canCheck() === false);
+  ok("비관리자: 체크 함수는 저장 전에 막힌다", API.deploy.toggle("AD2", "attach", "front", "A") === false
+    && API.deploy.toggleExt("AD2", "attach", "front") === false);
 
   SES.role = "admin";
   var card2 = API.deploy.card(O.load([N2], JSON.parse(JSON.stringify(FAC)))[0] || N2, "attach");
   ok("관리자 카드: [기한 변경] 있다", has(card2, 'data-act="dl-open"'));
+  ok("관리자 카드: 구역 체크(A·B조)를 누를 수 있다", count(card2, /data-act="chk"/g) + count(card2, /data-act="chk-undo"/g) >= 3);
+  ok("관리자 카드: 외부업체 체크 칸을 누를 수 있다", count(card2, /data-act="chk-ext"/g) === 3);
+  ok("관리자 카드: 잠금 칸은 없다", !has(card2, 'data-act="chk-lock"'));
+  ok("관리자: canCheck = true", API.deploy.canCheck() === true);
   SES.role = null;
 }
 

@@ -605,7 +605,7 @@ var App = (function () {
     return false;
   }
   function openWhoSheet(onDone) {
-    var html = '<p class="f-hint" style="margin:0 2px 10px">게시·제거 체크는 담당자 확인 후 기록됩니다. 내 조와 구역을 고르세요. (이 기기에 기억됩니다)</p>';
+    var html = '<p class="f-hint" style="margin:0 2px 10px">일반 화면은 <b>조회 전용</b>입니다. 내 조·구역을 고르면 화면에 이름만 표시되고, 게시·제거 체크는 관리자 인증 후에 쓸 수 있습니다. (이 기기에 기억됩니다)</p>';
     html += '<div class="pick">';
     ["A", "B"].forEach(function (t) {
       html += '<div class="pick-row"><div class="pick-head">' + t + "조</div>";
@@ -621,7 +621,7 @@ var App = (function () {
     html += '<div style="display:flex;gap:8px;margin-top:14px">' +
       '<button class="btn line" data-act="who-logout" style="flex:1">선택 해제</button>' +
       '<button class="btn soft" data-act="admin-login" style="flex:1">관리자</button></div>';
-    openSheet({ title: "담당자 선택", sub: "읽기는 누구나 가능합니다", html: html });
+    openSheet({ title: "담당자 선택", sub: "조회 전용 · 체크는 관리자 인증 후", html: html });
     pendingWhoCb = onDone || null;
   }
   var pendingWhoCb = null;
@@ -659,7 +659,7 @@ var App = (function () {
   }
   /* 관리자 암호 입력 — 2026-11-28 부터 4자리 숫자가 아니라 문자·기호가 섞인 암호를 받는다 */
   function adminLoginHtml() {
-    var html = '<p class="f-hint" style="margin:0 2px 6px">게시물 등록·수정·기한 변경·삭제·이동은 관리자만 할 수 있습니다. 관리자 암호를 입력하세요.</p>';
+    var html = '<p class="f-hint" style="margin:0 2px 6px">게시물 등록·수정·삭제·이동과 구역별 게시·제거 체크는 관리자만 할 수 있습니다. 관리자 암호를 입력하세요.</p>';
     html += '<div class="f-chips" style="margin:8px 0 6px">';
     ((CFG && CFG.admins) || []).forEach(function (a) {
       html += '<button class="f-chip' + (a === SESSION.admin ? " on" : "") + '" data-act="pick-admin" data-name="' + esc(a) + '">' + esc(a) + "</button>";
@@ -730,6 +730,8 @@ var App = (function () {
     return "";
   }
   function toggleZoneCheck(id, kind, zone, team) {
+    /* 2026-11-28 — 구역별 게시·제거 체크는 관리자 전용 (저장 직전 이중 차단) */
+    if (!adminOnly("게시·제거 체크")) return false;
     var n = getNotice(id);
     if (!n) return;
     var existing = zoneCheck(n, kind, zone);
@@ -794,6 +796,8 @@ var App = (function () {
 
   /* 외부업체 게시 체크 (담당자 선택 없이 바로 기록 · 해제는 관리자만) */
   function toggleExternalCheck(id, kind, zone) {
+    /* 2026-11-28 — 외부업체 체크도 관리자 전용 */
+    if (!adminOnly(EXT_LABEL + " 체크")) return false;
     var n = getNotice(id);
     if (!n) return;
     var st = zoneCheck(n, kind, zone);
@@ -974,7 +978,7 @@ var App = (function () {
     } else if (s.pending > 0) {
       cls = "warn";
       title = "게시할 게시물 " + s.pending + "건";
-      sub = "관리자가 등록한 게시물이 게시를 기다리고 있습니다. 게시 체크 후 게시판에 반영됩니다.";
+      sub = "관리자가 등록한 게시물이 게시를 기다리고 있습니다." + (isAdmin() ? " 게시 체크 후 게시판에 반영됩니다." : "");
     } else {
       cls = "ok";
       title = "오늘 제거 대상 없음";
@@ -989,7 +993,7 @@ var App = (function () {
       '<button class="btn primary" data-act="copy" data-kind="today">' +
       '<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>' +
       "오늘 제거 목록 복사</button>" +
-      '<button class="btn ghost" data-act="go" data-go="#/deploy">체크하러 가기</button>' +
+      '<button class="btn ghost" data-act="go" data-go="#/deploy">' + (isAdmin() ? "체크하러 가기" : "현황 보기") + "</button>" +
       "</div></section>";
   }
   function renderZones() {
@@ -1163,7 +1167,9 @@ var App = (function () {
       "</div>" +
       '<button class="t-cta" data-act="go" data-go="#/deploy">' +
       (removeToday ? '<span class="k">' + removeToday + "건</span> " : "") +
-      (removeToday ? "제거 체크 하러 가기" : "게시·제거 체크 하러 가기") +
+      (isAdmin()
+        ? (removeToday ? "제거 체크 하러 가기" : "게시·제거 체크 하러 가기")
+        : (removeToday ? "제거 현황 보기" : "게시·제거 현황 보기")) +
       '<span class="arw">›</span></button></section>';
 
     /* 2026-11-26 사용자 요청 — 빠른 메뉴를 한 단 내려 '오늘 요약 → 지금 처리할 일 → 빠른 메뉴' 순서로 */
@@ -1174,7 +1180,9 @@ var App = (function () {
       h += '<div class="empty-box" style="border-style:solid;background:var(--green-bg);color:var(--green);border-color:var(--green-line);font-weight:700">지금 처리할 게시물이 없습니다.<br><span style="font-size:.76rem;font-weight:600;opacity:.85">게시·제거가 모두 끝났습니다.</span></div>';
     } else {
       h += '<div class="ptasks">' + tasks.slice(0, 3).map(portalTaskHtml).join("") + "</div>";
-      h += '<p class="pt-legend">구역마다 A조·B조·외부업체 중 <b>한 곳만 체크하면 그 구역은 완료</b>입니다.</p>';
+      h += '<p class="pt-legend">' + (isAdmin()
+        ? "구역마다 A조·B조·외부업체 중 <b>한 곳만 체크하면 그 구역은 완료</b>입니다."
+        : "일반 화면은 <b>조회 전용</b>입니다 (체크·관리는 관리자 인증 후 가능).") + "</p>";
     }
     h += "</section>";
 
@@ -1488,6 +1496,16 @@ var App = (function () {
   }
 
   /* ---------- tasks view (게시·제거 체크) ---------- */
+  /* 2026-11-28 사용자 요청 — 구역별 게시·제거 체크도 관리자 전용으로 잠갔다.
+     비관리자(경비원·조회) 화면에서는 기록 상태만 그대로 보여 주고,
+     누르면 저장하지 않고 관리자 인증 안내만 띄운다. */
+  function chkLocked(n, kind, zone, team, cls, glyph, nameText, tip) {
+    return '<button class="chk ' + cls + ' lock" data-act="chk-lock"' +
+      ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '"' +
+      ' aria-label="' + esc(zoneShort(zone) + " " + tip + " · 관리자 전용") + '">' +
+      '<span class="box">' + glyph + '</span><span class="zn">' + esc(zoneShort(zone)) + '</span>' +
+      '<span class="nm">' + esc(nameText) + "</span></button>";
+  }
   function chkCell(n, kind, zone, team) {
     var zs = applicableZones(n);
     if (zs.indexOf(zone) < 0) {
@@ -1502,10 +1520,13 @@ var App = (function () {
         '<span class="nm">' + esc(EXT_LABEL) + "</span></div>";
     }
     if (st && (checkedTeam === team || (!checkedTeam && team === "A"))) {
+      var who = (st.by || gname) + " " + tsText(st.at).slice(-5);
+      if (!isAdmin()) return chkLocked(n, kind, zone, team, "on", "☑", who, who + " " + (kind === "attach" ? "게시" : "제거") + " 완료");
       return '<button class="chk on" data-act="chk-undo" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '">' +
         '<span class="box">☑</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
         '<span class="nm">' + esc(st.by || gname) + " " + tsText(st.at).slice(-5) + "</span></button>";
     }
+    if (!isAdmin()) return chkLocked(n, kind, zone, team, "off", "☐", gname || "-", kind === "attach" ? "게시 체크" : "제거 체크");
     return '<button class="chk off" data-act="chk" data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '" data-team="' + team + '">' +
       '<span class="box">☐</span><span class="zn">' + esc(zoneShort(zone)) + "</span>" +
       '<span class="nm">' + esc(gname || "-") + "</span></button>";
@@ -1526,6 +1547,10 @@ var App = (function () {
     var tip = on ? EXT_LABEL + " " + verb + " 완료"
       : other ? (st.by || "담당") + " " + verb + " 완료"
         : (postedExt ? "게시도 " + EXT_LABEL + " · 누르면 " + EXT_LABEL + " " + verb : EXT_LABEL + "로 " + verb);
+    if (!isAdmin()) {
+      return chkLocked(n, kind, zone, "EXT", cls, (on || other ? "☑" : "☐"),
+        (on ? EXT_LABEL : other ? (st.by || "담당") : EXT_LABEL), tip);
+    }
     return '<button class="chk ' + cls + '" data-act="chk-ext"' +
       ' data-id="' + esc(n.id) + '" data-kind="' + kind + '" data-zone="' + zone + '"' +
       ' aria-label="' + esc(zoneShort(zone) + " " + tip) + '">' +
@@ -1562,13 +1587,15 @@ var App = (function () {
     attachList.sort(sortByDeadline);
     detachList.sort(sortByDeadline);
 
-    var h = '<div class="sec-title"><h2>게시물 배포·제거</h2><span class="hint">게시·제거 체크 · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
+    var h = '<div class="sec-title"><h2>게시물 배포·제거</h2><span class="hint">' + (isAdmin() ? "게시·제거 체크" : "조회 전용") + ' · ' + korDate(TODAY) + " (" + weekday(TODAY) + ")</span></div>";
     h += '<div class="dsum">' +
       '<span class="' + (attachList.length ? "warn" : "") + '">오늘 게시 대상 <b>' + attachList.length + "</b>건</span>" +
       '<span class="' + (detachList.length ? "warn" : "") + '">오늘 제거 대상 <b>' + detachList.length + "</b>건</span>" +
       '<span>구역 <b>' + FAC.zones.length + "</b>곳 · 담당 <b>" + (FAC.zones.length * 2) + "</b>명</span>" +
       "</div>";
-    h += '<div class="warnbox">게시 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 제거는 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>';
+    h += isAdmin()
+      ? '<div class="warnbox">게시 완료를 체크하면 그 구역 <b>도면에 바로 게시</b>됩니다. 제거는 모든 대상 구역이 체크되면 자동으로 <b>보관함</b>으로 이동합니다.</div>'
+      : '<div class="warnbox">일반 화면은 <b>조회 전용</b>입니다 (체크·관리 기능은 관리자 인증 후 가능). 구역별 게시·제거 체크는 관리자가 직접 합니다.</div>';
 
     h += '<div class="sec-h"><h3>② 게시 필요</h3><span class="count">' + attachList.length + "건</span></div>";
     if (!attachList.length) {
@@ -1883,7 +1910,7 @@ var App = (function () {
     var h = "";
     if (!isA) {
       h += lockCardHtml("게시물 등록은 관리자 인증이 필요합니다",
-        "새 게시물 등록·수정·삭제·기한 변경은 관리자(" + esc(((CFG && CFG.admins) || []).join("·")) + ")가 암호로 인증한 뒤 사용합니다.<br>경비원은 조회와 구역별 게시·제거 체크를 바로 쓸 수 있습니다.");
+        "새 게시물 등록·수정·삭제·기한 변경은 관리자(" + esc(((CFG && CFG.admins) || []).join("·")) + ")가 암호로 인증한 뒤 사용합니다.<br>일반 화면(경비원·조회)은 <b>조회 전용</b>이고, 구역별 게시·제거 체크도 관리자 인증 후에 쓸 수 있습니다.");
       return h + createListHtml(false);
     }
     h += '<div class="warnbox">사진을 올리고 <b>동·라인·게시판/E/V·번호</b>와 <b>게시 기한</b>을 고른 뒤 저장하면 <b>게시 대기</b>로 등록됩니다. ' +
@@ -2432,9 +2459,9 @@ var App = (function () {
       '<div style="font-size:.7rem;font-weight:800;color:var(--muted)">현재 접속</div>' +
       '<div style="font-size:1rem;font-weight:800;margin-top:4px">' + esc(whoText()) + "</div>" +
       '<div class="lk-s" style="text-align:left">' +
-      (isAdmin ? "관리자 권한 · 등록·수정·삭제·이동·권한 설정을 쓸 수 있습니다."
-        : SESSION.role === "guard" ? "경비원 권한 · 조회와 게시·제거 체크를 할 수 있습니다. 등록·이동은 관리자 인증이 필요합니다."
-          : "조회 모드입니다. 게시·제거 체크를 하려면 내 조·구역을 고르세요.") + "</div>" +
+      (isAdmin ? "관리자 권한 · 등록·수정·삭제·이동·권한 설정과 구역별 게시·제거 체크를 쓸 수 있습니다."
+        : SESSION.role === "guard" ? "경비원 권한 · 조회 전용입니다. 게시·제거 체크·등록·이동은 관리자 인증 후 사용합니다."
+          : "조회 전용 화면입니다. 게시·제거 체크·관리는 관리자 인증 후 사용할 수 있습니다.") + "</div>" +
       '<div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">' +
       '<button class="btn soft" data-act="who" style="flex:1 1 46%">내 조·구역 선택</button>' +
       (isAdmin
@@ -2444,9 +2471,9 @@ var App = (function () {
 
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>권한 구조</h3></div>' +
       '<table class="itable">' +
-      '<tr><th>관리자</th><td>게시물 등록·수정·삭제·이동, 기한 변경, 담당자·암호 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">관리자 암호 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
-      '<tr><th>경비원</th><td>조회, 구역별 게시·제거 체크 (본인 기록으로 남음)<br><span style="color:var(--muted);font-weight:600">A·B조 × 정문/후문A/후문B 담당자로 선택</span></td></tr>' +
-      '<tr><th>조회</th><td>누구나 읽기 가능 (기록·수정 불가)</td></tr>' +
+      '<tr><th>관리자</th><td>구역별 게시·제거 체크(외부업체 포함), 게시물 등록·수정·삭제·이동, 기한 변경, 담당자·암호 설정, 데이터 관리<br><span style="color:var(--muted);font-weight:600">관리자 암호 인증 · ' + esc((CFG.admins || []).join(" · ")) + "</span></td></tr>" +
+      '<tr><th>경비원</th><td>조회 전용 (읽기만)<br><span style="color:var(--muted);font-weight:600">구역별 게시·제거 체크는 관리자 인증 후 · A·B조 × 정문/후문A/후문B 담당자 이름으로 기록</span></td></tr>' +
+      '<tr><th>조회</th><td>누구나 읽기 가능 (체크·기록·수정 불가)</td></tr>' +
       "</table></div>";
 
     h += '<div class="statcard"><div class="sec-h" style="margin:0 0 8px"><h3>조·구역 담당자</h3>' +
@@ -4565,6 +4592,11 @@ var App = (function () {
       else if (act === "chk") {
         toggleZoneCheck(el.dataset.id, el.dataset.kind, el.dataset.zone, el.dataset.team);
       }
+      else if (act === "chk-lock") {
+        /* 잠긴 칸 — 비관리자는 저장하지 않고 관리자 인증 안내만 */
+        toast("게시·제거 체크는 관리자 인증 후 사용할 수 있습니다");
+        openAdminLogin();
+      }
       else if (act === "chk-ext") {
         toggleExternalCheck(el.dataset.id, el.dataset.kind, el.dataset.zone);
       }
@@ -5003,8 +5035,9 @@ var App = (function () {
     },
     /* 게시물 배포·제거(게시·제거 체크) 화면 검증용 */
     deploy: {
-      card: taskCard, chk: chkCell, ext: extCell,
-      extTeam: EXT_TEAM, extLabel: EXT_LABEL,
+      card: taskCard, chk: chkCell, ext: extCell, locked: chkLocked,
+      extTeam: EXT_TEAM, extLabel: EXT_LABEL, canCheck: isAdmin,
+      toggle: toggleZoneCheck, toggleExt: toggleExternalCheck,
       team: checkTeamOf, useful: function () { return renderDeploy(); }
     },
     /* 첫 화면(시안 A) 검증용 */

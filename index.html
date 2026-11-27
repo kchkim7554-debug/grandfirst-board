@@ -7,11 +7,11 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
-<link rel="icon" href="icons/icon.svg?v=20261128f" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261128f" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261128f" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128f">
-<link rel="manifest" href="manifest.json?v=20261128f">
+<link rel="icon" href="icons/icon.svg?v=20261128g" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128g" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128g" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128g">
+<link rel="manifest" href="manifest.json?v=20261128g">
 <title>게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
 :root{
@@ -367,6 +367,11 @@ html.fs-lg .slot-title{font-size:.62rem;}
 .chk.posted-ext .zn{color:#9a5b12;}
 /* 외부업체 줄은 점선 칸으로 구분 */
 .task-row:last-of-type .chk.off{border-style:dashed;border-color:#e2e8f1;background:#fbfcfe;}
+/* 2026-11-28 — 구역별 게시·제거 체크는 관리자 전용: 일반 화면은 읽기 전용 칸(자물쇠 표시) */
+.chk.lock{position:relative;cursor:default;}
+.chk.lock::after{content:"\1F512";position:absolute;top:2px;right:4px;font-size:.5rem;line-height:1;opacity:.5;}
+.chk.lock .zn{color:#5f6f82;}
+.chk.lock .nm{color:#8b97a6;}
 /* 사진 제목 1차 OCR 안내 */
 .ocr-note{
   margin-top:7px;border:1px solid var(--blue-line);background:var(--blue-bg);border-radius:10px;
@@ -1336,7 +1341,7 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128f" alt="제일풍경채" width="201" height="112">
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128g" alt="제일풍경채" width="201" height="112">
       <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
@@ -1429,7 +1434,7 @@ html.fs-lg .q{min-height:88px;}
 <script>window.__errs=[];window.addEventListener('error',function(e){window.__errs.push(String(e.message||e))});window.addEventListener('unhandledrejection',function(e){window.__errs.push('promise:'+String((e.reason&&e.reason.message)||e.reason))});</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-<script src="app.js?v=20261128f"></script>
+<script src="app.js?v=20261128g"></script>
 <script>/* PWA 단독 앱 실행 — 서비스 워커 등록 (2026-11-27) · 캐시 없이 항상 최신 파일 */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

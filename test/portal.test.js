@@ -15,6 +15,7 @@ if (!API && typeof require === "function") {
 }
 var P = API.portal;
 var O = API.order;
+function setRole(r) { API.state().SESSION.role = r; }
 
 let pass = 0, fail = 0;
 function ok(name, cond, extra) {
@@ -56,6 +57,7 @@ console.log("\n[1] 오늘 요약 배너");
   var soon = notice("P3", { attach: allZones("담당", "A"), deadline: "2026-11-30" });
   var perm = notice("P4", { attach: allZones("담당", "A"), permanent: true, deadline: null });
   O.load([detach, posted, soon, perm], clone(FAC));
+  setRole("admin");
   var h = P.html();
   ok("밝은 톤 오늘 요약 카드", has(h, 'class="daysum"'));
   ok("오늘 제거 건수를 크게 보여 준다", has(h, "오늘 제거할 게시물 <b>1</b>건"));
@@ -111,6 +113,12 @@ console.log("\n[3] 지금 처리할 일 카드");
   ok("카드를 누르면 배포·제거 화면으로 간다", has(h, 'class="ptask" data-act="go" data-go="#/deploy"'));
   eq("처리할 일 4건", P.tasks().length, 4);
   ok("목록 제목", has(h, "지금 처리할 일"));
+  /* 2026-11-28 — 일반 화면은 조회 전용 */
+  setRole(null);
+  var hg = P.html();
+  ok("비관리자 홈 안내 — 조회 전용", has(hg, "조회 전용") && has(hg, "관리자 인증 후 가능"));
+  ok("비관리자 홈에는 '체크하면 완료' 안내가 없다", !has(hg, "한 곳만 체크하면 그 구역은 완료"));
+  setRole("admin");
 }
 
 /* ---------- 4. 처리할 일이 없을 때 ---------- */
@@ -122,6 +130,22 @@ console.log("\n[4] 처리할 일 없음");
   ok("빈 상태 안내", has(h, "지금 처리할 게시물이 없습니다"));
   ok("없을 때도 오늘 요약은 나온다", has(h, "오늘 제거할 게시물 없음"));
   ok("없을 때 주 버튼 문구", has(h, "게시·제거 체크 하러 가기"));
+}
+
+/* ---------- 4-1. 비관리자 홈 — 체크 대신 현황 보기 ---------- */
+console.log("\n[4-1] 비관리자 홈 — 조회 전용");
+{
+  setRole(null);
+  var np = notice("G1", { attach: null, deadline: "2026-11-30" });
+  O.load([np], clone(FAC));
+  var h = P.html();
+  ok("주 버튼은 현황 보기", has(h, "현황 보기") && !has(h, "체크 하러 가기"));
+  ok("게시 대기 안내에 체크 지시가 없다", !has(h, "게시 체크 후 게시판에 반영"));
+  ok("상단 버튼도 체크 문구가 아니다", !has(h, ">체크하러 가기<"));
+  setRole("admin");
+  var h2 = P.html();
+  ok("관리자에게는 종전 문구 그대로", has(h2, "게시·제거 체크 하러 가기") && !has(h2, "현황 보기"));
+  setRole(null);
 }
 
 console.log("\n[5] 첫 화면 섹션 순서 — 빠른 메뉴를 1단 내림(2026-11-26 요청)");

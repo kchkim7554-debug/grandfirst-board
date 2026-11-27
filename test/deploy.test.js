@@ -46,10 +46,33 @@ N_EXT.attach = {
 };
 
 O.load([N_PENDING, N_GUARD, N_EXT], clone(FAC));
+function setRole(r) { API.state().SESSION.role = r; }
+
+/* ---------- 0. 일반 화면(비관리자) — 구역 체크 잠금 ---------- */
+console.log("\n[0] 일반 화면(비관리자) — 구역별 게시·제거 체크 잠금");
+{
+  setRole(null);
+  var h = D.card(N_PENDING, "attach");
+  eq("외부업체 칸은 누를 수 없다", (h.match(/data-act="chk-ext"/g) || []).length, 0);
+  ok("A·B조 칸도 누를 수 없다", !has(h, 'data-act="chk"') && !has(h, 'data-act="chk-undo"'));
+  eq("A·B조 + 외부업체 = 9칸 모두 잠금 안내", (h.match(/data-act="chk-lock"/g) || []).length, 9);
+  ok("잠금 칸은 자물쇠 표시(class lock)", has(h, 'class="chk off lock"'));
+  ok("잠금 칸 aria-label 에 관리자 전용", has(h, "관리자 전용"));
+  ok("잠금 칸도 담당자 이름·상태는 그대로 보인다", has(h, "염일엽") || has(h, "-"));
+  var u = D.useful();
+  ok("화면 안내 — 일반 화면은 조회 전용", has(u, "조회 전용") && has(u, "관리자 인증 후 가능"));
+  ok("관리자용 체크 안내 문구는 보이지 않는다", !has(u, "도면에 바로 게시"));
+  ok("canCheck = false", D.canCheck() === false);
+  ok("비관리자 구역 체크는 저장 전에 막힌다", D.toggle("T1", "attach", "front", "A") === false);
+  ok("비관리자 외부업체 체크도 막힌다", D.toggleExt("T1", "attach", "front") === false);
+  setRole("admin");
+  ok("canCheck = true (관리자)", D.canCheck() === true);
+}
 
 /* ---------- 1. 게시 카드에 외부업체 줄 ---------- */
 console.log("\n[1] [게시] 카드 — 외부업체 줄");
 {
+  setRole("admin");
   var h = D.card(N_PENDING, "attach");
   ok("A조·B조 줄은 그대로", has(h, ">A조<") && has(h, ">B조<"));
   ok("외부업체 줄이 있다", has(h, 'class="team-tag ext">외부업체<'));
@@ -61,6 +84,7 @@ console.log("\n[1] [게시] 카드 — 외부업체 줄");
 /* ---------- 2. 제거 카드에도 외부업체 줄 ---------- */
 console.log("\n[2] [제거] 카드 — 외부업체 줄");
 {
+  setRole("admin");
   var n = clone(N_EXT);
   n.deadline = "2026-11-24";
   O.load([n], clone(FAC));
@@ -82,6 +106,7 @@ console.log("\n[2] [제거] 카드 — 외부업체 줄");
 /* ---------- 2-1. 제거 카드에서 외부업체로 체크한 뒤 ---------- */
 console.log("\n[2-1] 제거 카드 — 외부업체 체크 결과");
 {
+  setRole("admin");
   var n = clone(N_EXT);
   n.deadline = "2026-11-24";
   n.detach = { front: { by: "외부업체", team: "EXT", at: ts(2026, 11, 26, 9, 30) } };
@@ -129,6 +154,7 @@ console.log("\n[2-2] 외부업체로 전 구역 제거");
 /* ---------- 3. 외부업체로 기록된 칸 ---------- */
 console.log("\n[3] 외부업체로 기록된 칸");
 {
+  setRole("admin");
   O.load([N_EXT], clone(FAC));
   eq("기록 조는 EXT", D.team(N_EXT, "front", N_EXT.attach.front), "EXT");
   var cell = D.ext(N_EXT, "attach", "front");
@@ -151,6 +177,7 @@ console.log("\n[3] 외부업체로 기록된 칸");
 /* ---------- 4. 담당자가 먼저 게시한 구역은 외부업체로 덮지 않는다 ---------- */
 console.log("\n[4] 담당자 게시가 있는 구역");
 {
+  setRole("admin");
   O.load([N_GUARD], clone(FAC));
   var cell = D.ext(N_GUARD, "attach", "front");
   ok("이미 담당자가 게시한 구역은 외부업체 칸이 잠김(na)", has(cell, "chk na") && has(cell, "염일엽"));
@@ -163,6 +190,7 @@ console.log("\n[4] 담당자 게시가 있는 구역");
 /* ---------- 5. 배포·제거 화면 전체 ---------- */
 console.log("\n[5] 배포·제거 화면");
 {
+  setRole(null);
   O.load([N_PENDING], clone(FAC));
   var h = D.useful();
   ok("화면 제목은 '게시물 배포·제거'", has(h, "<h2>게시물 배포·제거</h2>"));
