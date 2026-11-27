@@ -98,7 +98,7 @@ def draw_tracked(draw, cx, cy, text, fnt, fill, track=0):
         x += draw.textlength(ch, font=fnt) + track
 
 
-def compose_icon(wordmark, n, maskable=False, sub=True):
+def compose_icon(wordmark, n, maskable=False, sub=True, square=False):
     """n×n 아이콘. maskable 이면 안전영역(지름 80%) 안에 내용을 줄여 넣는다."""
     S = n * SS
     base = gradient_bg(S)
@@ -120,7 +120,7 @@ def compose_icon(wordmark, n, maskable=False, sub=True):
         draw_tracked(draw, S / 2, top + wm_h + gap + sub_h / 2, SUB_TEXT, sub_f, MINT, track)
 
     icon = base.resize((n, n), Image.LANCZOS).convert("RGBA")
-    if not maskable:
+    if not maskable and not square:
         icon.putalpha(rounded_mask(n))
     return icon
 
@@ -203,7 +203,7 @@ def main(check=False):
     files["icon-512.png"] = icon512
     files["icon-192.png"] = compose_icon(white, 192)
     files["icon-maskable-512.png"] = compose_icon(white, 512, maskable=True)
-    files["apple-touch-icon-180.png"] = compose_icon(white, 180)
+    files["apple-touch-icon-180.png"] = compose_icon(white, 180, square=True)   # iOS는 투명 모서리를 검게 칠한다 → 꽉 찬 정사각
     files["favicon-32.png"] = favicon_glyph(color, 32)
     files["favicon-16.png"] = favicon_glyph(color, 16)
 
