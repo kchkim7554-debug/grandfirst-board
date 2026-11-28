@@ -481,33 +481,30 @@ var App = (function () {
   function openSettleSheet(ym) {
     if (!S.admin) { withAdmin(function () { openSettleSheet(ym); }); return; }
     var isNew = !ym;
+    var cand = null;
     if (isNew) {
+      /* 아직 정산 행이 없는 달만 후보로 — 기본값은 '이번 달 다음 달' */
       var have = {};
       C.monthList(S.records, S.settles).forEach(function (k) { have[k] = 1; });
-      var cand = [];
+      cand = [];
       var base = C.monthList(S.records, S.settles)[0] || curYm();
-      for (var i = 1; i <= 6; i++) {
+      for (var i = 1; i <= 8; i++) {
         var k = C.shiftYm(base, i);
-        if (!have[k]) cand.push(k);
+        if (!have[k] && cand.indexOf(k) < 0) cand.push(k);
       }
-      var now2 = curYm();
-      for (var j = -3; j <= 3; j++) {
-        var k2 = C.shiftYm(now2, j);
-        if (!have[k2] && cand.indexOf(k2) < 0) cand.push(k2);
-      }
-      cand.sort();
+      if (!cand.length) cand = [C.shiftYm(base, 1)];
       ym = cand[0];
     }
     var row = C.settleRow(ym, S.settles[ym] || {});
     S.edit = {
-      ym: ym, isNew: isNew, cand: isNew ? null : null,
+      ym: ym, isNew: isNew, cand: cand,
       invoiceImg: row.invoiceImg, invoiceAt: row.invoiceAt,
       receiptImg: row.receiptImg, receiptAt: row.receiptAt,
       collectDate: row.collectDate, remitDate: row.remitDate, memo: row.memo || "",
       exists: !!S.settles[ym]
     };
     $("stETitle").textContent = isNew ? "정산 등록" : C.ymLabel(ym) + " 정산";
-    $("stESub").textContent = isNew ? "월을 고르고 사진·날짜를 등록합니다" : "관리자만 수정할 수 있습니다";
+    $("stESub").textContent = isNew ? "등록할 달을 고르고 사진·날짜를 넣으세요" : "관리자만 수정할 수 있습니다";
     $("stEBody").innerHTML = settleFormHtml(S.edit);
     openOv("ovSettle");
   }
@@ -515,7 +512,14 @@ var App = (function () {
   function settleFormHtml(e) {
     var st = C.monthStats(S.records, e.ym);
     var html = "";
-    html += '<div class="fld"><label>년월</label><div class="sumline" style="margin:0">' +
+    if (e.isNew && e.cand && e.cand.length) {
+      html += '<div class="fld"><label>년월</label><div class="chipline">' +
+        e.cand.map(function (k) {
+          return '<button class="chip' + (k === e.ym ? " on" : "") + '" data-act="st-pick-ym" data-ym="' + k + '">' +
+            C.ymLabel(k) + "</button>";
+        }).join("") + "</div></div>";
+    }
+    html += '<div class="fld"><label>' + (e.isNew ? "이 달 정산 내용" : "년월") + '</label><div class="sumline" style="margin:0">' +
       C.ymLabel(e.ym) + " · " + st.meals + "식 " + C.won(st.amount) + "원 · 조명수 " + C.won(st.byPerson["조명수"].amount) + "원</div></div>";
     html += upBlock("invoice", "거래명세서 사진", e.invoiceImg, e.invoiceAt);
     html += '<div class="row2">' +
@@ -704,6 +708,15 @@ var App = (function () {
       }
       else if (act === "st-doc") { openPhoto(el.getAttribute("data-ym"), el.getAttribute("data-kind")); }
       else if (act === "st-del") { deleteSettle(); }
+      else if (act === "st-pick-ym") {
+        if (!S.edit) return;
+        S.edit.collectDate = ($("stECollect") || {}).value || "";
+        S.edit.remitDate = ($("stERemit") || {}).value || "";
+        S.edit.memo = ($("stEMemo") || {}).value || "";
+        S.edit.ym = el.getAttribute("data-ym");
+        $("stETitle").textContent = "정산 등록";
+        $("stEBody").innerHTML = settleFormHtml(S.edit);
+      }
       else if (act === "pick") {
         var k = el.getAttribute("data-kind");
         var f = $(k === "invoice" ? "fileInvoice" : "fileReceipt");
