@@ -3,12 +3,12 @@
    🍱 도시락 관리 — 화면 · Firebase 실시간 동기화 · 관리자 권한
    ---------------------------------------------------------------------
    저장 위치(Firebase RTDB, grandfirst-board 와 같은 프로젝트):
-     /dosirak_app/records/{id}      {date, person, mealType, price, at, by}
-     /dosirak_app/settlements/{ym}  {collectDate, remitDate, invoice:{img,at,by}, receipt:{…}}
-     /dosirak_app/config            {pinHash}
+     /board/dosirak/records/{id}       {date, person, mealType, price, at, by}
+     /board/dosirak/settlements/{ym}   {collectDate, remitDate, memo, invoice:{img,at,by}, receipt:{…}}
+     /board/dosirak/config             {pinHash}
    · 일반(조회) 사용자: 달력 · 리스트 · 월말 예상 · 정산 표 · 사진 팝업만
    · 관리자(암호): 식수 추가/삭제 + 정산 등록·수정 까지
-   · 주소에 ?sandbox=1 을 붙이면 /dosirak_app/sandbox 로 따로 저장하고 관리자로 열린다
+   · 주소에 ?sandbox=1 을 붙이면 /board/dosirak/sandbox 로 따로 저장하고 관리자로 열린다
      (배포 전 점검·시연용 — 실제 데이터와 섞이지 않는다)
    ===================================================================== */
 var App = (function () {
@@ -524,7 +524,7 @@ var App = (function () {
       "</div>";
     html += upBlock("receipt", "현금영수증 사진", e.receiptImg, e.receiptAt);
     html += '<div class="fld"><label>메모 (선택)</label><input type="text" class="in" id="stEMemo" value="' + esc(e.memo) + '" placeholder="예: 11월분 정산 완료"></div>';
-    if (!e.isNew) {
+    if (!e.isNew && e.exists) {
       html += '<button class="mini warn" data-act="st-del" style="margin-top:2px">이 달 정산 내용 삭제</button>';
     }
     html += '<input type="file" class="filehide" id="fileInvoice" accept="image/*"><input type="file" class="filehide" id="fileReceipt" accept="image/*">';

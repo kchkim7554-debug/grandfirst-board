@@ -10,7 +10,7 @@ dosirak.html 의 기록 규칙을 그대로 옮겨 놓는다.
 
 사용: python3 seed_dosirak.py            실제로 올린다
       python3 seed_dosirak.py --dry      올리지 않고 결과만 확인
-      python3 seed_dosirak.py --sandbox  /dosirak_app/sandbox 에 올린다
+      python3 seed_dosirak.py --sandbox  /board/dosirak/sandbox 에 올린다
 """
 import json
 import sys
