@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>도시락 관리</title>
-<meta name="theme-color" content="#0f172a">
-<meta name="description" content="도시락 식수·금액 달력과 월별 대금 정산(거래명세서·수금일·대금송금일·현금영수증)">
+<meta name="theme-color" content="#0d2e52">
+<meta name="description" content="도시락 식수·금액 달력과 월별 대금 정산(거래명세서·수신일·대금송금일·현금영수증)">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="icon" href="icons/favicon-16.png" sizes="16x16">
@@ -390,7 +390,7 @@ body.pwa-bar{padding-bottom:76px;}
 <!-- ================= 정산 화면 ================= -->
 <main id="viewSettle" hidden>
   <div class="st-top">
-    <div class="st-sub">월별 거래명세서 · 수금·송금일 · 현금영수증 — 사진을 누르면 크게 볼 수 있습니다</div>
+    <div class="st-sub">월별 거래명세서 · 수신·송금일 · 현금영수증 — 사진을 누르면 크게 볼 수 있습니다</div>
   </div>
   <div class="st-table" id="stTable"></div>
   <button class="addmonth" id="addMonth" hidden><svg class="ic"><use href="#i-plus"/></svg>월 추가</button>
@@ -419,15 +419,15 @@ body.pwa-bar{padding-bottom:76px;}
     </div>
     <div class="sh-b">
       <div class="fld"><label>날짜</label><input type="date" id="mDate" class="in"></div>
+      <div class="fld">
+        <label>선택 날짜 등록 내역</label>
+        <div id="mExisting"></div>
+      </div>
       <div class="row2">
         <div class="fld"><label>이름</label><select id="mPerson" class="in"><option>김기춘</option><option>조명수</option></select></div>
         <div class="fld"><label>구분</label><select id="mType" class="in"><option>중식</option><option>석식</option></select></div>
       </div>
       <div class="fld"><label>단가 (원)</label><input type="number" id="mPrice" class="in" value="8250" step="10"></div>
-      <div class="fld">
-        <label>선택 날짜 등록 내역</label>
-        <div id="mExisting"></div>
-      </div>
     </div>
     <div class="sh-f">
       <button class="btn ghost" data-close="ovMeal">닫기</button>
@@ -506,11 +506,11 @@ body.pwa-bar{padding-bottom:76px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>/* 앱 버전 — sw.js 의 VERSION · version.json · 아래 ?v= 와 함께 올린다 */
-window.DS_APP_VERSION = "20261128a";
+window.DS_APP_VERSION = "20261128b";
 window.DS_ENV = { lsPrefix: "ds.", dbRoot: "board/dosirak" };
 </script>
-<script src="core.js?v=20261128a"></script>
-<script src="pwa.js?v=20261128a"></script>
-<script src="app.js?v=20261128a"></script>
+<script src="core.js?v=20261128b"></script>
+<script src="pwa.js?v=20261128b"></script>
+<script src="app.js?v=20261128b"></script>
 </body>
 </html>

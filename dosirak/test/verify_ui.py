@@ -85,7 +85,7 @@ def main():
         check("해시 라우팅 #/settle", page.evaluate("location.hash") == "#/settle", page.evaluate("location.hash"))
         head = [t.strip() for t in page.eval_on_selector_all(
             ".st-row.hd > div", "els => els.map(e => e.textContent)")]
-        check("표 헤더 5컬럼", head == ["년월", "거래명세서", "수금일", "대금송금일", "현금영수증"], head)
+        check("표 헤더 5컬럼", head == ["년월", "거래명세서", "수신일", "대금송금일", "현금영수증"], head)
         rows = page.eval_on_selector_all(".st-row[data-ym]", "els => els.map(e => e.getAttribute('data-ym'))")
         check("월별 행 목록(최신 먼저)", rows == ["2026-11", "2026-10"], rows)
         check("정산 화면에 월 추가 버튼", page.is_visible("#addMonth"))
@@ -98,7 +98,7 @@ def main():
         page.set_input_files("#fileInvoice", SHOT)
         page.wait_for_selector("#up-invoice img.up-thumb", timeout=15000)
         check("거래명세서 사진 미리보기", page.is_visible("#up-invoice img.up-thumb"))
-        check("수금일 자동 기록", page.input_value("#stECollect") != "", page.input_value("#stECollect"))
+        check("수신일 자동 기록", page.input_value("#stECollect") != "", page.input_value("#stECollect"))
         page.fill("#stERemit", "2026-12-03")
         page.fill("#stEMemo", "테스트 정산")
         page.screenshot(path=os.path.join(OUT, "dosirak-3-upload-390.png"))
@@ -110,7 +110,7 @@ def main():
         check("저장 후 행에 사진 표시", page.eval_on_selector_all(
             ".st-row[data-ym='2026-11'] img.st-thumb", "els => els.length") >= 1)
         txt = page.inner_text(".st-row[data-ym='2026-11']")
-        check("수금일 표시", "12." in txt, txt)
+        check("수신일 표시", "12." in txt, txt)
         check("대금송금일 표시", "12.03" in txt, txt)
 
         print("\n[4] 사진 팝업")
@@ -126,7 +126,7 @@ def main():
         print("\n[5] 조회 모드(관리자 해제)")
         page.click("#admChip")
         page.wait_for_selector("#setSheet:not([hidden])")
-        check("설정 시트에 앱 버전", "v2026.11.28a" in page.inner_text("#setSheet"), page.inner_text("#setSheet"))
+        check("설정 시트에 앱 버전", "v2026.11.28b" in page.inner_text("#setSheet"), page.inner_text("#setSheet"))
         check("설정 시트에 앱 설치 줄", "앱 설치" in page.inner_text("#setSheet"))
         page.click("#setAdminBtn")
         page.wait_for_selector("#setSheet", state="hidden")
@@ -182,8 +182,8 @@ def main():
         vpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "version.json")
         orig = open(vpath, encoding="utf-8").read()
         data = json.loads(orig)
-        data["version"] = "20261128b"
-        data["label"] = "v2026.11.28b"
+        data["version"] = "20261128c"
+        data["label"] = "v2026.11.28c"
         open(vpath, "w", encoding="utf-8").write(json.dumps(data, ensure_ascii=False, indent=2))
         try:
             page2 = ctx.new_page()

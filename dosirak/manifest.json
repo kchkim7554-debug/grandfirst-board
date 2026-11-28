@@ -2,16 +2,16 @@
   "name": "도시락 관리",
   "short_name": "도시락 관리",
   "lang": "ko",
-  "description": "도시락 식수·금액 달력과 월별 대금 정산(거래명세서·수금일·대금송금일·현금영수증)",
+  "description": "도시락 식수·금액 달력과 월별 대금 정산(거래명세서·수신일·대금송금일·현금영수증)",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#eef2f7",
-  "theme_color": "#0f172a",
+  "theme_color": "#0d2e52",
   "icons": [
-    { "src": "icons/icon-192.png?v=20261128a", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png?v=20261128a", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png?v=20261128a", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png?v=20261128b", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png?v=20261128b", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png?v=20261128b", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

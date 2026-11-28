@@ -6,7 +6,7 @@
            화면의 [🆕 새 버전이 준비됐습니다 · 지금 업데이트] 를 눌러
            {type:"SKIP_WAITING"} 을 보낼 때만 넘겨받는다(자동 새로고침 없음).
    ========================================================= */
-const VERSION = "20261128a";   /* 배포할 때마다 올린다 — index.html 의 DS_APP_VERSION · version.json 과 같은 값 */
+const VERSION = "20261128b";   /* 배포할 때마다 올린다 — index.html 의 DS_APP_VERSION · version.json 과 같은 값 */
 
 /* 새 워커는 여기서 skipWaiting() 을 부르지 않는다 → waiting 상태로 남는다.
    (부르면 화면이 알기도 전에 구버전 페이지가 새 워커로 바뀌어 버린다) */

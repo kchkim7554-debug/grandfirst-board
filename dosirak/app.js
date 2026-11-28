@@ -424,7 +424,7 @@ var App = (function () {
     if (!box) return;
     var months = settleMonths();
     var html = '<div class="st-row hd">' +
-      "<div>년월</div><div>거래명세서</div><div>수금일</div><div>대금송금일</div><div>현금영수증</div></div>";
+      "<div>년월</div><div>거래명세서</div><div>수신일</div><div>대금송금일</div><div>현금영수증</div></div>";
 
     months.forEach(function (ym) {
       var row = C.settleRow(ym, S.settles[ym]);
@@ -440,7 +440,7 @@ var App = (function () {
 
       /* 거래명세서 · 현금영수증 */
       html += docCell(ym, "invoice", row.invoiceImg);
-      /* 수금일 · 대금송금일 */
+      /* 수신일 · 대금송금일 */
       html += dateCell(ym, row.collectDate);
       html += dateCell(ym, row.remitDate, true);
       html += docCell(ym, "receipt", row.receiptImg);
@@ -523,7 +523,7 @@ var App = (function () {
       C.ymLabel(e.ym) + " · " + st.meals + "식 " + C.won(st.amount) + "원 · 조명수 " + C.won(st.byPerson["조명수"].amount) + "원</div></div>";
     html += upBlock("invoice", "거래명세서 사진", e.invoiceImg, e.invoiceAt);
     html += '<div class="row2">' +
-      '<div class="fld"><label>수금일</label><input type="date" class="in" id="stECollect" value="' + esc(e.collectDate) + '"></div>' +
+      '<div class="fld"><label>수신일</label><input type="date" class="in" id="stECollect" value="' + esc(e.collectDate) + '"></div>' +
       '<div class="fld"><label>대금송금일</label><input type="date" class="in" id="stERemit" value="' + esc(e.remitDate) + '"></div>' +
       "</div>";
     html += upBlock("receipt", "현금영수증 사진", e.receiptImg, e.receiptAt);
@@ -614,7 +614,7 @@ var App = (function () {
     var collect = ($("stECollect") || {}).value || "";
     var remit = ($("stERemit") || {}).value || "";
     var memo = ($("stEMemo") || {}).value || "";
-    if (e.invoiceImg && !collect) collect = todayStr();     /* 업로드하면 수금일 자동 기록 */
+    if (e.invoiceImg && !collect) collect = todayStr();     /* 업로드하면 수신일 자동 기록 */
     var obj = {
       ym: e.ym,
       collectDate: collect,
@@ -662,7 +662,7 @@ var App = (function () {
     $("lbImg").src = img;
     $("lbImg").classList.remove("zoom");
     $("lbCap").innerHTML = C.ymLabel(ym) + " · " + C.DOC_KINDS[kind] +
-      "<em>" + (kind === "invoice" ? row.collectDate ? "수금일 " + C.dotDate(row.collectDate) : ""
+      "<em>" + (kind === "invoice" ? row.collectDate ? "수신일 " + C.dotDate(row.collectDate) : ""
         : row.remitDate ? "대금송금일 " + C.dotDate(row.remitDate) : "") + "</em>";
     openOv("lightbox");
   }
