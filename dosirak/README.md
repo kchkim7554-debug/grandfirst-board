@@ -67,18 +67,36 @@
 - 아이폰 사파리·카톡 인앱브라우저처럼 설치 창을 못 띄우는 곳에서는 설정 시트에 한 줄 안내가 나옵니다.
 - 시트·팝업이 열리면 뒤 화면 스크롤을 잠급니다(`html.lock/body.lock`).
 
+### 상단 `📲 설치` 칩 — 설치 창이 안 뜰 때도 (2026-11-28)
+
+사용자 제보 **"설치 안보이던데?"** 로 설치 입구를 화면 상단에 상시 노출했습니다.
+
+- 상단바 오른쪽(관리자 칩 왼쪽)의 **`📲 설치`** 칩을 누르면 **앱 설치 시트**가 열립니다 —
+  설치 가능하면 `[📲 앱 설치]` 한 번으로 크롬 설치 창, 아니면 기기별 단계 안내(아이폰/안드로이드/인앱브라우저).
+- 앱으로 설치돼 **standalone** 으로 실행 중이면 칩은 보이지 않습니다(`state.standalone`). 방금 설치를 마친 경우(`appinstalled`)에도 숨깁니다.
+- `index.html` `<head>` 가 `beforeinstallprompt` 를 **가장 먼저** 잡아 `window.__DS_BIP__` 에 두고, `pwa.js` 가 이어받습니다 — 스크립트가 늦게 떠도 설치 창을 놓치지 않습니다.
+- 설치 시트는 `#ovInstall`(마크업은 `index.html`, 상태·안내는 `pwa.js`). 시트 열기·닫기는 `app.js` 의 `window.DS_UI` 를 그대로 써서 뒤 화면 스크롤 잠금이 한 곳에서 돕니다.
+
+### 게시판 앱과의 분리 (2026-11-28)
+
+같은 출처의 `/grandfirst-board/`(게시판)와 `/grandfirst-board/dosirak/`(도시락)을 갈랐습니다.
+
+- `manifest.json` — `"id": "/grandfirst-board/dosirak/"`, `"start_url"`·`"scope"` 도 같은 **절대 경로**.
+- `sw.js` — `pwa.js` 가 `navigator.serviceWorker.register("<도시락 폴더>/sw.js", { scope: "<도시락 폴더>/" })` 로 **도시락 폴더 안에만** 스코프를 잡습니다(위치 기준 계산이라 로컬 미리보기에서도 동작, 실패하면 상대 경로 등록으로 대체). 게시판 워커(`/grandfirst-board/`)는 `sw.js` 의 fetch 핸들러에서 `/dosirak/` 요청을 건너뜁니다.
+- **남는 제약** — 스코프가 경로 접두어라 두 앱 스코프는 여전히 겹칩니다(중첩). 크롬은 **게시판 앱이 설치돼 있으면 도시락의 설치 창을 띄우지 않습니다.** 그래서 설치 시트에 그 경우의 안내를 넣었고, 완전히 갈라 설치하려면 도시락을 별도 저장소(`…github.io/dosirak-board/`)로 옮겨야 합니다(작업 사본 `/workspace/dosirak-app/` 준비됨).
+
 ## 배포하기 (버전 올리기)
 
 1. `index.html` 의 `DS_APP_VERSION`, `sw.js` 의 `VERSION`, `version.json` 의 `version`,
    `manifest.json` 아이콘 `?v=` 를 **같은 값**으로 올립니다(예: `20261128b`).
-2. `python3 test/run_tests.py` → 144개 항목 통과 확인.
+2. `python3 test/run_tests.py` → 172개 항목 통과 확인.
 3. `git add -A && git commit -m "…" && git push`
 4. GitHub Pages(`main` 브랜치 `/root`)가 자동 배포 → 폰에서 앱을 다시 열면 `지금 업데이트` 배너.
 
 ## 검사
 
 ```bash
-python3 test/run_tests.py        # 단위 테스트(QuickJS, Node 불필요) — 148개
+python3 test/run_tests.py        # 단위 테스트(QuickJS, Node 불필요) — 172개
 DOSIRAK_PW='…' python3 test/run_tests.py    # 암호 해시 대조까지(평문은 저장하지 않음)
 python3 seed_dosirak.py --dry    # 초기 데이터 미리보기
 python3 icons/gen_icons.py       # 아이콘 다시 그리기

@@ -20,7 +20,7 @@
   "use strict";
 
   var W = (typeof window !== "undefined") ? window : globalThis;
-  var FALLBACK_VERSION = "20261128b";
+  var FALLBACK_VERSION = "20261128c";
 
   /* ------------------------------------------------------------------
      순수 함수 — DOM 없이도 검사할 수 있는 부분
@@ -57,6 +57,27 @@
     if (platform === "inapp") return "카톡·네이버 같은 앱 안에서는 설치가 안 됩니다. 오른쪽 위 ⋮ → ‘다른 브라우저로 열기’ 후 [📲 앱 설치]를 누르세요.";
     if (platform === "android") return "안드로이드는 크롬 오른쪽 위 ⋮ → ‘앱 설치’(또는 ‘홈 화면에 추가’)를 누르면 됩니다.";
     return "브라우저 메뉴에서 ‘홈 화면에 추가’를 고르면 앱처럼 설치됩니다.";
+  }
+
+  /* 설치 시트에 보여 줄 단계별 안내 */
+  function installSteps(platform, standalone) {
+    if (standalone) return [];
+    if (platform === "ios") return ["Safari 하단 가운데 공유 버튼(□↑)을 누릅니다",
+      "목록에서 ‘홈 화면에 추가’를 고릅니다", "오른쪽 위 ‘추가’를 누르면 홈 화면에 생깁니다"];
+    if (platform === "inapp") return ["오른쪽 위 ⋮ → ‘다른 브라우저로 열기’", "크롬에서 이 주소를 다시 엽니다",
+      "크롬 오른쪽 위 ⋮ → ‘앱 설치’"];
+    if (platform === "android") return ["크롬 오른쪽 위 ⋮ 를 누릅니다", "‘앱 설치’(없으면 ‘홈 화면에 추가’)를 고릅니다",
+      "이름이 ‘도시락 관리’인지 확인하고 설치합니다"];
+    return ["브라우저 메뉴를 엽니다", "‘앱 설치’ 또는 ‘홈 화면에 추가’를 고릅니다"];
+  }
+
+  /* 게시판 앱과 주소가 겹칠 때의 안내 — 설치 창이 안 뜨는 실제 이유 */
+  function overlapNote(platform, standalone) {
+    if (standalone) return "";
+    if (platform === "ios") return "";
+    return "이미 설치된 ‘게시판 관리’ 앱과 주소가 겹치면 크롬이 설치 창을 띄우지 않을 수 있습니다. " +
+      "‘앱 설치’ 대신 ‘게시판 관리에서 열기’만 보이면 그 경우입니다 — 스마트에게 " +
+      "‘도시락 앱 따로 설치되게 해줘’라고 말해 주세요.";
   }
 
   /* 설치 상태: installed(이미 앱으로 실행 중) · ready(버튼 한 번) · guide(안내만) */
@@ -122,6 +143,8 @@
     isDifferent: isDifferent,
     platformOf: platformOf,
     installGuide: installGuide,
+    installSteps: installSteps,
+    overlapNote: overlapNote,
     installMode: installMode,
     bannerHTML: bannerHTML,
     settingsHTML: settingsHTML
@@ -155,6 +178,7 @@
     serverVersion: "",
     msg: "",
     dismissed: false,
+    installedNow: false,       /* 방금 설치를 마쳤다 — 설치 칩을 감춘다 */
     sandbox: SANDBOX
   };
 
@@ -181,6 +205,7 @@
   function setMsg(text) {
     state.msg = text || "";
     renderSettings();
+    renderInstallSheet();
     clearTimeout(msgTimer);
     if (state.msg) msgTimer = setTimeout(function () { state.msg = ""; renderSettings(); }, 8000);
   }
@@ -241,7 +266,82 @@
     if (box.innerHTML !== html) box.innerHTML = html;
   }
 
-  function render() { renderBanner(); renderSettings(); }
+  function render() { renderBanner(); renderSettings(); renderInstallChip(); renderInstallSheet(); }
+
+  /* ---------- 상단 헤더의 상시 [📲 설치] 칩 ----------
+     beforeinstallprompt 가 아직/영영 오지 않아도 설치 안내를 바로 열 수 있게 한다.
+     앱으로 설치돼 standalone 으로 도는 중에는 절대 보이지 않는다. */
+  function renderInstallChip() {
+    var chip = doc.getElementById("instChip");
+    if (!chip) return;
+    var show = !state.standalone && !state.installedNow;
+    chip.hidden = !show;
+    chip.className = "instchip" + (state.canPrompt ? " ready" : "");
+  }
+
+  /* ---------- 앱 설치 시트 ---------- */
+  function renderInstallSheet() {
+    var box = doc.getElementById("ovInstall");
+    if (!box) return;
+    var mode = installMode({ standalone: state.standalone, canPrompt: state.canPrompt });
+    var st = doc.getElementById("instState");
+    if (st) {
+      st.textContent = mode === "installed" ? "지금 앱으로 실행 중입니다"
+        : mode === "ready" ? "한 번 누르면 설치 창이 뜹니다"
+        : state.platform === "inapp" ? "이 브라우저(앱 안)에서는 설치 창을 띄울 수 없습니다"
+        : "브라우저 메뉴에서 설치해 주세요";
+    }
+    var go = doc.getElementById("instGo");
+    if (go) go.hidden = mode !== "ready";
+    var g = doc.getElementById("instGuide");
+    if (g) g.textContent = installGuide(state.platform, state.standalone);
+    var ol = doc.getElementById("instSteps");
+    if (ol) {
+      var steps = installSteps(state.platform, state.standalone);
+      var h = "";
+      for (var i = 0; i < steps.length; i++) h += "<li>" + steps[i] + "</li>";
+      if (ol.innerHTML !== h) ol.innerHTML = h;
+      ol.hidden = !steps.length;
+    }
+    var note = doc.getElementById("instNote");
+    if (note) {
+      var t = overlapNote(state.platform, state.standalone);
+      if (note.textContent !== t) note.textContent = t;
+      note.hidden = !t;
+    }
+    var done = doc.getElementById("instDone");
+    if (done) { done.hidden = !state.msg; done.textContent = state.msg; }
+  }
+
+  /* 앱(app.js)의 시트 열기·닫기(뒤 화면 스크롤 잠금 포함)를 그대로 쓴다 — 없으면 단순 대체 */
+  function uiOpen(id) {
+    var ui = W.DS_UI;
+    if (ui && typeof ui.openOv === "function") { ui.openOv(id); return; }
+    var el = doc.getElementById(id);
+    if (!el) return;
+    el.hidden = false;
+    if (doc.documentElement.classList) doc.documentElement.classList.add("lock");
+    if (doc.body.classList) doc.body.classList.add("lock");
+  }
+  function uiClose(id) {
+    var ui = W.DS_UI;
+    if (ui && typeof ui.closeOv === "function") { ui.closeOv(id); return; }
+    var el = doc.getElementById(id);
+    if (!el) return;
+    el.hidden = true;
+    if (doc.documentElement.classList) doc.documentElement.classList.remove("lock");
+    if (doc.body.classList) doc.body.classList.remove("lock");
+  }
+
+  function openInstallSheet() {
+    state.dismissed = false;
+    renderInstallSheet();
+    if (state.standalone || state.installedNow) {
+      setMsg(installGuide(state.platform, true));
+      return;
+    }
+    uiOpen("ovInstall");
+  }
 
   /* ---------- 설치 ---------- */
   function doInstall() {
@@ -262,6 +362,7 @@
         setMsg("설치를 취소했습니다. 나중에 설정 → [📲 앱 설치]로 다시 할 수 있습니다.");
       }
       renderBanner();
+      renderInstallSheet();
     }).catch(function () { renderBanner(); });
   }
 
@@ -339,10 +440,22 @@
   /* ---------- 서비스 워커 ---------- */
   function startSW() {
     if (!("serviceWorker" in nav) || !nav.serviceWorker || typeof nav.serviceWorker.register !== "function") return;
+
+    /* 도시락 폴더(/grandfirst-board/dosirak/) 안으로만 스코프를 좁힌다.
+       게시판 워커는 /grandfirst-board/ 전체를 덮으므로, 같은 출처의 두 앱이
+       서로의 요청을 가로채지 않도록 등록 스코프를 명시한다(로컬 미리보기에서도 동작). */
+    var scope = "./";
+    var swUrl = "sw.js";
     try {
-      nav.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).then(function (r) {
-        reg = r;
-        if (r.waiting) markWaiting(r.waiting);
+      var here = new URL("./", W.location.href);
+      scope = here.pathname;                 /* 예: /grandfirst-board/dosirak/ */
+      swUrl = scope + "sw.js";
+    } catch (e) {}
+
+    function onReg(r) {
+      reg = r;
+      if (r.waiting) markWaiting(r.waiting);
+      if (r.addEventListener) {
         r.addEventListener("updatefound", function () {
           var nw = r.installing;
           if (!nw || !nw.addEventListener) return;
@@ -351,9 +464,18 @@
             if (nw.state === "installed" && nav.serviceWorker.controller) markWaiting(r.waiting || nw);
           });
         });
-        try { r.update(); } catch (e) {}
-        fetchVersion();
-      }).catch(function () {});
+      }
+      try { r.update(); } catch (e) {}
+      fetchVersion();
+    }
+
+    try {
+      nav.serviceWorker.register(swUrl, { scope: scope, updateViaCache: "none" }).then(onReg).catch(function () {
+        /* 스코프를 명시한 등록이 거부되는 환경 — 페이지 기준 상대 등록으로 한 번 더 */
+        try {
+          nav.serviceWorker.register("sw.js", { scope: "./", updateViaCache: "none" }).then(onReg).catch(function () {});
+        } catch (e) {}
+      });
     } catch (e) {}
 
     /* [지금 업데이트] 로만 도는 새로고침 — 첫 설치(claim) 때는 새로고침하지 않는다 */
@@ -389,10 +511,20 @@
     W.addEventListener("appinstalled", function () {
       state.canPrompt = false;
       state.deferred = null;
+      state.installedNow = true;
       writeFlag("installed", true);
       setMsg("설치했습니다 — 홈 화면의 ‘도시락 관리’ 아이콘으로 열면 주소창 없이 뜹니다.");
       render();
     });
+
+    /* 상단 헤더의 [📲 설치] 칩 — 언제든 설치 안내를 연다 */
+    var chip = doc.getElementById("instChip");
+    if (chip && chip.addEventListener) {
+      chip.addEventListener("click", function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        openInstallSheet();
+      });
+    }
 
     doc.addEventListener("click", function (e) {
       var el = e.target && e.target.closest ? e.target.closest("[data-pwa]") : null;
@@ -429,6 +561,11 @@
     state.platform = platformOf(nav.userAgent);
     if (doc.body && state.standalone) doc.body.classList.add("pwa-standalone");
     bind();
+    /* index.html <head> 가 먼저 잡아 둔 beforeinstallprompt (이 스크립트보다 먼저 와도 놓치지 않는다) */
+    if (W.__DS_BIP__) {
+      state.deferred = W.__DS_BIP__;
+      state.canPrompt = true;
+    }
     startSW();
     render();
   }

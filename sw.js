@@ -6,7 +6,7 @@
            화면의 [🆕 새 버전이 준비됐습니다 · 지금 업데이트] 를 눌러
            {type:"SKIP_WAITING"} 을 보낼 때만 넘겨받는다(자동 새로고침 없음).
    ========================================================= */
-const VERSION = "20261128n";   /* 배포할 때마다 올린다 — index.html 의 GF_APP_VERSION · version.json 과 같은 값 */
+const VERSION = "20261128o";   /* 배포할 때마다 올린다 — index.html 의 GF_APP_VERSION · version.json 과 같은 값 */
 
 /* 새 워커는 여기서 skipWaiting() 을 부르지 않는다 → waiting 상태로 남는다.
    (부르면 화면이 알기도 전에 구버전 페이지가 새 워커로 바뀌어 버린다) */
@@ -37,6 +37,9 @@ self.addEventListener("fetch", function (event) {
   try { url = new URL(req.url); } catch (e) { return; }
   /* 다른 출처(Firebase RTDB·gstatic CDN 등)는 그대로 브라우저에 맡긴다 */
   if (url.origin !== self.location.origin) return;
+  /* 도시락 관리(/grandfirst-board/dosirak/)는 이 워커가 절대 가로채지 않는다 —
+     게시판 앱과 도시락 앱을 완전히 분리한다. (도시락은 자기 워커 dosirak/sw.js 가 맡는다) */
+  if (/^\/grandfirst-board\/dosirak(\/|$)/.test(url.pathname) || url.pathname.indexOf("/dosirak/") !== -1) return;
   /* 같은 출처 GET 은 캐시 없이 네트워크에서 바로 받아온다 (구버전 고착 방지) */
   event.respondWith(fetch(req, { cache: "no-store" }));
 });

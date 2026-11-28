@@ -1,6 +1,6 @@
 {
-  "version": "20261128n",
-  "label": "v2026.11.28n",
+  "version": "20261128o",
+  "label": "v2026.11.28o",
   "released": "2026-11-28",
-  "notes": "알림 탭에서 손가락으로 밀어도 화면이 안 움직이던 문제 수정 — 일일 알림 표의 가로 스크롤 상자가 세로 스크롤까지 먹고 overscroll-behavior:contain 으로 페이지 스크롤을 막고 있었다. 가로 전용(overflow-y:hidden · overscroll-behavior-x:contain)으로 바꿔 홈·생성·배포·제거·알림·더보기 모든 탭에서 세로 밀기·끌기가 정상 동작하고, 팝업·바텀시트가 열렸을 때만 뒤 화면이 잠긴다"
+  "notes": "게시판 앱과 도시락 앱을 PWA 로 완전히 분리 — 게시판 매니페스트에 id·start_url·scope 를 /grandfirst-board/ 로 명시하고, 게시판 서비스워커(sw.js)가 /grandfirst-board/dosirak/ 요청을 절대 가로채지 않게 했습니다. 도시락 매니페스트는 id·start_url·scope 를 /grandfirst-board/dosirak/ 로 명시(버전 20261128c)하고 설치 버튼을 상단 헤더에도 상시 노출했습니다"
 }

@@ -13,6 +13,9 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
+# 크롬 실행 파일을 직접 지정할 수 있다(다른 환경의 크로미움으로 검사할 때): PW_CHROME=경로
+LAUNCH = {"executable_path": os.environ["PW_CHROME"]} if os.environ.get("PW_CHROME") else {}
+
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8765/"
 OUT = "/workspace/browser"
 SHOT = "/workspace/downloads/dosirak-test-statement.png"
@@ -28,7 +31,7 @@ def check(name, cond, extra=""):
 
 def main():
     with sync_playwright() as p:
-        bro = p.chromium.launch()
+        bro = p.chromium.launch(**LAUNCH)
         ctx = bro.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
                               is_mobile=True, has_touch=True,
                               user_agent="Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 "
@@ -126,7 +129,8 @@ def main():
         print("\n[5] 조회 모드(관리자 해제)")
         page.click("#admChip")
         page.wait_for_selector("#setSheet:not([hidden])")
-        check("설정 시트에 앱 버전", "v2026.11.28b" in page.inner_text("#setSheet"), page.inner_text("#setSheet"))
+        ver_txt = page.inner_text("#setSheet")
+        check("설정 시트에 앱 버전", "v2026.11.28" in ver_txt, ver_txt)
         check("설정 시트에 앱 설치 줄", "앱 설치" in page.inner_text("#setSheet"))
         page.click("#setAdminBtn")
         page.wait_for_selector("#setSheet", state="hidden")
@@ -177,13 +181,26 @@ def main():
         page.screenshot(path=os.path.join(OUT, "dosirak-6-install-banner-390.png"))
         page.click('#pwaPrompt [data-pwa="dismiss"]')
 
+        # 상단 [📲 설치] 칩 · 설치 시트 — beforeinstallprompt 가 없어도 언제든 열린다
+        check("상단 설치 칩 보임(브라우저 실행 중)", page.is_visible("#instChip"))
+        page.click("#instChip")
+        page.wait_for_selector("#ovInstall:not([hidden])", timeout=5000)
+        check("설치 시트 열림", page.is_visible("#ovInstall"))
+        nsteps = page.eval_on_selector_all("#instSteps li", "e=>e.length")
+        check("설치 시트 단계 안내", nsteps >= 2, nsteps)
+        check("설치 시트 안내 문구", "설치" in page.inner_text("#instGuide"))
+        page.screenshot(path=os.path.join(OUT, "dosirak-10-install-sheet-390.png"))
+        page.click("#ovInstall [data-close]")
+        page.wait_for_selector("#ovInstall", state="hidden", timeout=5000)
+        check("설치 시트 닫힘", page.is_hidden("#ovInstall"))
+
         # 새 버전 배너 — 실제 배포와 같은 조건(서비스 워커 포함)에서 보려고
         # version.json 을 잠깐 새 버전으로 바꿔 두었다가 되돌린다.
         vpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "version.json")
         orig = open(vpath, encoding="utf-8").read()
         data = json.loads(orig)
-        data["version"] = "20261128c"
-        data["label"] = "v2026.11.28c"
+        data["version"] = "20261128d"      # 지금 버전보다 한 단계 위(가짜 새 버전)
+        data["label"] = "v2026.11.28d"
         open(vpath, "w", encoding="utf-8").write(json.dumps(data, ensure_ascii=False, indent=2))
         try:
             page2 = ctx.new_page()

@@ -75,7 +75,7 @@ var App = (function () {
   var LOCK = { on: false, y: 0 };
   function syncLock() {
     var open = false;
-    ["ovList", "ovMeal", "ovSettle", "ovAdmin", "setSheet", "lightbox"].forEach(function (id) {
+    ["ovList", "ovMeal", "ovSettle", "ovAdmin", "setSheet", "ovInstall", "lightbox"].forEach(function (id) {
       var el = $(id);
       if (el && !el.hidden) open = true;
     });
@@ -774,7 +774,7 @@ var App = (function () {
     $("lightbox").addEventListener("click", function (e) { if (e.target.id === "lightbox") closeOv("lightbox"); });
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
-      ["ovList", "ovMeal", "ovSettle", "ovAdmin", "setSheet", "lightbox"].forEach(function (id) {
+      ["ovList", "ovMeal", "ovSettle", "ovAdmin", "setSheet", "ovInstall", "lightbox"].forEach(function (id) {
         var el = $(id); if (el && !el.hidden) closeOv(id);
       });
     });
@@ -789,6 +789,9 @@ var App = (function () {
     }
     return null;
   }
+
+  /* pwa.js(설치 시트)가 같은 시트 열기·닫기를 쓰도록 노출 — 스크롤 잠금이 한 곳에서 돈다 */
+  window.DS_UI = { openOv: openOv, closeOv: closeOv };
 
   /* ---------- 시작 ---------- */
   function boot() {

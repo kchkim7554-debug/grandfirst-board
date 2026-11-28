@@ -350,6 +350,16 @@ board/
 - `manifest.json` 의 `theme_color` 는 상단 네이비 **`#0d2e52`**(`meta[name=theme-color]` 도 같음).
 - 이미 설치한 앱은 위 배너로 한 번 업데이트하면 이후부터는 새 배포마다 같은 방식으로 안내합니다.
 
+### 2-1) 도시락 관리 앱과의 분리 (2026-11-28)
+
+같은 출처(`kchkim7554-debug.github.io`) 아래에 게시판(`/grandfirst-board/`)과 도시락(`/grandfirst-board/dosirak/`) 두 앱이 있습니다. 사용자 요청 **"설치 안보이던데?" / "설치된 풍경채 게시판 이 상관있어? 없게해줘"** 에 따라 두 앱의 정체성과 서비스워커를 갈랐습니다.
+
+- `manifest.json` — `"id": "/grandfirst-board/"` 를 넣고 `"start_url"`·`"scope"` 도 **절대 경로**로 명시했습니다. (id 를 넣지 않으면 크롬이 `start_url` 로 계산합니다 — 값은 같아서 이미 설치된 앱을 새 앱으로 만들지 않고, 앞으로 `start_url` 을 바꿔도 앱 정체성이 유지됩니다.)
+- `sandbox/manifest.json` — 카피본은 `"id": "/grandfirst-board/sandbox/"`. 생성기 `scripts/make_sandbox.py` 가 원본 id 를 카피본 주소로 바꿔 줍니다. (그대로 두면 카피본을 설치했을 때 원본 앱과 같은 앱으로 취급됩니다.)
+- `sw.js` — `fetch` 핸들러가 `/grandfirst-board/dosirak` 경로 요청을 **가로채지 않고** 바로 반환합니다. 게시판 워커 스코프가 하위 도시락 요청까지 덮지 않게 한 것입니다.
+- 검증 — `test/run_quickjs.py` 의 `[sw]` 블록이 fetch 이벤트를 직접 던져 `/dosirak/` · `/dosirak/index.html` · `/dosirak` · `/dosirak/sw.js` 에서 `respondWith` 를 부르지 않고, 게시판 경로는 그대로 맡는지 확인합니다.
+- **남는 제약(중요)** — 서비스워커·매니페스트 스코프는 경로 접두어라, `/grandfirst-board/` 안에 `/dosirak/` 이 있는 한 스코프가 겹칩니다(중첩 스코프). 크롬은 이 경우 **바깥 앱(게시판)이 이미 설치돼 있으면 안쪽 앱(도시락)의 설치 창을 띄우지 않습니다.** 두 앱을 완전히 갈라 설치하려면 도시락을 다른 저장소(예: `https://kchkim7554-debug.github.io/dosirak-board/`)로 옮겨야 하고, 옮길 사본은 `/workspace/dosirak-app/` 에 준비해 두었습니다.
+
 ### 3) 버전 올리는 법 (배포 체크리스트)
 
 1. `index.html` — `window.GF_APP_VERSION = "날짜+알파벳"`, 모든 `?v=`, `app.js`·`pwa.js` 스크립트 주소

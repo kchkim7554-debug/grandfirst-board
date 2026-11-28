@@ -136,6 +136,13 @@ def check_shell():
     except Exception:
         mj = {}
     ok("매니페스트 theme_color 는 상단 네이비(#0d2e52)", mj.get("theme_color") == "#0d2e52", str(mj.get("theme_color")))
+    # 2026-11-28 — 도시락 관리 앱(dosirak/)과의 PWA 완전 분리
+    ok("매니페스트 id · start_url · scope = /grandfirst-board/",
+       mj.get("id") == "/grandfirst-board/" and mj.get("start_url") == "/grandfirst-board/"
+       and mj.get("scope") == "/grandfirst-board/",
+       str((mj.get("id"), mj.get("start_url"), mj.get("scope"))))
+    ok("sw.js — /dosirak/ 요청은 가로채지 않는다(분리)",
+       "dosirak" in sw and sw.find("dosirak") < sw.find("respondWith"))
 
     # 2026-11-28 — 원터치 앱 설치 · 버전/업데이트 알림 (pwa.js)
     pjp = os.path.join(ROOT, "pwa.js")
@@ -290,6 +297,8 @@ def check_sandbox():
     ok("카피본 이름은 (테스트용)", mj.get("name") == "게시판 관리 (테스트용)", str(mj.get("name")))
     ok("카피본 시작 주소는 카피본 안", mj.get("start_url") == "./" and mj.get("scope") == "./",
        str(mj.get("start_url")))
+    ok("카피본 id 도 카피본 자리(원본 앱과 섞이지 않음)", mj.get("id") == "/grandfirst-board/sandbox/",
+       str(mj.get("id")))
     ok("카피본 아이콘은 원본 icons/ 공용", mj.get("icons") and
        all(i.get("src", "").startswith("../icons/") for i in mj["icons"]))
     ok("카피본 매니페스트 연결", 'rel="manifest" href="sandbox/manifest.json"' in page
@@ -322,6 +331,69 @@ def check_sandbox():
     return out, n_pass, n_fail
 
 
+
+def check_sw_split():
+    """게시판 서비스워커가 /dosirak/ 요청을 가로채지 않는지 — fetch 이벤트를 직접 던져 본다.
+
+    2026-11-28 사용자 요청 "설치된 풍경채 게시판 이 상관있어? 없게해줘" —
+    게시판 워커(scope /grandfirst-board/)와 도시락 워커(scope /grandfirst-board/dosirak/)가
+    서로의 요청을 건드리지 않아야 두 앱이 완전히 갈라진다.
+    QuickJS 에는 URL 이 없어 최소 폴리필을 넣는다(경로·출처만 본다).
+    """
+    out = []
+    n_pass = 0
+    n_fail = 0
+
+    def ok(name, cond, extra=""):
+        nonlocal n_pass, n_fail
+        if cond:
+            n_pass += 1
+            out.append("  ✓ " + name)
+        else:
+            n_fail += 1
+            out.append("  ✗ " + name + ("  → " + extra if extra else ""))
+
+    out.append("\n[sw] 게시판 서비스워커 — /dosirak/ 분리")
+    try:
+        c = quickjs.Context()
+        c.eval("""
+var __handlers = {};
+var self = {
+  addEventListener: function (t, fn) { __handlers[t] = fn; },
+  location: { origin: "https://kchkim7554-debug.github.io" },
+  skipWaiting: function () {},
+  clients: { claim: function () {} }
+};
+function URL(u) {
+  var m = String(u).match(/^(https?):\\/\\/([^\\/]+)([^?#]*)/);
+  this.protocol = (m && m[1] ? m[1] : "") + ":";
+  this.host = m ? m[2] : "";
+  this.origin = (m ? m[1] + "://" + m[2] : "");
+  this.pathname = (m && m[3]) ? m[3] : "/";
+}
+function fetch() { return { ok: true }; }   /* respondWith(fetch(...)) 를 위한 대역 */
+function fire(method, path) {
+  var ev = { request: { method: method, url: "https://kchkim7554-debug.github.io" + path },
+             responded: false,
+             respondWith: function () { this.responded = true; } };
+  __handlers["fetch"](ev);
+  return ev.responded;
+}
+""")
+        c.eval(read("sw.js"))
+        ok("sw.js — fetch 핸들러 등록", c.eval("typeof __handlers['fetch'] === 'function'"))
+        ok("/dosirak/ 페이지는 가로채지 않는다", c.eval("fire('GET', '/grandfirst-board/dosirak/') === false"))
+        ok("/dosirak/index.html 도 가로채지 않는다", c.eval("fire('GET', '/grandfirst-board/dosirak/index.html') === false"))
+        ok("/dosirak (슬래시 없이) 도 가로채지 않는다", c.eval("fire('GET', '/grandfirst-board/dosirak') === false"))
+        ok("/dosirak/sw.js 도 가로채지 않는다", c.eval("fire('GET', '/grandfirst-board/dosirak/sw.js') === false"))
+        ok("게시판 페이지는 그대로 맡는다", c.eval("fire('GET', '/grandfirst-board/') === true"))
+        ok("게시판 app.js 도 그대로 맡는다", c.eval("fire('GET', '/grandfirst-board/app.js') === true"))
+        ok("POST 는 건드리지 않는다(기존 규칙)", c.eval("fire('POST', '/grandfirst-board/') === false"))
+    except Exception as e:  # noqa: BLE001
+        ok("sw.js fetch 분리 검사", False, str(e))
+    return out, n_pass, n_fail
+
+
 ctx = quickjs.Context()
 lines = []
 ctx.add_callable("__log", lambda s: lines.append(str(s)))
@@ -348,8 +420,13 @@ shell_out, shell_pass, shell_fail = check_shell()
 print("\n".join(shell_out))
 print("\n  껍데기 확인 %d개 통과%s" % (shell_pass, "" if not shell_fail else ", %d개 실패" % shell_fail))
 
+sw_out, sw_pass, sw_fail = check_sw_split()
+print("\n".join(sw_out))
+print("\n  워커 분리 확인 %d개 통과%s" % (sw_pass, "" if not sw_fail else ", %d개 실패" % sw_fail))
+print("\n  ✓ 서비스워커 분리" if not sw_fail else "")
+
 sbx_out, sbx_pass, sbx_fail = check_sandbox()
 print("\n".join(sbx_out))
 print("\n  카피본 확인 %d개 통과%s" % (sbx_pass, "" if not sbx_fail else ", %d개 실패" % sbx_fail))
 
-sys.exit(1 if (fail or shell_fail or sbx_fail) else 0)
+sys.exit(1 if (fail or shell_fail or sbx_fail or sw_fail) else 0)

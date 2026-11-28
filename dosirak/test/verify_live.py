@@ -12,6 +12,9 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
+# 크롬 실행 파일을 직접 지정할 수 있다(다른 환경의 크로미움으로 검사할 때): PW_CHROME=경로
+LAUNCH = {"executable_path": os.environ["PW_CHROME"]} if os.environ.get("PW_CHROME") else {}
+
 BASE = sys.argv[1] if len(sys.argv) > 1 else "https://kchkim7554-debug.github.io/grandfirst-board/dosirak/"
 OUT = "/workspace/browser"
 PW = os.environ.get("DS_PW", "")
@@ -26,7 +29,7 @@ def check(name, cond, extra=""):
 
 def main():
     with sync_playwright() as p:
-        b = p.chromium.launch()
+        b = p.chromium.launch(**LAUNCH)
         ctx = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2,
                             is_mobile=True, has_touch=True,
                             user_agent="Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 "

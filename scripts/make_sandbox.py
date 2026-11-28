@@ -96,6 +96,10 @@ def build_manifest(src_json: str) -> str:
     m["name"] = SANDBOX_NAME
     m["short_name"] = SANDBOX_SHORT
     m["description"] = "풍경채 그랑퍼스트 게시판 관리 — 테스트용 카피본(마음껏 눌러보기)"
+    # 원본 매니페스트가 id·start_url·scope 를 /grandfirst-board/ 로 명시하므로
+    # 카피본은 카피본 주소(/grandfirst-board/sandbox/)로 바꿔 준다.
+    # (그대로 두면 카피본을 설치했을 때 원본 앱과 같은 앱으로 취급된다)
+    m["id"] = "/grandfirst-board/sandbox/"
     m["start_url"] = "./"        # → /grandfirst-board/sandbox/
     m["scope"] = "./"
     out = []

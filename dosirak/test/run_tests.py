@@ -278,6 +278,55 @@ ok("실시간 구독(records·settlements)", 'ROOT + "/records"' in appjs and 'R
 ok("샌드박스 분리(?sandbox=1)", 'q.get("sandbox") === "1"' in appjs and 'ROOT = ROOT + "/sandbox"' in appjs)
 ok("삭제 전 확인창", "confirm(" in appjs)
 
+# ---------------------------------------------------------------- 9. PWA 분리 · 설치 버튼
+section("9. PWA 분리(게시판 ↔ 도시락) · 설치 버튼 보장")
+
+# 9-1. 매니페스트 정체성 — id · start_url · scope 를 도시락 폴더로 못박는다
+mani_d = json.loads(read("manifest.json"))
+eq("도시락 manifest id", mani_d.get("id"), "/grandfirst-board/dosirak/")
+eq("도시락 manifest start_url", mani_d.get("start_url"), "/grandfirst-board/dosirak/")
+eq("도시락 manifest scope", mani_d.get("scope"), "/grandfirst-board/dosirak/")
+ok("도시락 manifest 이름이 게시판과 다름", mani_d.get("name") == "도시락 관리")
+
+# 9-2. 게시판 매니페스트 — 자기 자리(/grandfirst-board/)만 차지한다
+board_mani_path = os.path.join(ROOT, "..", "manifest.json")
+if os.path.exists(board_mani_path):
+    mani_b = json.load(open(board_mani_path, encoding="utf-8"))
+    eq("게시판 manifest id", mani_b.get("id"), "/grandfirst-board/")
+    eq("게시판 manifest start_url", mani_b.get("start_url"), "/grandfirst-board/")
+    eq("게시판 manifest scope", mani_b.get("scope"), "/grandfirst-board/")
+    ok("두 앱의 id 가 서로 다름", mani_b.get("id") != mani_d.get("id"))
+else:
+    ok("게시판 manifest 확인(../manifest.json)", False, board_mani_path)
+
+# 9-3. 게시판 서비스워커는 /dosirak/ 을 절대 가로채지 않는다
+board_sw_path = os.path.join(ROOT, "..", "sw.js")
+if os.path.exists(board_sw_path):
+    bsw = open(board_sw_path, encoding="utf-8").read()
+    ok("게시판 sw.js — /dosirak/ 우회", "dosirak" in bsw and "return;" in bsw)
+    ok("게시판 sw.js — 우회 검사가 respondWith 앞", bsw.find("dosirak") < bsw.find("respondWith"))
+else:
+    ok("게시판 sw.js 확인(../sw.js)", False, board_sw_path)
+
+# 9-4. 도시락 서비스워커 등록은 도시락 폴더로 스코프 한정
+pwa = read("pwa.js")
+ok("pwa.js — 등록 스코프 명시(scope: scope)", "register(swUrl, { scope: scope" in pwa)
+ok("pwa.js — 위치 기준 스코프 계산(new URL", 'new URL("./", W.location.href)' in pwa)
+ok("pwa.js — 스코프 등록 실패 시 상대 등록 대체", 'register("sw.js", { scope: "./"' in pwa)
+ok("pwa.js — 게시판 워커와 무관하게 자기 워커만", 'swUrl = scope + "sw.js"' in pwa)
+
+# 9-5. 설치 버튼 보장 — 상단 칩 + 설치 시트 + 조기 포착
+ok("index.html — 상단 [📲 설치] 칩", 'id="instChip"' in html and 'instchip' in html)
+ok("index.html — 설치 시트", 'id="ovInstall"' in html and 'id="instGo"' in html and 'id="instGuide"' in html)
+ok("index.html — 설치 시트 단계 안내 자리", 'id="instSteps"' in html and 'id="instNote"' in html)
+ok("index.html — beforeinstallprompt 조기 포착", "__DS_BIP__" in html and html.find("__DS_BIP__") < html.find('<script src="pwa.js'))
+ok("pwa.js — 조기 포착 이어받기", "W.__DS_BIP__" in pwa)
+ok("pwa.js — 칩은 standalone 이면 숨김", "!state.standalone && !state.installedNow" in pwa)
+ok("pwa.js — 설치 시트 열기", "function openInstallSheet()" in pwa and 'uiOpen("ovInstall")' in pwa)
+ok("pwa.js — 설치 단계·겹침 안내 노출", "installSteps" in pwa and "overlapNote" in pwa)
+ok("app.js — 설치 시트도 스크롤 잠금 목록에 포함", 'ovInstall' in appjs)
+ok("app.js — pwa.js 와 시트 열기 공유(window.DS_UI)", "window.DS_UI" in appjs)
+
 # ---------------------------------------------------------------- 9. swift: 합계
 print("\n" + "=" * 62)
 print("통과 %d · 실패 %d" % (PASS, FAIL))

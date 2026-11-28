@@ -20,7 +20,7 @@
   "use strict";
 
   var W = (typeof window !== "undefined") ? window : globalThis;
-  var FALLBACK_VERSION = "20261128n";
+  var FALLBACK_VERSION = "20261128o";
 
   /* ------------------------------------------------------------------
      순수 함수 — DOM 없이도 검사할 수 있는 부분

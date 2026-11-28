@@ -11,6 +11,14 @@
 <link rel="icon" href="icons/favicon-16.png" sizes="16x16">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script>/* 설치 창(beforeinstallprompt)을 가장 먼저 잡아 둔다 — pwa.js 가 늦게 떠도 놓치지 않게
+   (pwa.js 는 window.__DS_BIP__ 를 이어받아 [📲 앱 설치] 버튼으로 띄운다) */
+window.__DS_BIP__ = null;
+window.addEventListener("beforeinstallprompt", function (e) {
+  try { e.preventDefault(); } catch (err) {}
+  window.__DS_BIP__ = e;
+});
+</script>
 <style>
 /* =====================================================================
    🍱 도시락 관리 — 2026-11-28
@@ -62,6 +70,17 @@ button{font-family:inherit;cursor:pointer;}
 .admchip .ic{width:11px;height:11px;}
 .admchip.on{background:#0f172a;border-color:#0f172a;color:#fde68a;}
 .admchip.on .ic{color:#fde68a;}
+
+/* 상단 [📲 설치] 칩 — beforeinstallprompt 가 오지 않아도 언제든 설치 안내를 연다 */
+.instchip{
+  flex:0 0 auto;display:flex;align-items:center;gap:3px;height:28px;padding:0 8px;border-radius:999px;
+  border:1px solid #fcd34d;background:#fffbeb;color:#b45309;font-size:10.5px;font-weight:800;
+  letter-spacing:-.02em;white-space:nowrap;line-height:1;
+}
+.instchip:active{background:#fef3c7;transform:scale(.96);}
+.instchip .em{font-size:12px;line-height:1;}
+.instchip.ready{background:#fde68a;border-color:#f59e0b;color:#7c2d12;}   /* 설치 창 준비됨 — 한 번 누르면 뜬다 */
+@media (max-width:338px){.instchip .tx{display:none;}.instchip{padding:0 6px;}}
 
 /* ---------- 본문 ---------- */
 main{
@@ -249,6 +268,18 @@ html.lock,body.lock{overflow:hidden;overscroll-behavior:none;}
 html.lock{height:100%;}
 body.lock{position:fixed;left:0;right:0;width:100%;}
 
+/* ---------- 앱 설치 시트 (pwa.js) ---------- */
+.inst-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.inst-ico{width:44px;height:44px;border-radius:11px;border:1px solid var(--line);background:#fff;flex:0 0 44px;}
+.inst-name b{display:block;font-size:14px;font-weight:800;color:#0f172a;letter-spacing:-.02em;}
+.inst-name span{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:2px;line-height:1.35;}
+.inst-go{width:100%;margin-bottom:10px;}
+.inst-guide{font-size:11.5px;font-weight:700;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid var(--line);border-radius:11px;padding:9px 11px;word-break:keep-all;}
+.inst-steps{margin:9px 2px 0;padding-left:18px;font-size:11.5px;font-weight:600;color:#475569;line-height:1.65;word-break:keep-all;}
+.inst-steps li{margin:2px 0;}
+.inst-note{margin-top:10px;font-size:10.5px;font-weight:700;line-height:1.5;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:11px;padding:9px 11px;word-break:keep-all;}
+.inst-done{margin-top:9px;font-size:11.5px;font-weight:800;color:#2563eb;line-height:1.45;}
+
 /* ---------- 앱 설치 · 새 버전 배너 (pwa.js) ---------- */
 .pwap{position:fixed;left:10px;right:10px;bottom:calc(10px + var(--sab));z-index:46;max-width:540px;margin:0 auto;display:flex;align-items:center;gap:9px;padding:9px 9px 9px 13px;border-radius:14px;color:#fff;background:linear-gradient(135deg,#123a63 0%,#0d2e52 100%);box-shadow:0 6px 20px rgba(6,20,40,.34);animation:pwapIn .22s ease-out;}
 .pwap.upd{background:linear-gradient(135deg,#0f6b4f 0%,#0d3f6b 100%);}
@@ -326,6 +357,7 @@ body.pwa-bar{padding-bottom:76px;}
     <span class="ttl-main" id="ttlMain">2026년 11월</span>
   </div>
   <button class="navbtn" id="navNext" aria-label="다음 달"><svg class="ic"><use href="#i-right"/></svg></button>
+  <button class="instchip" id="instChip" hidden aria-label="앱 설치"><span class="em">📲</span><span class="tx">설치</span></button>
   <button class="admchip" id="admChip" aria-label="관리자"><svg class="ic"><use href="#i-lock"/></svg><span id="admChipText">조회</span></button>
 </header>
 
@@ -490,6 +522,30 @@ body.pwa-bar{padding-bottom:76px;}
   </div>
 </div>
 
+<!-- ================= 앱 설치 시트 (pwa.js 가 상태·안내를 채운다) ================= -->
+<div class="ov" id="ovInstall" hidden>
+  <div class="sheet">
+    <div class="sh-h">
+      <div><b>앱 설치</b><span>홈 화면에 두고 주소창 없이 쓰기</span></div>
+      <button class="sh-x" data-close="ovInstall" aria-label="닫기"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sh-b">
+      <div class="inst-top">
+        <img class="inst-ico" src="icons/icon-192.png?v=20261128c" alt="">
+        <div class="inst-name"><b>도시락 관리</b><span id="instState">설치 상태 확인 중…</span></div>
+      </div>
+      <button class="btn solid inst-go" id="instGo" data-pwa="install" hidden>📲 앱 설치</button>
+      <div class="inst-guide" id="instGuide"></div>
+      <ol class="inst-steps" id="instSteps" hidden></ol>
+      <div class="inst-note" id="instNote" hidden></div>
+      <div class="inst-done" id="instDone" hidden></div>
+    </div>
+    <div class="sh-f">
+      <button class="btn ghost" data-close="ovInstall">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= 사진 팝업 ================= -->
 <div class="lb" id="lightbox" hidden>
   <div class="lb-scroll" id="lbScroll"><img class="lb-img" id="lbImg" alt=""></div>
@@ -506,11 +562,11 @@ body.pwa-bar{padding-bottom:76px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>/* 앱 버전 — sw.js 의 VERSION · version.json · 아래 ?v= 와 함께 올린다 */
-window.DS_APP_VERSION = "20261128b";
+window.DS_APP_VERSION = "20261128c";
 window.DS_ENV = { lsPrefix: "ds.", dbRoot: "board/dosirak" };
 </script>
-<script src="core.js?v=20261128b"></script>
-<script src="pwa.js?v=20261128b"></script>
-<script src="app.js?v=20261128b"></script>
+<script src="core.js?v=20261128c"></script>
+<script src="pwa.js?v=20261128c"></script>
+<script src="app.js?v=20261128c"></script>
 </body>
 </html>
