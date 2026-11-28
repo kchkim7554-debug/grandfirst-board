@@ -20,13 +20,13 @@
   "use strict";
 
   var W = (typeof window !== "undefined") ? window : globalThis;
-  var FALLBACK_VERSION = "20261128m";
+  var FALLBACK_VERSION = "20261128n";
 
   /* ------------------------------------------------------------------
      순수 함수 — DOM 없이도 검사할 수 있는 부분
      ------------------------------------------------------------------ */
 
-  /* "20261128m" → "v2026.11.28l" */
+  /* "20261128n" → "v2026.11.28n" */
   function versionLabel(v) {
     v = String(v == null ? "" : v).trim();
     if (!v) return "";

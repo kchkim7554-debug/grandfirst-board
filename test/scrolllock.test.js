@@ -69,6 +69,8 @@ console.log("\n[2] 잠금·해제 연결 (app.js)");
   ok("새 화면으로 갈 때 옛 위치로 되돌리지 않는다", has(SRC, "if (SLOCK.on) SLOCK.y = 0;"));
   ok("예전 방식(body.no-scroll 직접 조작)은 쓰지 않는다", !has(SRC, 'classList.add("no-scroll")'));
   ok("openSheet/closeSheet 안에서 호출", has(SRC, "if (opts.onMount) opts.onMount(sh);\n    syncScrollLock();"));
+  ok("알림 표는 가로 스크롤 상자(.tscroll) 안에 있다 — 이 상자가 세로 밀기를 먹던 곳",
+     has(SRC, '<div class="statcard" style="padding:2px 2px 4px"><div class="tscroll">'));
 }
 
 /* ---------- 3. 앱 상태 ---------- */
@@ -77,6 +79,67 @@ console.log("\n[3] 상태");
   var st = L.state();
   ok("처음에는 잠금 아님", st.on === false);
   ok("보존 위치 기본값 0", st.y === 0);
+}
+
+/* ---------- 4. 잠금 적용·해제 — 팝업이 닫혀 있으면 아무것도 잠그지 않는다 ----------
+   (2026-11-28 사용자 제보 "알림 탭 밀기 끌기 안됨" 회귀)
+   열린 모달 판별이 틀리거나 해제가 빠지면 html·body 에 .lock 이 남아
+   모든 탭에서 화면이 밀리지 않는다. 가짜 document 로 실제 적용·해제를 돌려 본다. */
+console.log("\n[4] 잠금 적용·해제");
+{
+  function cls() {
+    var on = {};
+    return {
+      add: function (c) { on[c] = 1; }, remove: function (c) { delete on[c]; },
+      has: function (c) { return !!on[c]; }
+    };
+  }
+  function mkDoc(found) {
+    return {
+      querySelector: function () { return found ? { ok: 1 } : null; },
+      body: { classList: cls(), style: {} },
+      documentElement: { classList: cls(), scrollTop: 0 }
+    };
+  }
+  var scrolled = [];
+  var realDoc = globalThis.document;
+  if (typeof window === "undefined") globalThis.window = globalThis;   // node 로 돌릴 때
+  globalThis.scrollTo = function (x, y) { scrolled.push([x, y]); };
+
+  /* 팝업이 모두 닫힌 화면 */
+  var d1 = mkDoc(false);
+  globalThis.document = d1;
+  globalThis.pageYOffset = 120;
+  L.apply();
+  ok("팝업이 닫혀 있으면 html.lock 을 붙이지 않는다", !d1.documentElement.classList.has("lock"));
+  ok("팝업이 닫혀 있으면 body.lock 을 붙이지 않는다", !d1.body.classList.has("lock"));
+  ok("팝업이 닫혀 있으면 body 를 고정하지 않는다(top 비어 있음)", !d1.body.style.top, d1.body.style.top);
+  ok("팝업이 닫혀 있으면 잠금 상태 false", L.state().on === false);
+
+  /* 팝업이 열린 화면 — 뒤 화면은 잠긴다 */
+  var d2 = mkDoc(true);
+  globalThis.document = d2;
+  globalThis.pageYOffset = 120;
+  L.apply();
+  ok("팝업이 열리면 html·body 에 lock", d2.documentElement.classList.has("lock") && d2.body.classList.has("lock"));
+  ok("팝업이 열리면 현재 위치를 top 에 보존", d2.body.style.top === "-120px", d2.body.style.top);
+  ok("잠금 상태 true · 위치 보존", L.state().on === true && L.state().y === 120, JSON.stringify(L.state()));
+
+  /* 다시 닫힌 화면 — 잠금이 풀리고 원래 자리로 */
+  var d3 = mkDoc(false);
+  globalThis.document = d3;
+  L.apply();
+  ok("팝업을 닫으면 html·body 의 lock 을 푼다",
+     !d3.documentElement.classList.has("lock") && !d3.body.classList.has("lock"));
+  ok("닫으면 body top 을 지운다", !d3.body.style.top, d3.body.style.top);
+  ok("닫으면 원래 위치로 되돌린다", scrolled.length === 1 && scrolled[0][1] === 120, JSON.stringify(scrolled));
+  ok("닫은 뒤 잠금 상태 false", L.state().on === false);
+
+  /* 닫힌 화면에서 한 번 더 불러도 잠기지 않는다(감시자가 반복 호출) */
+  L.apply(); L.apply();
+  ok("닫힌 채 여러 번 불러도 잠기지 않는다", L.state().on === false && !d3.documentElement.classList.has("lock"));
+
+  globalThis.document = realDoc;
 }
 
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");

@@ -1,6 +1,6 @@
 {
-  "version": "20261128m",
-  "label": "v2026.11.28m",
+  "version": "20261128n",
+  "label": "v2026.11.28n",
   "released": "2026-11-28",
-  "notes": "팝업·바텀시트가 열려 있을 때 뒤 화면이 같이 밀리던 문제 수정 — 모달이 열리면 뒤 화면 스크롤을 잠그고(body 고정), 닫으면 원래 위치로 복귀 · 팝업 안쪽 스크롤은 그대로 부드럽게(overscroll-behavior: contain)"
+  "notes": "알림 탭에서 손가락으로 밀어도 화면이 안 움직이던 문제 수정 — 일일 알림 표의 가로 스크롤 상자가 세로 스크롤까지 먹고 overscroll-behavior:contain 으로 페이지 스크롤을 막고 있었다. 가로 전용(overflow-y:hidden · overscroll-behavior-x:contain)으로 바꿔 홈·생성·배포·제거·알림·더보기 모든 탭에서 세로 밀기·끌기가 정상 동작하고, 팝업·바텀시트가 열렸을 때만 뒤 화면이 잠긴다"
 }

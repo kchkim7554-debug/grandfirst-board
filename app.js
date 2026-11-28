@@ -5096,7 +5096,7 @@ var App = (function () {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
     /* 모달 스크롤 잠금 검증용 — 열린 모달 판별(가짜 document 로도 부를 수 있다) */
     lock: {
-      sel: MODAL_SEL, shown: modalShown,
+      sel: MODAL_SEL, shown: modalShown, apply: applyScrollLock,
       state: function () { return { on: SLOCK.on, y: SLOCK.y }; }
     },
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,

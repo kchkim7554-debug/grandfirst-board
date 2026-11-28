@@ -208,6 +208,26 @@ def check_shell():
        and re.search(r"\.backdrop\{[^}]*touch-action:none", html) is not None)
     ok("모달 잠금 코드가 app.js 에 있음",
        "function applyScrollLock()" in read("app.js") and "MODAL_SEL" in read("app.js"))
+
+    # 2026-11-28n — 알림 탭 스크롤 불가 회귀
+    # 가로 전용 스크롤 상자(overflow-x:auto)에 overscroll-behavior:contain 을 붙이면
+    # overflow-y 가 auto 로 계산되어 세로 제스처를 먹고, contain 이 페이지로 넘어가는 것까지 막는다.
+    m_ts = re.search(r"\.tscroll\{([^}]*)\}", html)
+    ts = m_ts.group(1) if m_ts else ""
+    ok("일일 알림 표 .tscroll 은 가로 전용(overflow-y:hidden)", "overflow-y:hidden" in ts, ts)
+    ok("일일 알림 표 .tscroll 이 세로 밀기를 막지 않는다",
+       "overscroll-behavior:contain" not in ts and "overscroll-behavior-y:contain" not in ts, ts)
+    ok("일일 알림 표 .tscroll 은 가로 바운스만 contain", "overscroll-behavior-x:contain" in ts, ts)
+    m_wc = re.search(r"\.welchips\{([^}]*)\}", html)
+    wc = m_wc.group(1) if m_wc else ""
+    ok("팝업 칩 줄 .welchips 도 가로 전용",
+       "overflow-y:hidden" in wc and "overscroll-behavior:contain" not in wc and "overscroll-behavior-x:contain" in wc, wc)
+    ok("세로 스크롤 상자(.popbody·.sheet-body·.mvpicklist)는 contain 유지",
+       re.search(r"\.popbody\{[^}]*overscroll-behavior:contain", html) is not None
+       and re.search(r"\.sheet-body\{[^}]*overscroll-behavior:contain", html) is not None
+       and re.search(r"\.mvpicklist\{[^}]*overscroll-behavior:contain", html) is not None)
+    ok("잠금은 팝업이 열렸을 때만 — 해제 검사 코드가 테스트에 있음",
+       "팝업을 닫으면 html·body 의 lock 을 푼다" in read("test/scrolllock.test.js"))
     return out, n_pass, n_fail
 
 
