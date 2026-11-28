@@ -218,7 +218,7 @@ board/
 - `app.js` — 앱 로직(실시간 동기화·체크·등록·보관함·첫 화면·탭바·첫 진입 팝업·이동 대기)
 - `sw.js` — PWA 서비스 워커(2026-11-28). 새 워커는 **대기(waiting)** 만 하고 `[지금 업데이트]` 메시지(`SKIP_WAITING`) 때만 `skipWaiting()` + `clients.claim()` · **캐시 없는 패스스루**(항상 최신 파일)
 - `pwa.js` — **원터치 앱 설치(📲 앱 설치) + 버전/업데이트 알림**(2026-11-28). `beforeinstallprompt` 로 설치 창을 잡아 두었다가 버튼 한 번으로 띄우고, 새 배포를 감지하면 `🆕 새 버전이 준비됐습니다 [지금 업데이트]` 배너를 띄웁니다. 설정 시트 맨 아래 `앱 · 버전`(현재 버전·설치·업데이트 확인)도 이 파일이 그립니다.
-- `version.json` — 지금 배포된 버전(`{"version":"20261128k", "label":"v2026.11.28k"}`). 켜 둔 화면이 낡았는지 `no-store` 로 확인하는 데 씁니다.
+- `version.json` — 지금 배포된 버전(`{"version":"20261128l", "label":"v2026.11.28l"}`). 켜 둔 화면이 낡았는지 `no-store` 로 확인하는 데 씁니다.
 - `data.json` — 시설 정보(동·코어·층·게시판 번호). 게시물은 들어 있지 않습니다.
 - `notices_real.json` — 2026-11-16~18 현장 촬영 사진 21장(11/17 A조 신규 배포 2건 포함) + 11/20 R22(입대의 정기회의 공고)을 판독해 정리한 실제 게시물 데이터 22건
 - `images/dong_ho_table_101_108.jpg` · `dong_ho_table_109_116.jpg` · `dong_ho_table_117_124.jpg` — 동·호수 배치표 3장(동 표기를 101~124동으로 수정)
@@ -292,7 +292,7 @@ board/
 - **상단바(모든 화면 왼쪽 위)** — 네이비 바탕이라 흰 글씨 버전 `icons/logo-wordmark-white.png`(흰 글씨 + 색 잎)를 높이 26px(좁은 화면 23px)로 얹고, 옆에 얇은 구분선을 둔 뒤 `게시판 관리` / `그랑퍼스트` 두 줄을 붙입니다. 로고가 이미 `풍경채`를 말하므로 보조 줄은 `그랑퍼스트`만 남겼습니다.
 - **홈 화면 아이콘** — 네이비 그라데이션(위 `#1b4a7d` → 아래 `#0a2038`, 아래쪽 민트 글로우) 위에 흰 풍경채 로고를 크게, 그 아래 민트 `게시판 관리`를 새겼습니다. 안드로이드 홈 화면(192px)에서도 글씨가 읽히도록 여백과 크기를 잡았습니다.
 - 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 0.6배로 안전영역 안) · `apple-touch-icon-180.png`(iOS) · `favicon-32.png` · `favicon-16.png`(작은 탭은 `풍` 한 글자만) · `icon.svg`(512 아이콘을 data URI로 품은 SVG) · `logo-wordmark-white.png` · `logo-wordmark-color.png`(밝은 배경용).
-- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128k`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION`, `index.html` 의 `GF_APP_VERSION`, `version.json` 을 함께 올립니다(캐시 버스팅).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128l`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION`, `index.html` 의 `GF_APP_VERSION`, `version.json` 을 함께 올립니다(캐시 버스팅).
 - 다시 만들기 — `python3 scripts/make_brand_assets.py` (`--check` 로 최신 여부만 확인). 로고 자르기·색 보정은 `brand/logo_lib.py`, 아이콘 배치·색은 스크립트 위쪽 상수에서 바꿉니다.
 - 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
@@ -322,13 +322,13 @@ board/
 
 ### 2) 바뀌면 `[지금 업데이트]` — 시스템 버전 관리
 
-화면 버전은 **`20261128k` → 표시 `v2026.11.28k`** 처럼 날짜+알파벳으로 매기고, 배포마다 **`index.html` 의 `GF_APP_VERSION` · `sw.js` 의 `VERSION` · `version.json` · `?v=` · `manifest.json` 아이콘 `?v=`** 를 함께 올립니다(테스트가 이 다섯 곳이 같은지 검사합니다).
+화면 버전은 **`20261128l` → 표시 `v2026.11.28l`** 처럼 날짜+알파벳으로 매기고, 배포마다 **`index.html` 의 `GF_APP_VERSION` · `sw.js` 의 `VERSION` · `version.json` · `?v=` · `manifest.json` 아이콘 `?v=`** 를 함께 올립니다(테스트가 이 다섯 곳이 같은지 검사합니다).
 
 - **새 배포 감지** — ① 서비스 워커가 새로 설치돼 `waiting` 으로 들어올 때(`updatefound` → `installed`) ② `version.json`(no-store)이 이 화면의 `GF_APP_VERSION` 과 다를 때. 확인 시점은 **앱 실행 · 화면 복귀(visibilitychange) · 5분마다 · [업데이트 확인]** 입니다.
 - **자동 새로고침은 하지 않습니다.** 대신 아래쪽에 **`🆕 새 버전이 준비됐습니다 [지금 업데이트]`** 배너가 뜹니다(닫기 ✕ 가능, 다음 확인 때 다시 뜸).
 - **[지금 업데이트]** — `reg.waiting.postMessage({ type: "SKIP_WAITING" })` → 워커가 넘겨받으면(`controllerchange`) 그때 `location.reload()`. 대기 워커 없이 `version.json` 만 새 버전이면 바로 새로고침합니다. 워커가 3초 안에 응답하지 않아도 안전하게 새로고침합니다.
 - **거짓 안내 방지** — 워커에 `GET_VERSION` 을 물어, 대기 워커의 버전이 이 화면과 같으면(패스스루라 이미 새 파일로 뜬 상태) 배너를 내립니다.
-- **설정 시트 맨 아래 `앱 · 버전`** — `현재 v2026.11.28k` + `최신`/`새 버전 v2026.11.28m` 배지, `[📲 앱 설치]`, `[🔄 업데이트 확인]`(결과를 한 줄로 알려 줌: `최신 버전입니다 (v2026.11.28k).` / `새 버전 v2026.11.28m이 준비됐습니다 — [지금 업데이트]를 누르세요.`).
+- **설정 시트 맨 아래 `앱 · 버전`** — `현재 v2026.11.28l` + `최신`/`새 버전 v2026.11.28m` 배지, `[📲 앱 설치]`, `[🔄 업데이트 확인]`(결과를 한 줄로 알려 줌: `최신 버전입니다 (v2026.11.28l).` / `새 버전 v2026.11.28m이 준비됐습니다 — [지금 업데이트]를 누르세요.`).
 - **워커 원칙** — 캐시를 만들지 않습니다. 같은 출처 GET 은 `fetch(req, { cache: "no-store" })` 로 그대로 네트워크에서 받고, POST·다른 출처(Firebase RTDB·gstatic CDN)는 브라우저 기본 동작에 맡깁니다. `install` 때는 `skipWaiting()` 을 부르지 않습니다(그래야 화면이 알기 전에 구버전 페이지가 바뀌지 않음).
 - `manifest.json` 의 `theme_color` 는 상단 네이비 **`#0d2e52`**(`meta[name=theme-color]` 도 같음).
 - 이미 설치한 앱은 위 배너로 한 번 업데이트하면 이후부터는 새 배포마다 같은 방식으로 안내합니다.

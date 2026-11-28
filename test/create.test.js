@@ -261,6 +261,50 @@ console.log("\n[10] 시설 데이터보다 게시물이 먼저 도착");
   O.load(clone(LIVE), FAC);
 }
 
+/* ---------- 11. 회귀(2026-11-28): 칩·선택이 조용히 멈추던 문제 ---------- */
+console.log("\n[11] 회귀 — 칩을 눌렀을 때 도는 화면 갱신 함수가 실제로 있다");
+{
+  ok("refreshCreate 정의됨", typeof C.refresh === "function");
+  ok("refreshCreateList 정의됨", typeof C.refreshList === "function");
+  var threw = false, r1, r2;
+  try { r1 = C.refresh(); r2 = C.refreshList(); } catch (e) { threw = true; }
+  ok("DOM 이 없어도 예외 없이 끝난다(render 로 대체)", !threw);
+  ok("저장 오류 안내 함수도 정의됨", typeof C.error === "function");
+  var threw2 = false;
+  try { C.error("게시 기한을 고르거나 '기한 없음'을 선택하세요", "nfDeadline"); C.error(""); } catch (e) { threw2 = true; }
+  ok("오류 안내도 DOM 없이 예외 없음", !threw2);
+
+  /* 소스 검사 — 정의 없는 refresh*() 호출이 다시 생기지 않게 한다
+     (20261127a 개편에서 refreshCreate 정의가 빠져 칩·선택이 ReferenceError 로 멈췄다) */
+  var src = globalThis.__APP_SRC || "";
+  ok("app.js 소스를 읽었다", src.length > 1000);
+  var used = {}, m;
+  var re = /(?:^|[^\w$.])(refresh[A-Za-z0-9_]*)\s*\(/g;
+  while ((m = re.exec(src))) used[m[1]] = true;
+  var missing = Object.keys(used).filter(function (n) {
+    return !(new RegExp("function\\s+" + n + "\\s*\\(")).test(src) &&
+      !(new RegExp("var\\s+" + n + "\\s*=")).test(src);
+  });
+  eq("정의 없이 부르는 refresh*() 가 없다", missing, []);
+  ok("칩 처리부가 refreshCreate 를 부른다(되돌림 방지)", /data-act="nf-bld"/.test(src) &&
+    /nf-bld[\s\S]{0,400}refreshCreate\(\)/.test(src));
+}
+
+/* ---------- 12. 저장이 막힌 이유를 폼 안에 보여 준다 ---------- */
+console.log("\n[12] 저장 안내 — 기한 필수 표시 · 오류 상자 · 안내 문구");
+{
+  C.reset();
+  var h = C.form();
+  ok("오류 상자(nfErr)가 저장 버튼 위에 있다", has(h, 'id="nfErr"') &&
+    h.indexOf('id="nfErr"') < h.indexOf('data-act="nf-save"'));
+  ok("게시 기한은 필수(*)", has(h, '게시 기한 <span class="req">*</span>'));
+  ok("기한 없음 안내(둘 중 하나 필요)", has(h, "기한 없음") && has(h, "둘 중 하나는 꼭 필요합니다"));
+  ok("② 게시장소 카드에 id(nfPlace)", has(h, 'id="nfPlace"'));
+  C.state().noDeadline = true;
+  ok("기한 없음이면 달력은 잠김", has(C.form(), 'id="nfDeadline" value="" disabled'));
+  C.state().noDeadline = false;
+}
+
 console.log("\n" + (fail ? "✗ 실패 " + fail + "건" : "✓ 전부 통과") + " (" + pass + "개 확인)\n");
 globalThis.__BOARD_TEST_FAIL = (globalThis.__BOARD_TEST_FAIL || 0) + fail;
 })();

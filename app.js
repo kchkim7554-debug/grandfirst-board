@@ -1847,6 +1847,43 @@ var App = (function () {
     }
     return out;
   }
+  /* 화면 전체를 다시 그리지 않고 폼/목록만 갱신 — 칩을 눌러도 스크롤·입력한 제목이 유지된다.
+     2026-11-28: 20261127a 개편에서 이 두 함수가 빠져, 칩·선택을 누를 때마다
+     ReferenceError 로 멈춰 화면이 전혀 반응하지 않았다(저장이 안 되는 것처럼 보임). */
+  function refreshCreateList() {
+    var l = document.getElementById("nfList");
+    if (!l) { render(); return; }
+    l.innerHTML = createListHtml(SESSION.role === "admin");
+  }
+  function refreshCreate() {
+    var b = document.getElementById("nfBody");
+    if (!b) { render(); return; }
+    b.innerHTML = nfFormHtml();
+  }
+  /* 저장이 막힌 이유를 폼 안(저장 버튼 위)에 남긴다 — 화면 아래 토스트만으로는
+     키보드·안내 배너에 가려 못 보고 "저장이 안 된다"고 느끼기 쉽다 */
+  function nfShowError(msg, targetId) {
+    var box = document.getElementById("nfErr");
+    if (document.querySelectorAll) {
+      document.querySelectorAll(".nf-err-field").forEach(function (el) { el.classList.remove("nf-err-field"); });
+    }
+    if (!box) { if (msg) toast(msg); return; }
+    if (!msg) {
+      box.textContent = "";
+      box.classList.remove("on");
+      return;
+    }
+    box.textContent = "⚠ " + msg;
+    box.classList.add("on");
+    var t = targetId ? document.getElementById(targetId) : null;
+    var row = (t && t.closest) ? t.closest(".nf-row") : null;
+    var card = (t && t.closest) ? t.closest(".nf") : null;
+    if (row) row.classList.add("nf-err-field");
+    else if (card) card.classList.add("nf-err-field");
+    var near = row || card || box;
+    try { near.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {}
+    toast(msg);
+  }
   function nfFormHtml() {
     nfEnsure();
     var h = "";
@@ -1854,14 +1891,16 @@ var App = (function () {
       '<div class="fld" style="margin:11px 0 0"><label>게시물 제목 <span class="req">*</span></label>' +
       '<input class="f-in" id="nfTitle" value="' + esc(NF.title) + '" placeholder="예: 승강기 정기 점검 안내">' +
       nfNoteHtml() + '</div></div>';
-    h += '<div class="nf"><div class="nf-h"><h3>② 게시장소</h3><span class="nf-tag">동 · 라인 · 게시판 / E/V</span></div>' + nfPlaceHtml() + "</div>";
+    h += '<div class="nf" id="nfPlace"><div class="nf-h"><h3>② 게시장소</h3><span class="nf-tag">동 · 라인 · 게시판 / E/V</span></div>' + nfPlaceHtml() + "</div>";
     h += '<div class="nf"><div class="nf-h"><h3>③ 생성일자 · 게시 기한</h3></div>' +
       '<div class="nf-row"><div class="nf-lab">생성일자</div><div class="nf-body"><span class="nf-fixed">' + esc(dotDate(TODAY)) +
       " (" + esc(weekday(TODAY)) + ")</span><span class=\"f-hint\" style=\"display:block\">사진을 올린 날로 자동 기록됩니다</span></div></div>" +
-      '<div class="nf-row"><div class="nf-lab">게시 기한</div><div class="nf-body"><div class="f-row">' +
+      '<div class="nf-row" id="nfDeadlineRow"><div class="nf-lab">게시 기한 <span class="req">*</span></div><div class="nf-body"><div class="f-row">' +
       '<input type="date" class="f-in" id="nfDeadline" value="' + esc(NF.deadline) + '"' + (NF.noDeadline ? " disabled" : "") + ">" +
       '<button class="btn line" data-act="nf-nodeadline" style="flex:0 0 auto">' + (NF.noDeadline ? "기한 없음 ✓" : "기한 없음") + "</button>" +
-      "</div></div></div></div>";
+      "</div><div class=\"f-hint\">달력에서 기한을 고르거나, 상시 게시면 <b>기한 없음</b>을 누르세요. (둘 중 하나는 꼭 필요합니다)</div>" +
+      "</div></div></div>";
+    h += '<div class="nf-err" id="nfErr" role="alert"></div>';
     h += '<div class="nf-save"><button class="btn solid wide" data-act="nf-save">저장</button></div>';
     return h;
   }
@@ -1930,17 +1969,18 @@ var App = (function () {
   }
   function saveNewNotice() {
     nfEnsure();
+    nfShowError("");
     var titleEl = document.getElementById("nfTitle");
     NF.title = titleEl ? titleEl.value : NF.title;
     var title = (NF.title || "").trim();
-    if (!title) { toast("게시물 제목을 입력하세요"); return; }
-    if (!NF.lobbyOn && !NF.evOn) { toast("게시할 곳(게시판 또는 E/V)을 하나 이상 고르세요"); return; }
-    if (NF.scope !== "all" && !NF.buildings.length) { toast("게시할 동을 하나 이상 고르세요"); return; }
-    if (NF.lines !== "all" && !NF.lines.length) { toast("게시할 라인을 하나 이상 고르세요"); return; }
+    if (!title) { nfShowError("게시물 제목을 입력하세요", "nfTitle"); return; }
+    if (!NF.lobbyOn && !NF.evOn) { nfShowError("게시할 곳(게시판 또는 E/V)을 하나 이상 고르세요", "nfPlace"); return; }
+    if (NF.scope !== "all" && !NF.buildings.length) { nfShowError("게시할 동을 하나 이상 고르세요", "nfPlace"); return; }
+    if (NF.lines !== "all" && !NF.lines.length) { nfShowError("게시할 라인을 하나 이상 고르세요", "nfPlace"); return; }
     if (!NF.noDeadline) {
       var dlEl = document.getElementById("nfDeadline");
       if (dlEl) NF.deadline = dlEl.value || NF.deadline;
-      if (!NF.deadline) { toast("게시 기한을 고르거나 '기한 없음'을 선택하세요"); return; }
+      if (!NF.deadline) { nfShowError("게시 기한을 고르거나 '기한 없음'을 선택하세요", "nfDeadline"); return; }
     }
     var targets = nfBuildTargets(NF);
     var id = newId();
@@ -1966,6 +2006,8 @@ var App = (function () {
       var picked = NF.picked;
       nfReset();
       NF.picked = picked;
+      refreshCreate();          // 저장한 폼을 바로 비운다(같은 내용으로 또 저장하는 실수 방지)
+      refreshCreateList();
       toast("등록했습니다 · " + placeTxt + (push.pushed.length ? " (기존 " + push.pushed.length + "건 뒤로 밀림)" : ""));
     });
   }
@@ -5077,7 +5119,9 @@ var App = (function () {
       reset: nfReset, ensure: nfEnsure, state: function () { return NF; },
       form: function () { return nfFormHtml(); }, place: function () { return nfPlaceHtml(); },
       list: function () { return createListHtml(true); }, targets: nfBuildTargets,
-      specText: specPlaceText, lines: lineList, toggle: togglePick
+      specText: specPlaceText, lines: lineList, toggle: togglePick,
+      /* 2026-11-28 — 칩을 눌렀을 때 도는 화면 갱신 함수와 저장 오류 안내 */
+      refresh: refreshCreate, refreshList: refreshCreateList, error: nfShowError
     },
     move: {
       reset: mvSelReset, ensure: mvSelEnsure, state: function () { return MVSEL; },

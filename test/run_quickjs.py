@@ -297,6 +297,7 @@ var document = { getElementById: function () { return null; } };
 var window = globalThis;
 """)
 ctx.eval(read("app.js"))
+ctx.eval("globalThis.__APP_SRC = " + json.dumps(read("app.js")) + ";")  # 테스트가 소스 참조 무결성을 검사한다
 ctx.eval(read("pwa.js"))   # 설치·버전 알림 — __pwaTest 노출(화면 연결은 DOM 이 없어 건너뜀)
 ctx.eval("globalThis.__BOARD_FAC = " + read("data.json") + ";\n"
          "globalThis.__BOARD_LIVE = " + read("test/live-snapshot.json") + ";")

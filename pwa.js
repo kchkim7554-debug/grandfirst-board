@@ -20,13 +20,13 @@
   "use strict";
 
   var W = (typeof window !== "undefined") ? window : globalThis;
-  var FALLBACK_VERSION = "20261128k";
+  var FALLBACK_VERSION = "20261128l";
 
   /* ------------------------------------------------------------------
      순수 함수 — DOM 없이도 검사할 수 있는 부분
      ------------------------------------------------------------------ */
 
-  /* "20261128k" → "v2026.11.28k" */
+  /* "20261128l" → "v2026.11.28l" */
   function versionLabel(v) {
     v = String(v == null ? "" : v).trim();
     if (!v) return "";
@@ -199,6 +199,7 @@
       else if (!state.standalone && !SANDBOX && state.canPrompt && !readFlag("installed")) html = bannerHTML("install", {});
     }
     if (!html) {
+      if (doc.body && doc.body.classList) doc.body.classList.remove("pwa-bar");
       if (host && host.parentNode) host.parentNode.removeChild(host);
       return;
     }
@@ -210,6 +211,8 @@
       doc.body.appendChild(host);
     }
     host.className = "pwap" + (state.update ? " upd" : "");
+    /* 배너가 본문 마지막 요소(저장 버튼 등)를 가리지 않도록 body 에 여백 클래스를 준다 */
+    if (doc.body && doc.body.classList && !doc.body.classList.contains("pwa-bar")) doc.body.classList.add("pwa-bar");
     if (host.innerHTML !== html) host.innerHTML = html;
   }
 
