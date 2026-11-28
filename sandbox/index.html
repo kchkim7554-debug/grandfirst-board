@@ -8,10 +8,10 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="description" content="풍경채 그랑퍼스트 게시판 관리 — 게시·제거 체크와 기한관리">
 <!-- 앱 아이콘 · 홈 화면 바로가기 — 아이콘 원본은 scripts/make_brand_assets.py (제일풍경채 로고 스캔) -->
-<link rel="icon" href="icons/icon.svg?v=20261128l" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png?v=20261128l" sizes="32x32" type="image/png">
-<link rel="icon" href="icons/favicon-16.png?v=20261128l" sizes="16x16" type="image/png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128l">
+<link rel="icon" href="icons/icon.svg?v=20261128m" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png?v=20261128m" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-16.png?v=20261128m" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png?v=20261128m">
 <link rel="manifest" href="sandbox/manifest.json">
 <title>🧪 테스트용 (카피본) · 게시판 관리 시스템 · 풍경채 그랑퍼스트</title>
 <style>
@@ -644,6 +644,14 @@ body.bg-info .bgwash::after{
   border-radius:999px;font-size:.62rem;font-weight:800;padding:4px 9px;box-shadow:0 1px 4px rgba(9,22,38,.2);}
 
 [hidden]{display:none !important;}
+/* ---------- 모달 열림 — 뒤 화면(body) 스크롤 잠금 (2026-11-28) ----------
+   모바일 크롬에서 팝업·바텀시트 안을 위아래로 밀면 뒤 화면까지 같이 밀리던 문제 수정.
+   app.js 가 모달이 하나라도 열려 있으면 html·body 에 .lock 을 붙이고
+   body 를 position:fixed 로 붙잡은 뒤 top 에 -scrollY 를 넣는다(닫으면 원래 자리로 복귀).
+   html·body 양쪽 overflow:hidden + overscroll-behavior:none 으로 당겨서 새로고침도 막는다. */
+html.lock,body.lock{overflow:hidden;overscroll-behavior:none;}
+html.lock{height:100%;}
+body.lock{position:fixed;left:0;right:0;width:100%;}
 body.no-scroll{overflow:hidden;}
 button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;min-width:0;}
 /* 좁은 화면(휴대폰) 상단바 여백 보정 — 슬림 상단바에 맞춰 한 단 더 조인다 */
@@ -682,10 +690,11 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 
 /* 첫 진입 팝업 (동·층별 게시판 현황 → 오늘 일일 알림) */
 .popwrap{position:fixed;inset:0;z-index:56;display:flex;align-items:flex-end;justify-content:center;}
-.popback{position:absolute;inset:0;background:rgba(9,20,33,.5);}
+.popback{position:absolute;inset:0;background:rgba(9,20,33,.5);touch-action:none;}
 .popcard{position:relative;width:100%;max-width:560px;max-height:92vh;background:var(--card);
   border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(9,20,33,.28);
-  display:flex;flex-direction:column;overflow:hidden;animation:popup .2s ease;}
+  display:flex;flex-direction:column;overflow:hidden;animation:popup .2s ease;
+  overscroll-behavior:contain;}
 @keyframes popup{from{transform:translateY(22px);opacity:.7}to{transform:none;opacity:1}}
 .pophead{display:flex;align-items:flex-start;gap:10px;padding:13px 14px 10px;border-bottom:1px solid var(--line);
   background:linear-gradient(180deg,#f3f9ff 0%,#fff 100%);}
@@ -694,14 +703,15 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .popx{margin-left:auto;flex:0 0 auto;border:0;background:var(--navy);color:#fff;border-radius:11px;
   min-height:38px;padding:0 14px;font-size:.82rem;font-weight:800;letter-spacing:-.2px;box-shadow:0 3px 9px rgba(18,58,99,.22);}
 .popx:active{transform:translateY(1px);}
-.popbody{padding:11px 13px calc(16px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}
+.popbody{padding:11px 13px calc(16px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:var(--bg);overscroll-behavior:contain;overscroll-behavior-y:contain;}
 .popfoot{display:flex;gap:7px;margin-top:11px;align-items:stretch;}
 .popfoot .btn{flex:1 1 auto;}
 .popfoot .mini-btn{flex:0 0 auto;min-height:46px;}
 .welrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .wellab{flex:0 0 34px;font-size:.72rem;font-weight:800;color:var(--ink-2);}
 .welrow .f-sel{flex:1 1 auto;min-height:42px;font-size:.84rem;}
-.welchips{flex:1 1 auto;overflow-x:auto;padding:1px 1px 3px;}
+.welchips{flex:1 1 auto;overflow-x:auto;padding:1px 1px 3px;overscroll-behavior:contain;}
 .welchips .chip{min-height:34px;padding:6px 11px;font-size:.76rem;}
 .welboard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 10px 8px;box-shadow:0 1px 3px rgba(18,35,54,.05);}
 .welboard-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
@@ -737,7 +747,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .mvbox-s{font-size:.7rem;color:var(--muted);font-weight:600;line-height:1.45;margin-bottom:7px;}
 .mvbox-none{font-size:.78rem;color:var(--muted);background:#f7f9fc;border:1px dashed var(--line);border-radius:11px;
   padding:13px 12px;text-align:center;font-weight:700;line-height:1.5;}
-.mvpicklist{display:flex;flex-direction:column;gap:5px;max-height:264px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.mvpicklist{display:flex;flex-direction:column;gap:5px;max-height:264px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .mvpick{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);
   border-radius:12px;padding:8px 9px;min-height:52px;}
 .mvpick.on{border-color:var(--navy);background:#eef4fc;box-shadow:inset 0 0 0 1px var(--navy);}
@@ -812,7 +822,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .sitefoot span{display:block;font-size:.64rem;color:var(--muted);margin-top:4px;letter-spacing:-.2px;}
 
 /* ---------- sheet ---------- */
-.backdrop{position:fixed;inset:0;background:rgba(9,20,33,.5);z-index:60;opacity:0;transition:opacity .18s;}
+.backdrop{position:fixed;inset:0;background:rgba(9,20,33,.5);z-index:60;opacity:0;transition:opacity .18s;touch-action:none;}
 .backdrop.on{opacity:1;}
 .sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--card);
@@ -820,6 +830,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
   transform:translateY(100%);transition:transform .22s ease;
   padding-bottom:var(--sab);
   box-shadow:0 -6px 24px rgba(12,31,51,.22);
+  overscroll-behavior:contain;
 }
 .sheet.on{transform:translateY(0);}
 .sheet-grip{width:38px;height:4px;border-radius:99px;background:#d5dde6;margin:8px auto 4px;flex:0 0 auto;}
@@ -827,7 +838,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .sheet-title{font-size:1rem;font-weight:800;}
 .sheet-sub{font-size:.72rem;color:var(--muted);margin-top:2px;}
 .sheet-close{margin-left:auto;border:0;background:#eef1f5;border-radius:50%;width:32px;height:32px;font-size:.9rem;color:var(--ink-2);flex:0 0 auto;}
-.sheet-body{padding:12px 14px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sheet-body{padding:12px 14px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 
 .notice{display:flex;gap:10px;padding:12px 0;border-bottom:1px dashed var(--line);}
 .notice:last-child{border-bottom:0;}
@@ -848,7 +859,7 @@ button.row-main{border:0;background:none;padding:0;text-align:left;font:inherit;
 .thumb.noimg{font-size:.6rem;color:var(--muted);text-align:center;line-height:1.3;}
 
 /* lightbox */
-.lightbox{position:fixed;inset:0;z-index:80;background:rgba(6,12,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;}
+.lightbox{position:fixed;inset:0;z-index:80;background:rgba(6,12,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;overscroll-behavior:contain;}
 .lightbox img{max-width:100%;max-height:84vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);}
 .lb-cap{color:#dfe7ef;font-size:.78rem;margin-top:10px;text-align:center;line-height:1.4;}
 .lb-close{position:absolute;top:max(34px, calc(10px + env(safe-area-inset-top, 0px)));right:12px;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:50%;width:38px;height:38px;font-size:1rem;}
@@ -960,7 +971,7 @@ body.pwa-bar{padding-bottom:calc(var(--tabh) + var(--sab) + 86px);}
 .aitem-foot a.mini-btn{display:inline-flex;align-items:center;text-decoration:none;}
 
 /* ---------- 일일 알림 표 (년월일 | 내용 | 제거건수 | 담당) ---------- */
-.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .atable{font-size:.82rem;}
 .atable thead th{padding:9px 7px;font-size:.68rem;white-space:nowrap;}
 .atable thead th.ac{text-align:center;}
@@ -1213,7 +1224,7 @@ body.pwa-bar{padding-bottom:calc(var(--tabh) + var(--sab) + 86px);}
 /* 더보기 시트 */
 .moreWrap{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;}
 .moreWrap[hidden]{display:none;}
-.moreWrap .scrim{position:absolute;inset:0;background:rgba(9,20,33,.45);}
+.moreWrap .scrim{position:absolute;inset:0;background:rgba(9,20,33,.45);touch-action:none;}
 .moreSheet{position:relative;width:100%;background:#fff;border-radius:22px 22px 0 0;
   padding:8px 16px calc(18px + var(--sab));box-shadow:0 -8px 30px rgba(9,20,33,.2);
   animation:mup .2s ease;}
@@ -1397,7 +1408,7 @@ html.fs-lg .q{min-height:88px;}
   <div class="topbar-in">
     <button class="homebtn" id="homeBtn" data-act="home" aria-label="홈으로" hidden>‹</button>
     <div class="brand" id="brand" aria-label="풍경채 그랑퍼스트">
-      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128l" alt="제일풍경채" width="201" height="112">
+      <img class="mk" src="icons/logo-wordmark-white.png?v=20261128m" alt="제일풍경채" width="201" height="112">
       <span class="brd" aria-hidden="true"></span>
       <div class="bd">
         <div class="bd-t">게시판 관리</div>
@@ -1492,9 +1503,9 @@ html.fs-lg .q{min-height:88px;}
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>/* 앱 버전 — 배포할 때마다 sw.js 의 VERSION · version.json · 아래 ?v= 와 함께 올린다 (2026-11-28) */
-window.GF_APP_VERSION = "20261128l";</script>
+window.GF_APP_VERSION = "20261128m";</script>
 <script src="sandbox/env.js"></script>
-<script src="pwa.js?v=20261128l"></script>
-<script src="app.js?v=20261128l"></script>
+<script src="pwa.js?v=20261128m"></script>
+<script src="app.js?v=20261128m"></script>
 </body>
 </html>

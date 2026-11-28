@@ -513,6 +513,7 @@ var App = (function () {
       if (sh) sh.classList.add("on");
     });
     if (opts.onMount) opts.onMount(sh);
+    syncScrollLock();
     return sh;
   }
   function closeSheet() {
@@ -523,9 +524,60 @@ var App = (function () {
     sh.classList.remove("on");
     var bd = root.querySelector(".backdrop");
     if (bd) bd.classList.remove("on");
-    setTimeout(function () { if (root.querySelector(".sheet") === sh) root.innerHTML = ""; }, 200);
+    setTimeout(function () {
+      if (root.querySelector(".sheet") === sh) root.innerHTML = "";
+      syncScrollLock();
+    }, 200);
+    syncScrollLock();
     if (VIEW.slot) go("#/b/" + VIEW.no + "/" + VIEW.core + "/" + VIEW.loc);
     else if (LOADED && wasForm) render();   // 폼에서 저장·삭제 후 목록을 즉시 반영
+  }
+
+  /* ---------- 모달 스크롤 잠금 (2026-11-28) ----------
+     바텀시트·첫 진입 팝업·라이트박스·더보기/설정 시트 중 하나라도 열려 있으면
+     뒤 화면(body)을 붙잡아 둔다. 모바일 크롬에서 팝업 안을 위아래로 밀 때
+     뒤 화면이 따라 밀리는 scroll-chaining 을 막고, 닫으면 원래 위치로 되돌린다.
+     잠금 여부는 열린 모달을 DOM 에서 그대로 보고 판단한다 — 모달마다
+     잠금·해제를 따로 부르지 않아도 빠뜨리지 않는다(MutationObserver + 각 열기·닫기 지점). */
+  var SLOCK = { on: false, y: 0, raf: 0 };
+  var MODAL_SEL = "#overlayRoot .sheet, #overlayRoot .backdrop, .popwrap, .lightbox, .copyfallback, .moreWrap:not([hidden])";
+  function modalShown(doc) {
+    doc = doc || (typeof document !== "undefined" ? document : null);
+    if (!doc || typeof doc.querySelector !== "function") return false;
+    return !!doc.querySelector(MODAL_SEL);
+  }
+  function applyScrollLock() {
+    SLOCK.raf = 0;
+    if (typeof document === "undefined" || !document.body || !document.documentElement) return;
+    var body = document.body, html = document.documentElement;
+    var want = modalShown(document);
+    if (want === SLOCK.on) return;
+    if (want) {
+      SLOCK.y = window.pageYOffset || html.scrollTop || 0;
+      body.style.top = (-SLOCK.y) + "px";
+      html.classList.add("lock");
+      body.classList.add("lock");
+      SLOCK.on = true;
+    } else {
+      html.classList.remove("lock");
+      body.classList.remove("lock");
+      body.style.top = "";
+      SLOCK.on = false;
+      if (typeof window.scrollTo === "function") window.scrollTo(0, SLOCK.y);
+    }
+  }
+  function syncScrollLock() {
+    if (SLOCK.raf) return;
+    var raf = (typeof window !== "undefined" && window.requestAnimationFrame) ||
+      function (f) { return setTimeout(f, 16); };
+    SLOCK.raf = raf(applyScrollLock) || 1;
+  }
+  function watchModals() {
+    applyScrollLock();
+    if (typeof MutationObserver === "undefined" || !document.body) return;
+    new MutationObserver(syncScrollLock).observe(document.body, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"]
+    });
   }
 
   function openLightbox(src, cap, dl) {
@@ -535,9 +587,10 @@ var App = (function () {
       '<div class="lb-cap">' + esc(cap || "") + "</div>" +
       (dl ? '<div class="lb-actions"><a class="lb-dl" href="' + esc(src) + '" download="' + esc(dl) + '">이미지 저장</a></div>' : "");
     lb.addEventListener("click", function (e) {
-      if (e.target === lb || e.target.classList.contains("lb-close")) lb.remove();
+      if (e.target === lb || e.target.classList.contains("lb-close")) { lb.remove(); syncScrollLock(); }
     });
     document.body.appendChild(lb);
+    syncScrollLock();
   }
 
   /* ---------- session / identity ---------- */
@@ -1332,13 +1385,14 @@ var App = (function () {
       root.id = "welRoot";
       document.body.appendChild(root);
     }
-    if (!WEL.on) { root.innerHTML = ""; return; }
+    if (!WEL.on) { root.innerHTML = ""; syncScrollLock(); return; }
     root.innerHTML = '<div class="popwrap" id="welcomePop">' +
       '<div class="popback" data-act="' + (WEL.step === 1 ? "wel-next" : "wel-close") + '"></div>' +
       '<div class="popcard" role="dialog" aria-modal="true" aria-label="' +
       (WEL.step === 1 ? "동·층별 게시판 현황" : "오늘의 일일 알림") + '">' +
       (WEL.step === 1 ? welBoardHtml() : welAlertHtml()) +
       "</div></div>";
+    syncScrollLock();
   }
   function welClose() {
     if (WEL.step === 1) { WEL.step = 2; renderWelcome(); return; }
@@ -4324,12 +4378,13 @@ var App = (function () {
       '<textarea readonly></textarea><div class="cf-n">카카오톡에 붙여넣기 하시면 됩니다. 확인을 누르면 닫힙니다.</div>' +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn soft" data-act="cf-close" style="flex:1">확인</button></div></div>';
     document.getElementById("overlayRoot").appendChild(wrap);
+    syncScrollLock();
     var ta = wrap.querySelector("textarea");
     ta.value = text;
     ta.focus(); ta.select();
     try { document.execCommand("copy"); } catch (e) {}
     wrap.addEventListener("click", function (e) {
-      if (e.target.closest("[data-act='cf-close']") || e.target === wrap) wrap.remove();
+      if (e.target.closest("[data-act='cf-close']") || e.target === wrap) { wrap.remove(); syncScrollLock(); }
     });
   }
   function doCopy(kind) {
@@ -4441,13 +4496,13 @@ var App = (function () {
     var m = document.getElementById("moreSheet");
     if (!m) return;
     m.hidden = false;
-    document.body.classList.add("no-scroll");
+    syncScrollLock();
   }
   function closeMore() {
     var m = document.getElementById("moreSheet");
     if (!m || m.hidden) return;
     m.hidden = true;
-    document.body.classList.remove("no-scroll");
+    syncScrollLock();
   }
   /* 상단 ⚙ 설정 — 권한 관리·단지 정보 */
   function openSettingsMenu() {
@@ -4455,17 +4510,19 @@ var App = (function () {
     if (!m) return;
     closeMore();
     m.hidden = false;
-    document.body.classList.add("no-scroll");
+    syncScrollLock();
   }
   function closeSettingsMenu() {
     var m = document.getElementById("setSheet");
     if (!m || m.hidden) return;
     m.hidden = true;
-    document.body.classList.remove("no-scroll");
+    syncScrollLock();
   }
   function route() {
     VIEW = parseHash();
     render();
+    /* 화면을 새로 그리면 맨 위에서 시작한다 — 잠금을 풀 때 옛 위치로 되돌리지 않도록 */
+    if (SLOCK.on) SLOCK.y = 0;
     window.scrollTo(0, 0);
     if (VIEW.name === "building" && VIEW.slot) openSlotSheet();
     else if (document.getElementById("overlayRoot").querySelector(".sheet") &&
@@ -4830,7 +4887,7 @@ var App = (function () {
         if (prev) prev.textContent = "사진 없음";
       }
       else if (act === "f-save") { if (adminOnly("게시물 수정")) saveNoticeForm(); }
-      else if (act === "cf-close") { var cf = document.querySelector(".copyfallback"); if (cf) cf.remove(); }
+      else if (act === "cf-close") { var cf = document.querySelector(".copyfallback"); if (cf) cf.remove(); syncScrollLock(); }
     });
 
     document.addEventListener("input", function (e) {
@@ -5029,6 +5086,7 @@ var App = (function () {
         return;
       }
       bind();
+      watchModals();
       syncWho();
       if (!tryBoot() && LOADED) route();
     });
@@ -5036,6 +5094,11 @@ var App = (function () {
 
   var api = {
     start: start, summary: summary, statusOf: statusOf, flowOf: flowOf,
+    /* 모달 스크롤 잠금 검증용 — 열린 모달 판별(가짜 document 로도 부를 수 있다) */
+    lock: {
+      sel: MODAL_SEL, shown: modalShown,
+      state: function () { return { on: SLOCK.on, y: SLOCK.y }; }
+    },
     copyText: copyText, buildIndex: buildIndex, targetText: targetText,
     boardUrl: boardUrl, boardLink: boardLink, alertCopyText: alertCopyText, hash: parseHash,
     /* 07시 알림 검증용 */

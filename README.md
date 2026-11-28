@@ -218,7 +218,7 @@ board/
 - `app.js` — 앱 로직(실시간 동기화·체크·등록·보관함·첫 화면·탭바·첫 진입 팝업·이동 대기)
 - `sw.js` — PWA 서비스 워커(2026-11-28). 새 워커는 **대기(waiting)** 만 하고 `[지금 업데이트]` 메시지(`SKIP_WAITING`) 때만 `skipWaiting()` + `clients.claim()` · **캐시 없는 패스스루**(항상 최신 파일)
 - `pwa.js` — **원터치 앱 설치(📲 앱 설치) + 버전/업데이트 알림**(2026-11-28). `beforeinstallprompt` 로 설치 창을 잡아 두었다가 버튼 한 번으로 띄우고, 새 배포를 감지하면 `🆕 새 버전이 준비됐습니다 [지금 업데이트]` 배너를 띄웁니다. 설정 시트 맨 아래 `앱 · 버전`(현재 버전·설치·업데이트 확인)도 이 파일이 그립니다.
-- `version.json` — 지금 배포된 버전(`{"version":"20261128l", "label":"v2026.11.28l"}`). 켜 둔 화면이 낡았는지 `no-store` 로 확인하는 데 씁니다.
+- `version.json` — 지금 배포된 버전(`{"version":"20261128m", "label":"v2026.11.28m"}`). 켜 둔 화면이 낡았는지 `no-store` 로 확인하는 데 씁니다.
 - `data.json` — 시설 정보(동·코어·층·게시판 번호). 게시물은 들어 있지 않습니다.
 - `notices_real.json` — 2026-11-16~18 현장 촬영 사진 21장(11/17 A조 신규 배포 2건 포함) + 11/20 R22(입대의 정기회의 공고)을 판독해 정리한 실제 게시물 데이터 22건
 - `images/dong_ho_table_101_108.jpg` · `dong_ho_table_109_116.jpg` · `dong_ho_table_117_124.jpg` — 동·호수 배치표 3장(동 표기를 101~124동으로 수정)
@@ -292,7 +292,7 @@ board/
 - **상단바(모든 화면 왼쪽 위)** — 네이비 바탕이라 흰 글씨 버전 `icons/logo-wordmark-white.png`(흰 글씨 + 색 잎)를 높이 26px(좁은 화면 23px)로 얹고, 옆에 얇은 구분선을 둔 뒤 `게시판 관리` / `그랑퍼스트` 두 줄을 붙입니다. 로고가 이미 `풍경채`를 말하므로 보조 줄은 `그랑퍼스트`만 남겼습니다.
 - **홈 화면 아이콘** — 네이비 그라데이션(위 `#1b4a7d` → 아래 `#0a2038`, 아래쪽 민트 글로우) 위에 흰 풍경채 로고를 크게, 그 아래 민트 `게시판 관리`를 새겼습니다. 안드로이드 홈 화면(192px)에서도 글씨가 읽히도록 여백과 크기를 잡았습니다.
 - 파일 — `icons/icon-192.png` · `icon-512.png`(안드로이드 홈 화면) · `icon-maskable-512.png`(적응형, 내용 0.6배로 안전영역 안) · `apple-touch-icon-180.png`(iOS) · `favicon-32.png` · `favicon-16.png`(작은 탭은 `풍` 한 글자만) · `icon.svg`(512 아이콘을 data URI로 품은 SVG) · `logo-wordmark-white.png` · `logo-wordmark-color.png`(밝은 배경용).
-- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128l`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION`, `index.html` 의 `GF_APP_VERSION`, `version.json` 을 함께 올립니다(캐시 버스팅).
+- 연결 — `index.html` 의 `<link rel="icon">`(svg·32·16) · `<link rel="apple-touch-icon">` · `<link rel="manifest">`. 아이콘이 바뀌면 각 주소 뒤 `?v=`(현재 `20261128m`), `manifest.json` 아이콘 주소, `sw.js` 의 `VERSION`, `index.html` 의 `GF_APP_VERSION`, `version.json` 을 함께 올립니다(캐시 버스팅).
 - 다시 만들기 — `python3 scripts/make_brand_assets.py` (`--check` 로 최신 여부만 확인). 로고 자르기·색 보정은 `brand/logo_lib.py`, 아이콘 배치·색은 스크립트 위쪽 상수에서 바꿉니다.
 - 이미 홈 화면에 있는 바로가기는 아이콘이 저절로 바뀌지 않습니다. 바로가기를 **삭제하고 다시 추가**하면 새 아이콘으로 잡힙니다.
 
@@ -304,6 +304,15 @@ board/
    칸에는 게시 중인 게시물 제목이 보이고 겹친 칸은 장수 배지가 붙습니다. 칸을 누르면 그 자리의 게시물 상세가 바로 열립니다(여러 장이면 목록).
    우측 상단 **`[닫기]`** 를 누르면 2번 팝업으로 이어집니다.
 2. **오늘의 일일 알림** — 오늘 날짜의 `daily_alerts` 1건을 ① 주의할 내용 → ② 제거대상 게시물 순서로 보여 주고, 우측 상단 **`[닫기]`** 로 닫습니다.
+
+### 팝업이 떠 있는 동안 뒤 화면은 잠깁니다 (2026-11-28)
+
+모바일 크롬에서 팝업 안을 위아래로 밀면 **뒤 화면까지 같이 밀리던 문제**를 고쳤습니다.
+
+- `app.js` 의 `applyScrollLock()` 이 팝업·바텀시트·라이트박스·복사창·더보기/설정 시트가 **하나라도 열려 있으면** `html`·`body` 에 `.lock` 을 붙이고 `body` 를 `position:fixed` 로 붙잡습니다(화면 위치는 `body.style.top` 에 보존).
+- 닫으면 `.lock` 을 풀고 **보던 자리로 그대로** 돌아옵니다. 화면을 새로 그리는 이동(`route()`)에서는 맨 위에서 시작합니다.
+- 잠금 여부는 열린 모달을 **DOM 에서 그대로 보고** 판단합니다(`MutationObserver` + 각 열기·닫기 지점의 `syncScrollLock()`). 모달을 새로 추가해도 잠금을 따로 부르지 않아 빠뜨리지 않습니다.
+- 팝업·시트 안쪽은 지금처럼 부드럽게 스크롤되고, 끝에서 더 밀어도 뒤 화면으로 넘어가지 않습니다(`overscroll-behavior:contain`). 어두운 배경(`.popback`·`.backdrop`·`.scrim`)은 `touch-action:none` 이라 배경을 끌어도 화면이 움직이지 않습니다.
 
 ## PWA — 원터치 앱 설치 · 버전/업데이트 알림 (2026-11-28)
 
@@ -322,7 +331,7 @@ board/
 
 ### 2) 바뀌면 `[지금 업데이트]` — 시스템 버전 관리
 
-화면 버전은 **`20261128l` → 표시 `v2026.11.28l`** 처럼 날짜+알파벳으로 매기고, 배포마다 **`index.html` 의 `GF_APP_VERSION` · `sw.js` 의 `VERSION` · `version.json` · `?v=` · `manifest.json` 아이콘 `?v=`** 를 함께 올립니다(테스트가 이 다섯 곳이 같은지 검사합니다).
+화면 버전은 **`20261128m` → 표시 `v2026.11.28m`** 처럼 날짜+알파벳으로 매기고, 배포마다 **`index.html` 의 `GF_APP_VERSION` · `sw.js` 의 `VERSION` · `version.json` · `?v=` · `manifest.json` 아이콘 `?v=`** 를 함께 올립니다(테스트가 이 다섯 곳이 같은지 검사합니다).
 
 - **새 배포 감지** — ① 서비스 워커가 새로 설치돼 `waiting` 으로 들어올 때(`updatefound` → `installed`) ② `version.json`(no-store)이 이 화면의 `GF_APP_VERSION` 과 다를 때. 확인 시점은 **앱 실행 · 화면 복귀(visibilitychange) · 5분마다 · [업데이트 확인]** 입니다.
 - **자동 새로고침은 하지 않습니다.** 대신 아래쪽에 **`🆕 새 버전이 준비됐습니다 [지금 업데이트]`** 배너가 뜹니다(닫기 ✕ 가능, 다음 확인 때 다시 뜸).

@@ -37,6 +37,7 @@ TEST_FILES = [
     "test/admin.test.js",
     "test/sandbox.test.js",
     "test/pwa.test.js",
+    "test/scrolllock.test.js",
 ]
 
 
@@ -191,6 +192,22 @@ def check_shell():
 
     ver = re.search(r'app\.js\?v=(\d{8}[a-z]?)', html)
     ok("app.js 캐시 버전 쿼리", bool(ver) and ver.group(1) >= "20261126b", ver.group(1) if ver else "없음")
+
+    # 2026-11-28 — 모달(팝업·바텀시트)이 열린 동안 뒤 화면 스크롤 잠금
+    ok("모달 열림 — html·body 스크롤 잠금",
+       "html.lock,body.lock{overflow:hidden;overscroll-behavior:none;}" in html)
+    ok("모달 열림 — body 고정(뒤 화면 밀림 방지)",
+       "body.lock{position:fixed;left:0;right:0;width:100%;}" in html)
+    ok("첫 진입 팝업 안쪽 스크롤은 그대로(overscroll-behavior:contain)",
+       "overscroll-behavior:contain;}\n.welrow" in html
+       or (".popbody{" in html and re.search(r"\.popbody\{[^}]*overscroll-behavior:contain", html) is not None))
+    ok("바텀시트 본문도 contain",
+       re.search(r"\.sheet-body\{[^}]*overscroll-behavior:contain", html) is not None)
+    ok("시트·팝업 배경은 touch-action:none(당겨도 안 움직임)",
+       re.search(r"\.popback\{[^}]*touch-action:none", html) is not None
+       and re.search(r"\.backdrop\{[^}]*touch-action:none", html) is not None)
+    ok("모달 잠금 코드가 app.js 에 있음",
+       "function applyScrollLock()" in read("app.js") and "MODAL_SEL" in read("app.js"))
     return out, n_pass, n_fail
 
 
